@@ -15,17 +15,27 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = +(process.env.PORT || 8321);
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
-const ALLOWED = (process.env.ALLOWED_USERS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+/* — Clés : chargées depuis secrets.json (à remplir à la main, jamais versionné).
+     Si une variable d'environnement existe, elle a priorité. — */
+let SECRETS = {};
+try {
+  const sp = path.join(__dirname, 'secrets.json');
+  if (fs.existsSync(sp)) SECRETS = JSON.parse(fs.readFileSync(sp, 'utf8')) || {};
+} catch (e) { console.warn('[config] secrets.json illisible (ignoré) :', e.message); }
+const env = (k, d) => (process.env[k] !== undefined && process.env[k] !== '') ? process.env[k] : (SECRETS[k] !== undefined && SECRETS[k] !== '' ? SECRETS[k] : d);
+
+const ADMIN_TOKEN = env('ADMIN_TOKEN', '');
+const ALLOWED = String(env('ALLOWED_USERS', '')).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
 /* — Capture des sondages natifs /poll (Helix, polling 2,5 s) — */
-const CLIENT_ID = process.env.CLIENT_ID || '';
-const BROADCASTER_ID = process.env.BROADCASTER_ID || '';
-const POLL_OAUTH = process.env.POLL_OAUTH || '';      // user token · scope channel:read:polls
+const CLIENT_ID = env('CLIENT_ID', '');
+const BROADCASTER_ID = env('BROADCASTER_ID', '');
+const POLL_OAUTH = env('POLL_OAUTH', '');      // user token · scope channel:read:polls
 
 /* — Chat Twitch (tmi.js optionnel) — */
-const CHAT_OAUTH = process.env.CHAT_OAUTH || '';
-const CHAT_NICK = process.env.CHAT_NICK || '';
+const CHAT_OAUTH = env('CHAT_OAUTH', '');
+const CHAT_NICK = env('CHAT_NICK', '');
 
 /* ═══ État global ═══════════════════════════════════════════════ */
 let state = { mode: 'idle' };

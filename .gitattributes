@@ -1,3 +1,4 @@
-# Fins de ligne : les .bat doivent rester en CRLF (Windows), les .sh en LF (Linux/Mac)
-*.bat text eol=crlf
+# Fins de ligne : les .bat restent EN CRLF (Windows) jusque dans le ZIP GitHub.
+# "-text" = git ne touche pas aux fins de ligne (pas de normalisation en LF).
+*.bat -text
 *.sh  text eol=lf
