@@ -245,8 +245,27 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
 
 /* ═══ Sondages natifs /poll (API Helix) ═════════════════════════ */
 let helixOn = false;
+let resolvedBroadcasterId = BROADCASTER_ID;
+
+/* Résout automatiquement ton ID de chaîne (numéro) à partir de ton token :
+   l'appel /users renvoie l'identité du propriétaire du token. Tu n'as donc
+   PAS besoin de chercher ton BROADCASTER_ID à la main. */
+async function resolveBroadcaster() {
+  if (resolvedBroadcasterId) return true;
+  if (!CLIENT_ID || !POLL_OAUTH) return false;
+  try {
+    const r = await fetch('https://api.twitch.tv/helix/users', {
+      headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + POLL_OAUTH }
+    });
+    if (!r.ok) return false;
+    const d = await r.json();
+    if (d.data && d.data[0] && d.data[0].id) { resolvedBroadcasterId = d.data[0].id; return true; }
+  } catch (e) {}
+  return false;
+}
+
 async function helixPolls() {
-  const r = await fetch('https://api.twitch.tv/helix/polls?broadcaster_id=' + BROADCASTER_ID + '&data=can_vote', {
+  const r = await fetch('https://api.twitch.tv/helix/polls?broadcaster_id=' + resolvedBroadcasterId + '&data=can_vote', {
     headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + POLL_OAUTH }
   });
   if (!r.ok) { if (r.status === 401 || r.status === 403) console.error(`[twitch-poll] HTTP ${r.status} — vérifiez POLL_OAUTH / scopes`); return null; }
@@ -296,10 +315,17 @@ async function pollLoop() {
     }
   } catch (e) { /* réseau momentané : on réessaie au prochain cycle */ }
 }
-if (CLIENT_ID && BROADCASTER_ID && POLL_OAUTH) {
-  helixOn = true;
-  pollLoop();
-  setInterval(pollLoop, 2500);
+if (CLIENT_ID && POLL_OAUTH) {
+  (async () => {
+    if (await resolveBroadcaster()) {
+      helixOn = true;
+      console.log(`  /poll → actif (chaîne ${resolvedBroadcasterId})`);
+      pollLoop();
+      setInterval(pollLoop, 2500);
+    } else {
+      console.warn('  /poll → impossible de détecter ta chaîne (vérifie CLIENT_ID / POLL_OAUTH)');
+    }
+  })();
 }
 
 /* ═══ Serveur HTTP + SSE ════════════════════════════════════════ */
@@ -491,6 +517,6 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`  OBS  →  http://localhost:${PORT}/widget.html`);
   console.log(`  Démo →  http://localhost:${PORT}/   (démonstration auto + fond caméra)`);
   console.log(`  Chat →  ${chatOn ? 'actif (' + CHAT_NICK + ')' : 'inactif (CHAT_OAUTH / CHAT_NICK manquants)'}`);
-  console.log(`  /poll → ${helixOn ? 'actif (polling Helix 2,5 s)' : 'inactif (CLIENT_ID / BROADCASTER_ID / POLL_OAUTH)'}`);
+  console.log(`  /poll → ${helixOn ? 'actif (polling Helix 2,5 s)' : (CLIENT_ID && POLL_OAUTH ? 'détection de la chaîne…' : 'inactif (CLIENT_ID / POLL_OAUTH manquants)')}`);
   console.log('');
 });
