@@ -283,11 +283,47 @@ async function resolveBroadcaster() {
     const r = await fetch('https://api.twitch.tv/helix/users', {
       headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + POLL_OAUTH }
     });
-    if (!r.ok) return false;
+    if (!r.ok) {
+      let detail = '';
+      try { const j = await r.json(); detail = j.message || j.error || JSON.stringify(j); } catch (e) {}
+      console.warn('[auth] GET /users → HTTP ' + r.status + (detail ? ' — ' + detail : ''));
+      return false;
+    }
     const d = await r.json();
-    if (d.data && d.data[0] && d.data[0].id) { resolvedBroadcasterId = d.data[0].id; return true; }
-  } catch (e) {}
+    if (d.data && d.data[0] && d.data[0].id) {
+      resolvedBroadcasterId = d.data[0].id;
+      console.log('[auth] chaîne détectée : ' + (d.data[0].login || d.data[0].display_name) + ' (' + resolvedBroadcasterId + ')');
+      return true;
+    }
+    console.warn('[auth] GET /users → aucune donnée (token valide mais pas de compte ?)');
+  } catch (e) {
+    console.warn('[auth] erreur réseau sur GET /users :', e.message || e);
+  }
   return false;
+}
+
+/* — Validation du token au démarrage : affiche clairement s'il est valide
+     et quels droits il possède (sondages, abonnés, follows). — */
+async function checkToken() {
+  if (!POLL_OAUTH) { console.warn('[auth] aucun token POLL_OAUTH dans secrets.json'); return; }
+  try {
+    const r = await fetch('https://id.twitch.tv/oauth2/validate', {
+      headers: { 'Authorization': 'OAuth ' + POLL_OAUTH }
+    });
+    if (!r.ok) {
+      console.warn('[auth] token INVALIDE (HTTP ' + r.status + ') — régénère-le avec le bon lien');
+      return;
+    }
+    const v = await r.json();
+    const scopes = (v.scopes || []).join(', ');
+    console.log('[auth] token VALIDE — compte : ' + (v.login || '?') + ' — droits : ' + (scopes || '(aucun)'));
+    if (!(v.scopes || []).includes('channel:read:subscriptions'))
+      console.warn('[auth] ⚠️ il MANQUE le droit "channel:read:subscriptions" → le sub goal ne marchera pas');
+    if (!(v.scopes || []).includes('moderator:read:followers'))
+      console.warn('[auth] ⚠️ il MANQUE le droit "moderator:read:followers" → les follows ne marcheront pas');
+  } catch (e) {
+    console.warn('[auth] erreur réseau sur la validation :', e.message || e);
+  }
 }
 
 async function helixPolls() {
@@ -694,5 +730,6 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`  /poll → ${helixOn ? 'actif (polling Helix 2,5 s)' : (CLIENT_ID && POLL_OAUTH ? 'détection de la chaîne…' : 'inactif (CLIENT_ID / POLL_OAUTH manquants)')}`);
   console.log(`  Sub goal → ${CLIENT_ID && POLL_OAUTH ? 'auto (vrai nombre de subs)' : 'manuel (POST /api/goal)'}`);
   console.log(`  Follows → ${CLIENT_ID && POLL_OAUTH ? 'EventSub (alertes temps réel)' : 'inactif (token manquant)'}`);
-  console.log('');
+  console.log('  ─────────────────────────────────────────────────');
+  checkToken();  // valide le token et affiche ses droits
 });
