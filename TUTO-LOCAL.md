@@ -130,19 +130,25 @@ Pendant ton stream, avec le pont ouvert :
 ## 💬 (Optionnel) Activer le vrai chat Twitch dans l'overlay
 
 Sans bot, le panneau chat reste vide (c'est normal, pas de message fictif en live).
-Pour afficher ton **vrai chat**, il faut un compte bot :
+Pour afficher ton **vrai chat**, il suffit de remplir 2 cases du fichier **`secrets.json`**
+(à ouvrir avec le Bloc-notes, à la racine du projet) :
 
-1. Crée (ou prends) un **second compte Twitch** (ex. `7gionny_bot`).
-2. Connecté avec ce compte, va sur **https://twitchapps.com/tmi/** → **Connect**.
-3. Copie le token affiché (il commence par `oauth:`).
-4. Ouvre le dossier du projet, **clic droit sur `demarrer-pont.bat` → Modifier** (Bloc-notes).
-5. Tout en haut, ajoute ces 2 lignes (remplace par TON token et TON pseudo bot) :
-   ```bat
-   set CHAT_NICK=7gionny_bot
-   set CHAT_OAUTH=oauth:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+1. **`CHAT_NICK`** → ton pseudo Twitch en minuscules (ex. `7gionny`).
+   *(Tu peux utiliser ton propre compte pour commencer. Plus tard tu pourras créer un
+   compte bot séparé si tu préfères.)*
+2. **`CHAT_OAUTH`** → génère un token en cliquant sur ce lien :
    ```
-6. Enregistre et referme. **Relance** `demarrer-pont.bat`.
-7. La fenêtre doit afficher : `Chat → actif (7gionny_bot)`.
+   https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=chat:read+chat:edit
+   ```
+   → **Autoriser** → ton navigateur arrive sur une page "introuvable" (`http://localhost`),
+   c'est normal → dans la **barre d'adresse**, copie ce qui suit `access_token=` (jusqu'au
+   `&scope=`).
+3. Dans `secrets.json`, colle `oauth:` **directement suivi** du token (sans espace) :
+   ```
+   "CHAT_OAUTH": "oauth:TON_TOKEN_COLLÉ_ICI"
+   ```
+4. Sauvegarde le fichier, puis **relance** `demarrer-pont.bat`.
+5. La fenêtre doit afficher : `Chat → actif (7gionny)`.
 
 > Le chat s'affiche alors en direct à droite, avec badges, emotes, couleurs, etc.
 
@@ -150,17 +156,37 @@ Pour afficher ton **vrai chat**, il faut un compte bot :
 
 ## 📊 (Optionnel) Activer les sondages natifs `/poll`
 
-Pour que le widget capture tes sondages `/poll` de Twitch automatiquement :
+Pour que le widget capture tes sondages `/poll` de Twitch automatiquement, remplis
+2 cases du fichier **`secrets.json`** :
 
-1. Crée une app sur **https://dev.twitch.tv/console/apps** → récupère ton **Client ID**.
-2. Récupère aussi ton **token utilisateur** (scope `channel:read:polls`) et ton **ID de chaîne**.
-3. Ajoute ces 3 lignes tout en haut de `demarrer-pont.bat` :
-   ```bat
-   set CLIENT_ID=ton_client_id
-   set BROADCASTER_ID=ton_id_de_chaine
-   set POLL_OAUTH=ton_token_oauth
+1. **`CLIENT_ID`** → déjà pré-rempli (`53shw…`). Tu peux le laisser tel quel.
+2. **`POLL_OAUTH`** → génère un token en cliquant sur ce lien :
    ```
-4. Enregistre, relance. La fenêtre doit afficher : `/poll → actif`.
+   https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=channel:read:polls
+   ```
+   → **Autoriser** → copie ce qui suit `access_token=` dans la barre d'adresse
+   → colle-le dans `POLL_OAUTH` (**sans** le préfixe `oauth:` cette fois).
+3. Sauvegarde, relance `demarrer-pont.bat`. La fenêtre doit afficher : `/poll → actif`.
+
+> 💡 Ton ID de chaîne est trouvé **automatiquement** par le programme (à partir du
+> token) : tu n'as rien d'autre à chercher.
+
+---
+
+## 📝 Connecter le réel (résumé express)
+
+Toutes les connexions se font dans **UN seul fichier** : `secrets.json` (Bloc-notes).
+
+| Case | Quoi mettre |
+|---|---|
+| `CHAT_NICK` | ton pseudo Twitch (ex. `7gionny`) |
+| `CHAT_OAUTH` | `oauth:` + token (lien "chat" ci-dessus) |
+| `CLIENT_ID` | déjà rempli (`53shw…`) |
+| `POLL_OAUTH` | token du lien "sondages" (sans `oauth:`) |
+| `ADMIN_TOKEN` | laisse vide pour l'instant |
+
+Une fois rempli + `demarrer-pont.bat` relancé, la fenêtre affiche :
+`Chat → actif` et `/poll → actif`.
 
 ---
 
