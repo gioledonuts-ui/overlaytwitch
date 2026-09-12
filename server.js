@@ -81,6 +81,18 @@ function broadcastAlert(a) {
 
 /* — Diffusion du chat Twitch au widget (panneau gauche) — */
 let lastChatBcast = 0;
+
+/* Reformate l'objet tmi.js { id: ['début-fin', …] } en "id:début-fin/id:début-fin" */
+function rawEmotes(emotesObj) {
+  if (!emotesObj || typeof emotesObj !== 'object') return '';
+  const parts = [];
+  for (const [id, ranges] of Object.entries(emotesObj)) {
+    const r = Array.isArray(ranges) ? ranges : [ranges];
+    for (const range of r) if (range) parts.push(id + ':' + range);
+  }
+  return parts.join('/');
+}
+
 function broadcastChat(m) {
   const now = Date.now();
   if (now - lastChatBcast < 50) return;              // ~20 msg/s max
@@ -208,7 +220,10 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
     const username = (userstate && (userstate['display-name'] || userstate.username)) || '';
     const badges = (userstate && userstate.badges) || {};
     const color = (userstate && userstate.color) || '';
-    const emotes = (userstate && (userstate['emotes-raw'] || userstate.emotes)) || '';
+    // tmi.js stocke les emotes en OBJET { id: ['début-fin', …] }.
+    // On les reformate en chaîne brute "id:début-fin/id:début-fin"
+    // pour que le widget puisse les afficher en images.
+    const emotes = rawEmotes(userstate && userstate.emotes);
     const replyTo = (userstate && userstate['reply-parent-display-name']) || undefined;
     const highlighted = (userstate && userstate['msg-id']) === 'highlighted-message'
       || (userstate && userstate['pinned-chat-paid-amount'] !== undefined);
@@ -300,17 +315,22 @@ async function pollLoop() {
     const ended = polls.find(p => (p.status === 'COMPLETED' || p.status === 'TERMINATED') && p.id === currentPollId);
 
     if (live) {
+      // Twitch renvoie `ended_at: null` pour un sondage ACTIF. La vraie fin
+      // se calcule : started_at + duration (en secondes).
+      const started = live.started_at ? new Date(live.started_at).getTime() : Date.now();
+      const durMs = Math.max(15000, (live.duration || 60) * 1000);
+      const ends = started + durMs;
+
       if (state.mode !== 'live') {
         if (live.choices && live.choices.length === 2) {
           currentPollId = live.id;
-          const ends = new Date(live.ends_at || Date.now() + 120000).getTime();
-          console.log(`[twitch-poll] SONDAGE DÉTECTÉ : "${live.title}" → lancement du débat`);
+          console.log(`[twitch-poll] SONDAGE DÉTECTÉ : "${live.title}" (${Math.round(durMs/1000)}s) → lancement du débat`);
           startDebate({
             question: live.title.slice(0, 140),
             a: live.choices[0].title.slice(0, 60),
             b: live.choices[1].title.slice(0, 60),
             duration: Math.max(15, Math.floor((ends - Date.now()) / 1000)),
-            startsAt: new Date(live.started_at || Date.now()).getTime(),
+            startsAt: started,
             source: 'twitch'
           });
         } else {
@@ -320,7 +340,7 @@ async function pollLoop() {
       } else if (state.source === 'twitch' && currentPollId === live.id) {
         state.va = live.choices[0].votes || 0;
         state.vb = live.choices[1].votes || 0;
-        state.endsAt = new Date(live.ends_at || state.endsAt).getTime();
+        state.endsAt = ends;
         dirty = true;
       }
     } else if (ended && state.mode === 'live' && state.source === 'twitch') {

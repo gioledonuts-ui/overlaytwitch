@@ -1,18 +1,17 @@
-VERSION 10 — 12 septembre 2026
+VERSION 11 — 12 septembre 2026
 
-GROSES CORRECTIONS :
-- LE SONDAGE /poll FONCTIONNE ENFIN : j'avais utilisé les mauvais noms
-  de statuts (VOTING/ENDED au lieu de ACTIVE/COMPLETED) et les mauvais
-  champs (name/votes_count au lieu de title/votes). Corrige.
-  -> Quand tu lances /poll sur Twitch (2 choix), le debat s'affiche tout seul.
+CORRECTIONS :
+- EMOTES TWITCH : elles s'affichent enfin en images (2 bugs corriges :
+  la facon de lire les emotes + la mauvaise URL des images).
+- EMOJIS : police emoji mise en priorite pour un affichage en couleur.
+- TIMER CORRIGE : pour un /poll, le compteur affiche maintenant la VRAIE
+  duree du sondage Twitch (avant il mettait toujours 2 min a cause d'un
+  repli fixe de 120 secondes).
+- PIED DE CARTE : "1 VOTE" (plus "1 VOTES") et l'espacement est corrige :
+  la commande/sondage est au centre, le total a droite, bien separes.
 
-- LES VRAIS BADGES TWITCH s'affichent maintenant (images officielles,
-  recuperees via l'API). Sub, mod, vip, bits... plus de faux badges.
+Les badges restent a faire (on verra ca plus tard).
 
-- Le ":" est ajoute apres le pseudo (ex : "7gionny: message").
-
-- La VRAIE COULEUR du pseudo (celle choisie sur Twitch) est utilisee.
-
-Si ce fichier affiche "VERSION 10", tu as la derniere version.
+Si ce fichier affiche "VERSION 11", tu as la derniere version.
 Ensuite : relance demarrer-pont.bat, puis dans OBS : clic droit sur la source
 -> "Actualiser".
