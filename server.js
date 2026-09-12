@@ -200,31 +200,34 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
     console.log('[alerte] raid : ' + user + ' (' + viewers + ' spectateurs)');
   });
 
-  chat.on('message', (channel, msg) => {
-    const text = msg.message;
-    const tags = msg.tags || '';
-    const tag = k => {
-      const p = tags.split(';').find(s => s.startsWith(k + ':'));
-      return p ? p.slice(k.length + 1) : '';
-    };
+  chat.on('message', (channel, userstate, message, self) => {
+    // Signature tmi.js : (channel, userstate, message, self)
+    //   userstate = les "tags" du message (pseudo, badges, emotes, réponses…)
+    //   message   = LE TEXTE du message
+    const text = String(message || '');
+    const username = (userstate && (userstate['display-name'] || userstate.username)) || '';
+    const badges = (userstate && userstate.badges) || {};
+    const emotes = (userstate && (userstate['emotes-raw'] || userstate.emotes)) || '';
+    const replyTo = (userstate && userstate['reply-parent-display-name']) || undefined;
+    const highlighted = (userstate && userstate['msg-id']) === 'highlighted-message'
+      || (userstate && userstate['pinned-chat-paid-amount'] !== undefined);
+
     /* diffusion au widget (tous les messages, comme le vrai chat Twitch) :
        badges officiels (sub/mod/vip/staff…), emotes + GIFs animés, highlight/pin */
     broadcastChat({
-      user: msg.display_name || msg.username,
+      user: username,
       msg: text,
-      role: msg.user_badges && msg.user_badges.broadcaster ? 'me'
-        : (msg.user_badges && msg.user_badges.moderator ? 'mod' : 'user'),
-      badges: msg.user_badges || {},
-      emotes: tag('emotes'),
-      emoteSets: tag('emote-sets'),
-      highlight: tag('highlighted') === '1' || tag('is_pinned') === '1',
-      replyTo: tag('reply-parent-display-name') || undefined   // réponse à un message
+      role: badges.broadcaster ? 'me' : (badges.moderator ? 'mod' : 'user'),
+      badges: badges,
+      emotes: emotes,
+      highlight: highlighted,
+      replyTo: replyTo
     });
     if (!text.startsWith('!')) return;
     const [cmd, ...rest] = text.split(' ');
     const c = cmd.toLowerCase();
-    const isStaff = (msg.user_badges && (msg.user_badges.broadcaster || msg.user_badges.mod))
-      || ALLOWED.includes(msg.username.toLowerCase());
+    const isStaff = (badges.broadcaster || badges.moderator)
+      || ALLOWED.includes(username.toLowerCase());
 
     if (c === '!debate') {
       if (!isStaff) { chat.say(channel, '[Débat] Réservé au streamer et aux mods.'); return; }
@@ -237,8 +240,8 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
       chat.say(channel, `[Débat] LANCÉ · ${dur}s · tapez !vote A ou !vote B`);
     } else if (c === '!vote') {
       const arg = (rest[0] || '').toLowerCase();
-      if (arg === 'a' || arg === '1') tally('A', msg.username);
-      else if (arg === 'b' || arg === '2') tally('B', msg.username);
+      if (arg === 'a' || arg === '1') tally('A', username);
+      else if (arg === 'b' || arg === '2') tally('B', username);
       else if (state.mode === 'live') chat.say(channel, '[Débat] Vote invalide — utilise !vote A ou !vote B.');
     } else if (c === '!end') {
       if (!isStaff) return;
@@ -273,13 +276,24 @@ async function helixPolls() {
   const r = await fetch('https://api.twitch.tv/helix/polls?broadcaster_id=' + resolvedBroadcasterId + '&data=can_vote', {
     headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + POLL_OAUTH }
   });
-  if (!r.ok) { if (r.status === 401 || r.status === 403) console.error(`[twitch-poll] HTTP ${r.status} — vérifiez POLL_OAUTH / scopes`); return null; }
-  return ((await r.json()).data) || [];
+  if (!r.ok) {
+    if (r.status === 401 || r.status === 403) console.error(`[twitch-poll] HTTP ${r.status} — vérifiez POLL_OAUTH / scopes (token invalide ou mauvais scope)`);
+    else console.error(`[twitch-poll] HTTP ${r.status} — réponse inattendue`);
+    return null;
+  }
+  const json = await r.json();
+  if (json && json.error) console.error('[twitch-poll] API :', json.message || json.error);
+  return (json && json.data) || [];
 }
+let _pollLogCount = 0;
 async function pollLoop() {
   try {
     const polls = await helixPolls();
     if (polls === null) return;
+    /* trace légère (toutes les ~10 itérations) pour diagnostiquer sans spammer */
+    if (++_pollLogCount % 10 === 1) {
+      console.log(`[twitch-poll] ${polls.length} sondage(s) reçu(s) · statuts : ${polls.map(p => p.status).join(', ') || '(aucun)'}`);
+    }
     const live = polls.find(p => p.status === 'VOTING');
     const ended = polls.find(p => p.status === 'ENDED' && p.id === currentPollId);
 
@@ -288,6 +302,7 @@ async function pollLoop() {
         if (live.choices && live.choices.length === 2) {
           currentPollId = live.id;
           const ends = new Date(live.ends_at || Date.now() + 120000).getTime();
+          console.log(`[twitch-poll] SONDAGE DÉTECTÉ : "${live.title}" → lancement du débat`);
           startDebate({
             question: live.title.slice(0, 140),
             a: live.choices[0].name.slice(0, 60),
@@ -297,7 +312,7 @@ async function pollLoop() {
             source: 'twitch'
           });
         } else {
-          console.warn('[twitch-poll] ignoré (2 choix requis) :', live && live.title);
+          console.warn(`[twitch-poll] sondage ignoré (${live.choices ? live.choices.length : 0} choix, il en faut 2) : "${live.title}"`);
           currentPollId = live.id;
         }
       } else if (state.source === 'twitch' && currentPollId === live.id) {
