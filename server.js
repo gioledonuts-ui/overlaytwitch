@@ -68,11 +68,32 @@ const broadcast = force => {
   for (const res of sse) res.write(payload);
 };
 
-/* — SUB GOAL : état modifiable à chaud (env de base + POST /api/goal) — */
+/* — CONFIG PERSISTANTE (modifiable via le panneau de contrôle) — */
+const PERSIST_FILE = path.join(__dirname, 'config-perso.json');
+const DEFAULT_CONFIG = {
+  subGoalLabel: 'SUB GOAL',
+  subGoalTarget: 50,
+  subGoalAuto: true,     // true = compteur auto (Twitch) ; false = manuel
+  subGoalManual: 0,
+  chatTitle: 'CHAT DE 7GIONNY',
+  accent: '#9146FF'
+};
+let appConfig = Object.assign({}, DEFAULT_CONFIG);
+try {
+  if (fs.existsSync(PERSIST_FILE)) {
+    const saved = JSON.parse(fs.readFileSync(PERSIST_FILE, 'utf8')) || {};
+    appConfig = Object.assign({}, DEFAULT_CONFIG, saved);
+  }
+} catch (e) { console.warn('[config] config-perso.json illisible :', e.message); }
+function saveConfig() {
+  try { fs.writeFileSync(PERSIST_FILE, JSON.stringify(appConfig, null, 2)); } catch (e) {}
+}
+
+/* — SUB GOAL : état dérivé de la config (modifiable via le panneau) — */
 const goalState = {
-  label: process.env.SUB_GOAL_LABEL || 'SUB GOAL',
-  current: Math.max(0, parseInt(process.env.SUB_GOAL_CURRENT || '0', 10) || 0),
-  target: Math.max(1, parseInt(process.env.SUB_GOAL_TARGET || '50', 10) || 50)
+  label: appConfig.subGoalLabel,
+  current: appConfig.subGoalAuto ? 0 : appConfig.subGoalManual,
+  target: appConfig.subGoalTarget
 };
 
 /* — Alertes (follow / sub / gift / raid) : diffuses au widget — */
@@ -313,10 +334,13 @@ async function resolveBroadcaster() {
   return false;
 }
 
+/* — État du token (pour le panneau) : null = pas encore vérifié — */
+let tokenInfo = null;
+
 /* — Validation du token au démarrage : affiche clairement s'il est valide
      et quels droits il possède (sondages, abonnés, follows). — */
 async function checkToken() {
-  if (!POLL_OAUTH) { console.warn('[auth] aucun token POLL_OAUTH dans secrets.json'); return; }
+  if (!POLL_OAUTH) { tokenInfo = { valid: false, reason: 'absent' }; console.warn('[auth] aucun token POLL_OAUTH dans secrets.json'); return; }
   // affiche la longueur + les 6 premiers caractères (pour vérifier qu'il est bien lu)
   console.log('[auth] token lu : ' + POLL_OAUTH.length + ' caractères, commence par "' + POLL_OAUTH.slice(0, 6) + '..."');
   try {
@@ -324,17 +348,25 @@ async function checkToken() {
       headers: { 'Authorization': 'OAuth ' + POLL_OAUTH }
     });
     if (!r.ok) {
+      tokenInfo = { valid: false, reason: 'invalide' };
       console.warn('[auth] token INVALIDE (HTTP ' + r.status + ') — régénère-le avec le bon lien');
       return;
     }
     const v = await r.json();
-    const scopes = (v.scopes || []).join(', ');
-    console.log('[auth] token VALIDE — compte : ' + (v.login || '?') + ' — droits : ' + (scopes || '(aucun)'));
-    if (!(v.scopes || []).includes('channel:read:subscriptions'))
+    const scopes = v.scopes || [];
+    tokenInfo = { valid: true, login: v.login || '', scopes };
+    const missing = [];
+    if (!scopes.includes('channel:read:polls')) missing.push('sondages');
+    if (!scopes.includes('channel:read:subscriptions')) missing.push('abonnés');
+    if (!scopes.includes('moderator:read:followers')) missing.push('follows');
+    tokenInfo.missing = missing;
+    console.log('[auth] token VALIDE — compte : ' + (v.login || '?') + ' — droits : ' + (scopes.join(', ') || '(aucun)'));
+    if (!scopes.includes('channel:read:subscriptions'))
       console.warn('[auth] ⚠️ il MANQUE le droit "channel:read:subscriptions" → le sub goal ne marchera pas');
-    if (!(v.scopes || []).includes('moderator:read:followers'))
+    if (!scopes.includes('moderator:read:followers'))
       console.warn('[auth] ⚠️ il MANQUE le droit "moderator:read:followers" → les follows ne marcheront pas');
   } catch (e) {
+    tokenInfo = { valid: false, reason: 'réseau' };
     console.warn('[auth] erreur réseau sur la validation :', e.message || e);
   }
 }
@@ -468,8 +500,8 @@ if (CLIENT_ID) {
    champ `total`) et met à jour le compteur du sub goal automatiquement.
    Nécessite le scope channel:read:subscriptions sur le token utilisateur. */
 async function syncSubGoal() {
+  if (!appConfig.subGoalAuto) return;   // mode manuel : on ne touche pas au compteur
   if (!CLIENT_ID || !POLL_OAUTH || !resolvedBroadcasterId) {
-    console.warn('[sub-goal] impossible : CLIENT_ID / POLL_OAUTH / chaîne manquants');
     return;
   }
   try {
@@ -602,6 +634,15 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    /* — Panneau de contrôle (personnalisation sans coder) — */
+    if (u.pathname === '/panneau' || u.pathname === '/panneau.html' || u.pathname === '/panel') {
+      fs.readFile(path.join(__dirname, 'panneau.html'), (e, b) => {
+        if (e) return send(500, 'text/plain', 'panneau.html introuvable');
+        send(200, 'text/html; charset=utf-8', b, { 'Cache-Control': 'no-store' });
+      });
+      return;
+    }
+
     /* — Racine : aperçu auto-démontré dans le navigateur — */
     if (u.pathname === '/') {
       fs.readFile(path.join(__dirname, 'widget.html'), (e, b) => {
@@ -725,6 +766,74 @@ const server = http.createServer((req, res) => {
           for (const res of sse) res.write(payload);
           send(200, 'application/json', JSON.stringify(goalState));
         } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false })); }
+      });
+      return;
+    }
+
+    /* — CONFIG (panneau de contrôle) — GET : état · POST : modifie + persiste — */
+    if (u.pathname === '/api/config' && req.method === 'GET') {
+      return send(200, 'application/json', JSON.stringify({
+        config: appConfig,
+        goal: goalState,
+        token: tokenInfo
+      }));
+    }
+    if (u.pathname === '/api/config' && req.method === 'POST') {
+      readBody().then(d => {
+        try {
+          const p = JSON.parse(d || '{}');
+          if (p.subGoalLabel !== undefined) appConfig.subGoalLabel = String(p.subGoalLabel).slice(0, 24);
+          if (p.subGoalTarget !== undefined) appConfig.subGoalTarget = Math.max(1, Math.round(+p.subGoalTarget || 1));
+          if (p.subGoalAuto !== undefined) appConfig.subGoalAuto = !!p.subGoalAuto;
+          if (p.subGoalManual !== undefined) appConfig.subGoalManual = Math.max(0, Math.round(+p.subGoalManual || 0));
+          if (p.chatTitle !== undefined) appConfig.chatTitle = String(p.chatTitle).slice(0, 40);
+          if (p.accent !== undefined) appConfig.accent = String(p.accent).slice(0, 16);
+          saveConfig();
+
+          // met à jour le sub goal (mode manuel = valeur manuelle)
+          goalState.label = appConfig.subGoalLabel;
+          goalState.target = appConfig.subGoalTarget;
+          if (!appConfig.subGoalAuto) goalState.current = appConfig.subGoalManual;
+
+          // diffuse au widget : sub goal + titre du chat + accent
+          const payload = 'data: ' + JSON.stringify({
+            goal: 1, ...goalState,
+            cfg: 1, chatTitle: appConfig.chatTitle, accent: appConfig.accent
+          }) + '\n\n';
+          for (const res of sse) res.write(payload);
+          send(200, 'application/json', JSON.stringify({ ok: true, config: appConfig, goal: goalState }));
+        } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false })); }
+      });
+      return;
+    }
+
+    /* — STATUT (panneau) : état des connexions — */
+    if (u.pathname === '/api/status' && req.method === 'GET') {
+      return send(200, 'application/json', JSON.stringify({
+        chat: chatOn, chatNick: CHAT_NICK, chatChannel: CHAT_CHANNEL,
+        poll: helixOn, follows: helixOn,
+        token: tokenInfo,
+        goal: goalState,
+        config: appConfig
+      }));
+    }
+
+    /* — SECRETS (panneau) : écrit les clés dans secrets.json (sans coder) — */
+    if (u.pathname === '/api/secrets' && req.method === 'POST') {
+      readBody().then(d => {
+        try {
+          const p = JSON.parse(d || '{}');
+          const ALLOWED_KEYS = ['CHAT_NICK', 'CHAT_OAUTH', 'CHAT_CHANNEL', 'CLIENT_ID', 'POLL_OAUTH', 'ADMIN_TOKEN', 'ALLOWED_USERS'];
+          let secrets = {};
+          try { secrets = JSON.parse(fs.readFileSync(path.join(__dirname, 'secrets.json'), 'utf8')) || {}; } catch (e) {}
+          let changed = 0;
+          for (const k of Object.keys(p)) {
+            if (ALLOWED_KEYS.includes(k)) { secrets[k] = String(p[k]); changed++; }
+          }
+          if (!changed) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'aucune clé valide' }));
+          fs.writeFileSync(path.join(__dirname, 'secrets.json'), JSON.stringify(secrets, null, 2));
+          send(200, 'application/json', JSON.stringify({ ok: true, note: 'Relance demarrer-pont.bat pour appliquer les nouvelles clés.' }));
+        } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false, err: String(e.message || e) })); }
       });
       return;
     }

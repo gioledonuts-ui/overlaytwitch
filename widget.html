@@ -356,7 +356,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 
   <!-- ═══ CHAT TWITCH — panneau gauche (fictif en démo, réel via le pont) ═══ -->
   <div class="chat" id="chat" aria-hidden="true">
-    <div class="chat__head"><span class="dot"></span>CHAT DE 7GIONNY<span class="mark7g"><img src="assets/logo-7g.png" alt="7G"></span></div>
+    <div class="chat__head"><span class="dot"></span><span id="chatTitle">CHAT DE 7GIONNY</span><span class="mark7g"><img src="assets/logo-7g.png" alt="7G"></span></div>
     <div class="chat__pin" id="chatPin"></div>
     <div class="chat__list" id="chatList"></div>
     <div class="chat__goal" id="chatGoal">
@@ -732,6 +732,16 @@ function apply(m) {
   if (m.goal) { setGoal(m); return; }                     // sub goal
   if (m.alert) { queueAlert(m); return; }                 // follow / sub / raid
   if (m.mode) setState(m);
+  if (m.cfg) { applyConfig(m); return; }                  // titre du chat + accent
+}
+
+/* — Applique le titre du chat + la couleur d'accent (depuis le panneau) — */
+function applyConfig(c) {
+  if (c.chatTitle) { const t = document.getElementById('chatTitle'); if (t) t.textContent = c.chatTitle; }
+  if (c.accent) {
+    document.documentElement.style.setProperty('--violet', c.accent);
+    document.documentElement.style.setProperty('--violet-deep', c.accent);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1121,6 +1131,7 @@ setInterval(() => { if (mode !== 'idle') render(); }, 250);
 if (DEMO) { demoStart(); fakeChatLoop(); demoChatExtras(); demoAlerts(); } else {
   connect();
   fetch('api/goal').then(r => r.json()).then(setGoal).catch(() => {});
+  fetch('api/config').then(r => r.json()).then(d => { if (d && d.config) applyConfig(d.config); }).catch(() => {});
 }
 })();
 </script>

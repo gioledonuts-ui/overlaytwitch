@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>7GIONNY — Panneau de contrôle</title>
+<style>
+  :root{
+    --violet:#9146FF; --violet-deep:#7000FF; --blanc:#fff;
+    --bg:#0e0b16; --card:rgba(255,255,255,.045); --ligne:rgba(255,255,255,.10);
+    --ok:#38e08f; --warn:#ffd166; --bad:#ff6b81; --dim:#9AA0A6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:var(--blanc);
+    background:radial-gradient(1200px 600px at 20% -10%, #241a3f 0%, #0e0b16 55%);
+    min-height:100vh;padding:28px 16px 80px;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+  header{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header img{width:52px;height:52px;border-radius:12px;box-shadow:0 4px 18px rgba(145,70,255,.4)}
+  header h1{font-size:28px;font-weight:800}
+  header h1 span{color:var(--violet)}
+  header p{opacity:.65;font-size:14px;margin-top:2px}
+  .grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+  .stat{background:var(--card);border:1px solid var(--ligne);border-radius:14px;padding:16px 18px}
+  .stat .t{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+  .stat .v{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+  .dot.off{background:var(--bad);box-shadow:0 0 8px var(--bad)}
+  .dot.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+  .card{background:var(--card);border:1px solid var(--ligne);border-radius:14px;padding:20px 22px}
+  .card h2{font-size:17px;margin-bottom:4px}
+  .card h2 .num{display:inline-block;width:24px;height:24px;line-height:24px;text-align:center;
+    background:var(--violet);color:#14101f;border-radius:7px;font-size:14px;margin-right:8px}
+  .card p.sub{font-size:13px;opacity:.65;margin-bottom:14px}
+  .row{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
+  label{font-size:13px;font-weight:600;opacity:.9;min-width:120px}
+  input,select{
+    background:#191427;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:10px;
+    padding:10px 12px;font-size:14px;font-family:inherit;outline:none;flex:1;min-width:150px;
+  }
+  input:focus,select:focus{border-color:var(--violet)}
+  input[type=color]{flex:none;width:54px;height:40px;padding:3px;cursor:pointer}
+  .btn{
+    background:#241d38;color:#fff;border:1px solid rgba(255,255,255,.16);border-radius:10px;
+    padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+  }
+  .btn:hover{border-color:var(--violet)}
+  .btn.primary{background:linear-gradient(90deg,#772ce8,#a970ff);border:none}
+  .btn.small{padding:7px 12px;font-size:13px}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .note{font-size:13px;opacity:.75;margin-top:10px}
+  .mono{font-family:Consolas,monospace;font-size:12px;background:#191427;border:1px solid rgba(255,255,255,.14);
+    border-radius:8px;padding:8px 10px;word-break:break-all;flex:1;min-width:220px}
+  .divider{height:1px;background:var(--ligne);margin:16px 0}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chipbtn{background:rgba(145,70,255,.14);border:1px solid rgba(145,70,255,.45);color:#fff;
+    padding:8px 14px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer}
+  .chipbtn:hover{background:rgba(145,70,255,.3)}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#14101f;
+    border:1px solid var(--violet);border-radius:12px;padding:12px 20px;font-size:14px;font-weight:600;
+    box-shadow:0 8px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .3s;z-index:99}
+  .toast.show{opacity:1}
+  .badge-missing{font-size:12px;color:var(--warn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="assets/logo-7g.png" alt="7G">
+    <div>
+      <h1>7GIONNY <span>— Panneau de contrôle</span></h1>
+      <p>Personnalise ton overlay, gère ton sub goal et pilote tes débats — sans toucher au code.</p>
+    </div>
+  </header>
+
+  <!-- ÉTAT -->
+  <section class="grille" id="statut"></section>
+
+  <!-- CONNEXION -->
+  <section class="card">
+    <h2><span class="num">1</span>Connexion Twitch</h2>
+    <p class="sub">Le token permet les sondages /poll, le compteur de subs et les alertes de follow.</p>
+    <div id="tokenEtat" class="note"></div>
+    <div class="row">
+      <button class="btn" id="btnLienToken">Copier le lien de génération</button>
+      <button class="btn small" id="btnOuvrirToken" style="display:none">Ouvrir le lien</button>
+    </div>
+    <div class="row">
+      <label for="champToken">Token (coller ici)</label>
+      <input id="champToken" type="text" placeholder="colle ce qui suit access_token=" spellcheck="false" autocomplete="off">
+      <button class="btn primary" id="btnSauverToken">Enregistrer</button>
+    </div>
+    <p class="note">⚠️ Après enregistrement, <b>relance</b> demarrer-pont.bat (ou clique « Relancer le pont » en bas).</p>
+  </section>
+
+  <!-- SUB GOAL -->
+  <section class="card">
+    <h2><span class="num">2</span>Sub goal</h2>
+    <p class="sub">Le compteur affiché sous le chat. En mode auto, il suit ton vrai nombre d'abonnés.</p>
+    <div class="row">
+      <label for="goalLabel">Nom</label>
+      <input id="goalLabel" type="text" placeholder="ex. SUB GOAL">
+    </div>
+    <div class="row">
+      <label for="goalTarget">Objectif</label>
+      <input id="goalTarget" type="number" min="1">
+    </div>
+    <div class="row">
+      <label>Compteur</label>
+      <select id="goalAuto">
+        <option value="1">Automatique (vrai nombre de subs)</option>
+        <option value="0">Manuel (je le règle moi-même)</option>
+      </select>
+    </div>
+    <div class="row" id="rowGoalManual" style="display:none">
+      <label for="goalManual">Valeur manuelle</label>
+      <input id="goalManual" type="number" min="0">
+    </div>
+    <div class="row">
+      <button class="btn primary" id="btnSauverGoal">Enregistrer le sub goal</button>
+    </div>
+  </section>
+
+  <!-- APPARENCE -->
+  <section class="card">
+    <h2><span class="num">3</span>Apparence</h2>
+    <p class="sub">Personnalise le titre du chat et la couleur principale.</p>
+    <div class="row">
+      <label for="chatTitle">Titre du chat</label>
+      <input id="chatTitle" type="text" placeholder="CHAT DE 7GIONNY">
+    </div>
+    <div class="row">
+      <label for="accent">Couleur d'accent</label>
+      <input id="accent" type="color">
+    </div>
+    <div class="row">
+      <button class="btn primary" id="btnSauverApparence">Enregistrer l'apparence</button>
+    </div>
+  </section>
+
+  <!-- DÉBAT -->
+  <section class="card">
+    <h2><span class="num">4</span>Lancer un débat</h2>
+    <p class="sub">Même effet que la commande !debate, mais en cliquant ici.</p>
+    <div class="row">
+      <label for="debQuestion">Question</label>
+      <input id="debQuestion" type="text" placeholder="Le format court a-t-il tué la culture ?">
+    </div>
+    <div class="row">
+      <label for="debA">Choix A</label>
+      <input id="debA" type="text" placeholder="Oui">
+    </div>
+    <div class="row">
+      <label for="debB">Choix B</label>
+      <input id="debB" type="text" placeholder="Non">
+    </div>
+    <div class="row">
+      <label for="debDur">Durée (s)</label>
+      <input id="debDur" type="number" value="120" min="15" max="600" style="max-width:120px">
+    </div>
+    <div class="row">
+      <button class="btn primary" id="btnDebat">Lancer le débat</button>
+      <button class="btn" id="btnFinDebat">Terminer</button>
+    </div>
+  </section>
+
+  <!-- ALERTES -->
+  <section class="card">
+    <h2><span class="num">5</span>Tester une alerte</h2>
+    <p class="sub">Déclenche une animation d'alerte dans OBS (pour vérifier le rendu).</p>
+    <div class="chips">
+      <button class="chipbtn" data-alert='{"type":"follow","user":"ViewerExemple"}'>Follow</button>
+      <button class="chipbtn" data-alert='{"type":"sub","user":"amelie"}'>Sub</button>
+      <button class="chipbtn" data-alert='{"type":"resub","user":"Louna","stints":2,"total":12,"message":"Toujours là !"}'>Resub</button>
+      <button class="chipbtn" data-alert='{"type":"gift","user":"kevin","viewer":"maeva"}'>Sub offert</button>
+      <button class="chipbtn" data-alert='{"type":"raid","user":"UNAUTRECREATOR","viewers":1240}'>Raid</button>
+    </div>
+  </section>
+
+  <!-- LIENS + RELANCE -->
+  <section class="card">
+    <h2><span class="num">6</span>Liens & relance</h2>
+    <p class="sub">Les adresses à retenir.</p>
+    <div class="row"><label>OBS (source navigateur)</label><div class="mono" id="urlObs"></div></div>
+    <div class="row"><label>Démo (aperçu)</label><div class="mono" id="urlDemo"></div></div>
+    <div class="divider"></div>
+    <div class="row">
+      <button class="btn" id="btnRelancer">↻ Relancer le pont</button>
+      <span class="note" style="margin:0">(équivaut à relancer demarrer-pont.bat)</span>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const API = location.origin;
+const urlObs = API + '/widget.html';
+const urlDemo = API + '/';
+$('urlObs').textContent = urlObs;
+$('urlDemo').textContent = urlDemo;
+
+const TOKEN_LINK = 'https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=channel:read:polls+channel:read:subscriptions+moderator:read:followers';
+
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2600);
+}
+async function post(url, body){
+  const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  return r.json();
+}
+function copier(txt){
+  if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt);
+  return Promise.reject();
+}
+
+/* ---------- statut ---------- */
+function dot(ok){ return '<span class="dot ' + (ok ? 'on' : 'off') + '"></span>'; }
+function renderStatut(s){
+  const items = [
+    ['Chat Twitch', s.chat ? 'actif' : 'inactif', s.chat],
+    ['Sondages /poll', s.poll ? 'actif' : 'inactif', s.poll],
+    ['Follows (alertes)', s.follows ? 'actif' : 'inactif', s.follows],
+    ['Sub goal', (s.config && s.config.subGoalAuto) ? 'auto (' + s.goal.current + '/' + s.goal.target + ')' : 'manuel', true]
+  ];
+  $('statut').innerHTML = items.map(([t, v, ok]) =>
+    '<div class="stat"><div class="t">' + t + '</div><div class="v">' + dot(ok) + ' ' + v + '</div></div>'
+  ).join('');
+}
+
+/* ---------- connexion ---------- */
+function renderToken(t){
+  const el = $('tokenEtat');
+  if (!t) { el.innerHTML = '<span class="warn">Token non vérifié.</span>'; return; }
+  if (!t.valid) {
+    el.innerHTML = '<span class="bad">Token invalide</span> — colle un nouveau token ci-dessous.';
+    return;
+  }
+  let html = '<span class="ok">✓ Token valide</span> — compte <b>' + (t.login || '?') + '</b>.';
+  if (t.missing && t.missing.length) {
+    html += ' <span class="badge-missing">⚠️ Droits manquants : ' + t.missing.join(', ') + ' (régénère le token)</span>';
+  } else {
+    html += ' <span class="ok">Tous les droits sont là ✓</span>';
+  }
+  el.innerHTML = html;
+}
+
+$('btnLienToken').addEventListener('click', async () => {
+  try { await copier(TOKEN_LINK); toast('Lien copié ! Colle-le dans ton navigateur.'); }
+  catch(e){ prompt('Copie ce lien :', TOKEN_LINK); }
+});
+
+$('btnSauverToken').addEventListener('click', async () => {
+  const t = $('champToken').value.trim();
+  if (!t) return toast('Colle d\'abord ton token.');
+  const r = await post(API + '/api/secrets', { POLL_OAUTH: t });
+  if (r.ok) { toast('Token enregistré ✓'); $('champToken').value=''; }
+  else toast('Erreur : ' + (r.err || '?'));
+});
+
+/* ---------- sub goal ---------- */
+$('goalAuto').addEventListener('change', () => {
+  $('rowGoalManual').style.display = $('goalAuto').value === '0' ? 'flex' : 'none';
+});
+$('btnSauverGoal').addEventListener('click', async () => {
+  const body = {
+    subGoalLabel: $('goalLabel').value.trim(),
+    subGoalTarget: +$('goalTarget').value,
+    subGoalAuto: $('goalAuto').value === '1'
+  };
+  if (!body.subGoalAuto) body.subGoalManual = +$('goalManual').value || 0;
+  const r = await post(API + '/api/config', body);
+  if (r.ok) toast('Sub goal enregistré ✓');
+});
+
+/* ---------- apparence ---------- */
+$('btnSauverApparence').addEventListener('click', async () => {
+  const r = await post(API + '/api/config', {
+    chatTitle: $('chatTitle').value.trim(),
+    accent: $('accent').value
+  });
+  if (r.ok) toast('Apparence enregistrée ✓');
+});
+
+/* ---------- débat ---------- */
+$('btnDebat').addEventListener('click', async () => {
+  const question = $('debQuestion').value.trim();
+  const a = $('debA').value.trim(), b = $('debB').value.trim();
+  if (!question || !a || !b) return toast('Remplis question + choix A + choix B.');
+  const r = await post(API + '/api/debate', { question, a, b, duration: +$('debDur').value || 120 });
+  if (r.ok) toast('Débat lancé ✓');
+  else toast('Erreur (vérifie le token admin si configuré)');
+});
+$('btnFinDebat').addEventListener('click', async () => {
+  await post(API + '/api/end', {});
+  toast('Débat terminé');
+});
+
+/* ---------- alertes ---------- */
+document.querySelectorAll('[data-alert]').forEach(b => {
+  b.addEventListener('click', async () => {
+    await post(API + '/api/alert', JSON.parse(b.dataset.alert));
+    toast('Alerte envoyée ✓');
+  });
+});
+
+/* ---------- relance ---------- */
+$('btnRelancer').addEventListener('click', async () => {
+  await post(API + '/api/config', {}).catch(()=>{});
+  toast('Pour relancer le pont : ferme la fenêtre noire puis relance demarrer-pont.bat');
+});
+
+/* ---------- init ---------- */
+async function init(){
+  try {
+    const s = await (await fetch(API + '/api/status')).json();
+    renderStatut(s);
+    renderToken(s.token);
+    if (s.config){
+      $('goalLabel').value = s.config.subGoalLabel || '';
+      $('goalTarget').value = s.config.subGoalTarget || 50;
+      $('goalAuto').value = s.config.subGoalAuto ? '1' : '0';
+      $('goalManual').value = s.config.subGoalManual || 0;
+      $('chatTitle').value = s.config.chatTitle || '';
+      $('accent').value = s.config.accent || '#9146FF';
+      $('rowGoalManual').style.display = s.config.subGoalAuto ? 'none' : 'flex';
+    }
+  } catch(e){ $('statut').innerHTML = '<p class="bad">Impossible de joindre le pont. Lance demarrer-pont.bat.</p>'; }
+}
+init();
+setInterval(async () => {
+  try { const s = await (await fetch(API + '/api/status')).json(); renderStatut(s); renderToken(s.token); } catch(e){}
+}, 8000);
+</script>
+</body>
+</html>

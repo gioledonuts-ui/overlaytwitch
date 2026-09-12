@@ -1,24 +1,25 @@
-VERSION 17 — 12 septembre 2026
+VERSION 18 — 12 septembre 2026
 
-Le token POLL_OAUTH est INVALIDE ("Invalid OAuth token"). Deux causes
-possibles et comment je les ai corrigées / diagnostiquées :
+🎛️ NOUVEAU : PANIER DE CONTRÔLE (mini-application)
 
-1) Le token a "oauth:" collé devant, des espaces ou des guillemets.
-   -> CORRIGE : le programme nettoie maintenant tout seul (il retire
-   "oauth:", les espaces, les guillemets). Plus besoin de le refaire.
+Un vrai panneau de contrôle s'ouvre dans ton navigateur :
+   http://localhost:8321/panneau
 
-2) Le token est vraiment faux / expiré / mal copié.
-   -> Dans ce cas il faut le REGENERER.
+Dedans tu peux, SANS toucher au code :
+- Voir l'état des connexions (chat, sondages, follows, sub goal)
+- Coller ton token Twitch (plus besoin d'éditer secrets.json)
+- Personnaliser le sub goal : nom, objectif, auto ou manuel
+- Changer le titre du chat (ex. "CHAT DE 7GIONNY")
+- Changer la couleur d'accent
+- Lancer un débat en cliquant
+- Tester les alertes (follow, sub, raid...) en cliquant
+- Relancer / voir les liens OBS
 
-VERIFIE TOI-MEME :
-Relance demarrer-pont.bat et regarde la ligne :
-   "[auth] token lu : XX caractères, commence par \"XXXXXX...\""
-Un token Twitch valide fait ~30 caractères (lettres + chiffres).
+📦 NOUVEAU : lancer-tout.bat
+Double-clic dessus -> démarre le pont + ouvre le panneau + lance OBS.
+(Un seul fichier à lancer pour tout démarrer.)
 
-Si ça affiche encore "Invalid OAuth token", c'est que le token est faux :
-regénère-le avec ce lien exact, puis colle UNIQUEMENT ce qui suit
-access_token= (sans oauth:, sans espace, sans guillemets) :
+Les réglages sont SAUVEGARDÉS (config-perso.json) : ils survivent au
+redémarrage.
 
-https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=channel:read:polls+channel:read:subscriptions+moderator:read:followers
-
-Si ce fichier affiche "VERSION 17", tu as la derniere version.
+Si ce fichier affiche "VERSION 18", tu as la derniere version.
