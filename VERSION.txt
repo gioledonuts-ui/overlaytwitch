@@ -1,23 +1,22 @@
-VERSION 15 — 12 septembre 2026
+VERSION 16 — 12 septembre 2026
 
-DIAGNOSTIC SUB GOAL :
+DIAGNOSTIC COMPLET DU TOKEN :
 
-J'ai ajoute des messages clairs dans la fenetre noire pour savoir
-POURQUOI le sub goal reste a 0. Relance demarrer-pont.bat puis regarde
-la fenetre noire : elle affiche maintenant l'une de ces 3 lignes :
+J'ai ajoute une verification du token au demarrage. Relance demarrer-pont.bat
+et regarde les lignes "[auth] ..." en bas de la fenetre noire. Elles vont te
+dire EXACTEMENT ce qui ne va pas :
 
-1) "[sub-goal] réponse reçue : total=XX"     -> CA MARCHE (XX = tes subs)
-2) "[sub-goal] HTTP 401 ... scope manquant"  -> ton token n'a pas le
-   droit "abonnés". Il faut le REGENERER avec le lien complet (voir
-   TUTO-LOCAL.md, section "sondages + abonnés + follows").
-3) "[sub-goal] impossible ... manquants"     -> le token n'est pas rempli
+- "[auth] token VALIDE — compte : 7gionny — droits : ..."  -> le token est bon
+  (et tu verras s'il MANQUE un droit, avec un ⚠️)
 
-LA CAUSE LA PLUS PROBABLE : ton token actuel a seulement le droit
-"sondages". Pour le sub goal + les follows, il faut un token avec les
-3 droits. Regénère-le avec ce lien exact :
+- "[auth] token INVALIDE (HTTP 401)"  -> le token est faux/expire
+  -> il faut le regenerer
 
-https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=channel:read:polls+channel:read:subscriptions+moderator:read:followers
+- "[auth] aucun token POLL_OAUTH"  -> le champ est vide dans secrets.json
 
-puis colle le nouveau token dans POLL_OAUTH (dans secrets.json).
+- "[auth] GET /users → HTTP 401/403 ..."  -> le token ne correspond pas au
+  Client ID, ou le droit est manquant
 
-Si ce fichier affiche "VERSION 15", tu as la derniere version.
+COPIE-MOI ces lignes "[auth] ..." et je te dirai precisement quoi corriger.
+
+Si ce fichier affiche "VERSION 16", tu as la derniere version.
