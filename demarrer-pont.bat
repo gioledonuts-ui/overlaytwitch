@@ -26,7 +26,11 @@ for %%I in ("%NODE%") do set "NODEDIR=%%~dpI"
 echo Node.js detecte : %NODE%
 echo.
 
-rem ==== 2. Dependances (optionnel : chat Twitch uniquement) ====
+rem ==== 2. Fermer tout ancien pont deja ouvert (evite l'erreur EADDRINUSE) ====
+echo Verification : aucun ancien pont ne doit tourner...
+powershell -NoProfile -Command "$p = Get-NetTCPConnection -LocalPort 8321 -State Listen -ErrorAction SilentlyContinue; if ($p) { $p | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue; Write-Host ('  Ancien pont arrete (processus ' + $_ + ')') } } else { Write-Host '  OK : port 8321 libre.' }"
+
+rem ==== 3. Dependances (optionnel : chat Twitch uniquement) ====
 if not exist node_modules (
   echo [1/2] Installation des dependances ^(1 min, optionnel^)...
   if exist "%NODEDIR%npm.cmd" (
