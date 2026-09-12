@@ -39,7 +39,9 @@ rem --- sauvegarde de tes cles locales ---
 if exist "secrets.json" copy /y "secrets.json" "%TEMP%\secrets.backup.json" >nul
 
 rem --- copie tout SAUF secrets.json (pour ne pas ecraser tes cles) ---
-robocopy "%SRC%" "%~dp0" /E /XF secrets.json /XD node_modules .git /NFL /NDL /NJH /NJS /NP >nul
+rem    /IS /IT = force la copie meme si la date parait ancienne (GitHub met
+rem    une date fixe sur les fichiers, ce qui trompait robocopy) ---
+robocopy "%SRC%" "%~dp0" /E /IS /IT /XF secrets.json /XD node_modules .git /NFL /NDL /NJH /NJS /NP >nul
 
 rem --- restaure tes cles ---
 if exist "%TEMP%\secrets.backup.json" copy /y "%TEMP%\secrets.backup.json" "secrets.json" >nul
@@ -51,6 +53,13 @@ rmdir /s /q "%EXTRACT%" >nul 2>nul
 echo.
 echo ==============================================
 echo   Mise a jour terminee !
+echo.
+echo   Version installee :
+type VERSION.txt 2>nul
+echo.
+echo   (Si la version affichee ci-dessus n'est pas la
+echo    plus recente, relance ce fichier.)
+echo.
 echo   Relance  demarrer-pont.bat
 echo ==============================================
 echo.

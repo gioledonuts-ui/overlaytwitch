@@ -1,0 +1,10 @@
+VERSION 7 — 12 septembre 2026
+
+Dernieres modifications :
+- Chat toujours visible (panneau affiche meme sans message)
+- Correction : le bot rejoint bien ta chaine #7gionny (avant il etait sourd)
+- Opacite du chat +25% et carte du sondage presque opaque
+- Ton ID de chaine est trouve automatiquement (plus besoin de le chercher)
+- Connexion simplifiee dans secrets.json (1 seul fichier a remplir)
+
+Si ce fichier affiche "VERSION 7", ta mise a jour a bien fonctionne.
