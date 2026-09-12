@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Widget — Texte</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; height: 100vh; padding: 20px; }
+  </style>
+</head>
+<body>
+  <div id="ovt" class="banniere"></div>
+
+  <script src="../assets/ovt.js"></script>
+  <script>
+  (function () {
+    OVT.echelle();
+    if (OVT.Q.get('style') === 'net') document.body.classList.add('net');
+    var avecPseudo = OVT.Q.get('pseudo') === '1'; /* afficher qui a envoyé le texte */
+
+    var couleur = OVT.Q.get('couleur') || OVT.Q.get('color');
+    var root = document.getElementById('ovt');
+
+    var minuteur = null;
+
+    /* Règle d'or : pas de texte → on n'affiche RIEN. */
+    function affiche(texte, dureeSec, auteur) {
+      clearTimeout(minuteur);
+      texte = String(texte || '').trim();
+      if (!texte) { OVT.off(root); return; }
+
+      root.textContent = ''; /* contenu reconstruit en texte pur → anti-XSS */
+      var carte = document.createElement('div');
+      carte.className = 'ovt-texte';
+      if (couleur && /^[#a-zA-Z0-9(),. %]+$/.test(couleur)) carte.style.color = couleur;
+      if (avecPseudo && auteur) {
+        var a = document.createElement('span');
+        a.className = 'ovt-auteur';
+        a.textContent = auteur;
+        carte.appendChild(a);
+      }
+      var t = document.createElement('span');
+      t.textContent = texte;
+      carte.appendChild(t);
+
+      root.appendChild(carte);
+      OVT.on(root);
+      root.classList.remove('pulse'); void root.offsetWidth; root.classList.add('pulse');
+
+      if (dureeSec > 0) minuteur = setTimeout(function () { OVT.off(root); }, dureeSec * 1000);
+    }
+
+    /* ---------- mode démo (aperçu du design uniquement) ---------- */
+    function demo() {
+      OVT.demoBadge();
+      var exemples = [
+        ['Bienvenue sur le stream !', 'GioleDonuts'],
+        ['Ce texte vient d\'un viewer qui a échangé 5 000 points de chaîne', 'ViewerExemple'],
+        ['Encore un message de test pour régler la taille', 'AutreViewer'],
+        ['gg ! 🎉', 'FanNumero1']
+      ];
+      var i = 0;
+      affiche(exemples[0][0], 4, exemples[0][1]);
+      setInterval(function () {
+        i = (i + 1) % exemples.length;
+        affiche(exemples[i][0], 4, exemples[i][1]);
+      }, 5000);
+    }
+    if (OVT.DEMO) return demo();
+
+    /* ---------- production ---------- */
+    (async function () {
+      var r = OVT.reglages();
+      if (OVT.DEBUG) OVT.debugBadge(r.token ? 'token présent' : 'aucun token');
+
+      /* 1) Source manuelle : texte écrit sur le panneau / dock OBS.
+         Reste affiché jusqu'à effacement ou remplacement.            */
+      if (r.sources.manuel !== false) {
+        affiche(OVT.lireTexte(), 0, null);
+        OVT.surveillerTexte(function (t) { affiche(t, 0, null); });
+      }
+
+      /* 2) Source chat : !texte ton message (toi + modos par défaut) */
+      if (r.sources.chat !== false) {
+        var c = await OVT.canal();
+        if (c.login) {
+          OVT.chat(c.login, function (msg) {
+            var cfg = OVT.reglages(); /* relu à chaque message : réglages à chaud */
+            var cmd = (cfg.commande || '!texte').toLowerCase();
+            var mots = msg.texte.split(/\s+/);
+            if ((mots[0] || '').toLowerCase() !== cmd) return;
+            if (!cfg.toutLeMonde && !msg.modero) return;
+            affiche(mots.slice(1).join(' '), cfg.duree, msg.nom);
+          }, function (etat) {
+            if (OVT.DEBUG) OVT.debugBadge('chat : ' + etat);
+          });
+        } else if (OVT.DEBUG) {
+          OVT.debugBadge('chat : canal inconnu (connecte-toi ou ?channel=…)');
+        }
+      }
+
+      /* 3) Source points de chaîne : le texte saisi lors d'un échange
+         de récompense (la source d'origine de ce widget).             */
+      if (r.sources.points !== false && r.token) {
+        var c2 = await OVT.canal();
+        if (!c2.id) { if (OVT.DEBUG) OVT.debugBadge('points : identifiant de canal inconnu'); return; }
+        OVT.eventsub(
+          [{ type: 'channel.channel_points_custom_reward_redemption.add', version: '1',
+             condition: { broadcaster_user_id: c2.id } }],
+          {
+            onEvent: function (ev, type) {
+              var cfg = OVT.reglages();
+              var entree = String(ev.user_input || '').trim();
+              if (!entree) return; /* pas de texte saisi → rien (règle d'or) */
+              var voulu = (cfg.reward || '').trim().toLowerCase();
+              if (voulu && String(ev.reward.title || '').trim().toLowerCase() !== voulu) return;
+              affiche(entree, cfg.duree, ev.user_name || ev.user_login);
+            },
+            onStatus: OVT.DEBUG ? function (s, info) {
+              OVT.debugBadge('points : ' + s + (info ? ' — ' + info : ''));
+            } : undefined
+          }
+        );
+      } else {
+        /* source points active mais pas encore de token : on surveille la
+           connexion du dock pour démarrer dès qu'elle arrive */
+        if (r.sources.points !== false) OVT.autoRecharge();
+        if (OVT.DEBUG) OVT.debugBadge(r.token ? 'points : source désactivée' : 'points : token manquant');
+      }
+    })().catch(function (e) {
+      if (OVT.DEBUG) OVT.debugBadge('❌ ' + e.message);
+      console.warn('widget texte :', e.message);
+    });
+  })();
+  </script>
+</body>
+</html>

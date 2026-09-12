@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Overlays Twitch</title>
+  <!-- Redirection vers le panneau de configuration.
+       Si un jeton OAuth arrive dans l'ancre (#access_token=…),
+       on le transmet intact au panneau. -->
+  <meta name="robots" content="noindex">
+  <script>
+    (function () {
+      var cible = 'config.html';
+      if (location.hash.length > 1) cible += location.hash; /* préserve #access_token=… */
+      location.replace(cible);
+    })();
+  </script>
+  <meta http-equiv="refresh" content="0;url=config.html">
+</head>
+<body>
+  <p style="font-family:system-ui;color:#a99fc0;padding:2rem">
+    Redirection vers le <a href="config.html" style="color:#a970ff">panneau de configuration</a>…
+  </p>
+</body>
+</html>

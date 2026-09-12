@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Widget — Derniers événements</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <style>
+    body { display: flex; align-items: flex-start; justify-content: flex-end; height: 100vh; padding: 20px; }
+    #ovt.feed { justify-content: flex-start; }
+    #ovt .ovt-card { padding: 0.75rem 1.1rem; max-width: 30rem; gap: 0.75rem; }
+    #ovt .ovt-ico { font-size: 1.4rem; }
+    #ovt .ovt-titre { font-size: 1.05rem; font-weight: 700; line-height: 1.3; }
+    #ovt .ovt-sous { font-size: 0.8rem; opacity: 0.75; margin-top: 2px; word-break: break-word; }
+  </style>
+</head>
+<body>
+  <div id="ovt" class="feed"></div>
+
+  <script src="../assets/ovt.js"></script>
+  <script>
+  (function () {
+    OVT.echelle();
+    var feed = document.getElementById('ovt');
+
+    /* Chaque événement est construit en éléments de texte pur (anti-XSS). */
+    function evenement(icone, nom, action, sous) {
+      var cfg = OVT.reglages().evenements;
+
+      var item = document.createElement('div');
+      item.className = 'ovt-card ovt-item';
+
+      var ico = document.createElement('span');
+      ico.className = 'ovt-ico';
+      ico.textContent = icone;
+
+      var zone = document.createElement('div');
+      var titre = document.createElement('div');
+      titre.className = 'ovt-titre';
+      var b = document.createElement('b');
+      b.textContent = nom;                 /* texte pur → anti-XSS */
+      titre.appendChild(b);
+      titre.appendChild(document.createTextNode(' ' + action));
+      zone.appendChild(titre);
+
+      if (sous) {
+        var s = document.createElement('div');
+        s.className = 'ovt-sous';
+        s.textContent = sous.length > 160 ? sous.slice(0, 160) + '…' : sous;
+        zone.appendChild(s);
+      }
+
+      item.appendChild(ico);
+      item.appendChild(zone);
+      feed.appendChild(item);
+      OVT.on(feed);
+
+      /* nombre max d'événements à l'écran (réglable en direct) */
+      var max = Math.max(1, parseInt(cfg.max, 10) || 5);
+      while (feed.children.length > max) {
+        (function (vieux) {
+          vieux.classList.add('bye');
+          setTimeout(function () {
+            vieux.remove();
+            if (!feed.children.length) OVT.off(feed);
+          }, 450);
+        })(feed.firstElementChild);
+      }
+
+      /* disparition automatique si une durée de vie est réglée (0 = jamais) */
+      var vie = parseInt(cfg.dureeVie, 10) || 0;
+      if (vie > 0) {
+        setTimeout(function () {
+          item.classList.add('bye');
+          setTimeout(function () {
+            item.remove();
+            if (!feed.children.length) OVT.off(feed);
+          }, 450);
+        }, vie * 1000);
+      }
+    }
+
+    function pluriel(n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); }
+
+    function recoit(ev, type) {
+      var cfg = OVT.reglages().evenements;
+      var nom;
+
+      if (type === 'channel.subscribe' && cfg.sub !== false) {
+        nom = ev.user_name || 'Un viewer';
+        if (ev.is_gift) evenement('🎁', nom, 'a reçu un abonnement offert');
+        else evenement('💜', nom, 'vient de s\'abonner');
+
+      } else if (type === 'channel.subscription.message' && cfg.sub !== false) {
+        nom = ev.user_name || 'Un viewer';
+        evenement('💜', nom, 's\'est réabonné·e — ' + pluriel(ev.cumulative_months || 1, 'mois'),
+                  ev.message && ev.message.text ? ev.message.text : '');
+
+      } else if (type === 'channel.subscription.gift' && cfg.sub !== false) {
+        nom = ev.user_name || 'Un viewer';
+        evenement('🎁', nom, 'a offert ' + pluriel(ev.total || 1, 'abonnement'));
+
+      } else if (type === 'channel.cheer' && cfg.bits !== false) {
+        nom = ev.user_name || 'Anonyme';
+        evenement('💎', nom, 'a envoyé ' + pluriel(ev.bits || 0, 'bit'), ev.message || '');
+
+      } else if (type === 'channel.raid' && cfg.raid !== false) {
+        nom = ev.from_broadcaster_user_name || 'Une chaîne';
+        evenement('🚀', nom, 'arrive en raid — ' + pluriel(ev.viewers || 0, 'viewer'));
+      }
+    }
+
+    /* ---------- mode démo ---------- */
+    function demo() {
+      OVT.demoBadge();
+      var ex = [
+        function () { evenement('💜', 'ViewerExemple', 'vient de s\'abonner'); },
+        function () { evenement('💎', 'ViewerBits', 'a envoyé 500 bits', 'trop fort !! 🔥'); },
+        function () { evenement('🎁', 'GénéreuxViewer', 'a offert 3 abonnements'); },
+        function () { evenement('🚀', 'ChaîneExemple', 'arrive en raid — 42 viewers'); },
+        function () { evenement('💜', 'FidèleViewer', 's\'est réabonné·e — 6 mois', 'depuis le début !'); }
+      ];
+      var i = 0;
+      ex[0]();
+      setInterval(function () { i = (i + 1) % ex.length; ex[i](); }, 3000);
+    }
+    if (OVT.DEMO) return demo();
+
+    /* ---------- production : subs, resubs, gifts, bits, raids ----------
+       Toute la connexion temps réel est partagée pour ce widget.
+       (L'objectif followers, lui, interroge l'API : ainsi « Dernier
+       follower » garde son abonnement follow sans conflit.)          */
+    (async function () {
+      var r = OVT.reglages();
+      if (!r.token) {
+        if (OVT.DEBUG) OVT.debugBadge('token manquant');
+        OVT.autoRecharge(); /* se connecte tout seul quand le dock se connecte */
+        return;
+      }
+      var moi = await OVT.me();
+      var c = await OVT.canal();
+      if (OVT.DEBUG) OVT.debugBadge('connecté : ' + moi.login + ' · chaîne : ' + c.login);
+
+      OVT.eventsub(
+        [
+          { type: 'channel.subscribe', version: '1', condition: { broadcaster_user_id: c.id } },
+          { type: 'channel.subscription.message', version: '1', condition: { broadcaster_user_id: c.id } },
+          { type: 'channel.subscription.gift', version: '1', condition: { broadcaster_user_id: c.id } },
+          { type: 'channel.cheer', version: '1', condition: { broadcaster_user_id: c.id } },
+          { type: 'channel.raid', version: '1', condition: { to_broadcaster_user_id: c.id } }
+        ],
+        {
+          onEvent: recoit,
+          onStatus: OVT.DEBUG ? function (s, info) {
+            OVT.debugBadge('temps réel : ' + s + (info ? ' — ' + info : ''));
+          } : undefined
+        }
+      );
+    })().catch(function (e) {
+      if (OVT.DEBUG) OVT.debugBadge('❌ ' + e.message);
+      console.warn('derniers événements :', e.message);
+    });
+  })();
+  </script>
+</body>
+</html>

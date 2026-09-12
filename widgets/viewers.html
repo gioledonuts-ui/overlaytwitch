@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Widget — Compteur de viewers</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; height: 100vh; padding: 20px; }
+    #ovt .ovt-card { padding: 0.6rem 1.1rem; gap: 0.6rem; }
+    #ovt svg { width: 1.5rem; height: 1.5rem; flex: none; }
+    #ovt .ovt-value { font-size: 1.35rem; }
+  </style>
+</head>
+<body>
+  <div id="ovt"></div>
+
+  <script src="../assets/ovt.js"></script>
+  <script>
+  (function () {
+    OVT.echelle();
+    var root = document.getElementById('ovt');
+
+    /* Règle d'or : hors live → pas de données → on n'affiche RIEN. */
+    function affiche(nb) {
+      root.textContent = '';
+      var carte = document.createElement('div');
+      carte.className = 'ovt-card';
+
+      carte.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="#a970ff" aria-hidden="true">' +
+        '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>';
+
+      var val = document.createElement('div');
+      val.className = 'ovt-value';
+      val.textContent = nb.toLocaleString('fr-FR');
+      carte.appendChild(val);
+
+      var lab = document.createElement('div');
+      lab.className = 'ovt-label';
+      lab.textContent = 'Viewers';
+      carte.appendChild(lab);
+
+      root.appendChild(carte);
+      OVT.on(root);
+    }
+
+    /* ---------- mode démo ---------- */
+    function demo() {
+      OVT.demoBadge();
+      var n = 1337;
+      affiche(n);
+      setInterval(function () { n = Math.max(0, n + Math.round((Math.random() - 0.45) * 20)); affiche(n); }, 3000);
+    }
+    if (OVT.DEMO) return demo();
+
+    /* ---------- production ---------- */
+    (async function () {
+      var r = OVT.reglages();
+      if (!r.token) {
+        if (OVT.DEBUG) OVT.debugBadge('token manquant');
+        OVT.autoRecharge(); /* se connecte tout seul quand le dock se connecte */
+        return;
+      }
+      var moi = await OVT.me();
+      var c = await OVT.canal();
+      if (OVT.DEBUG) OVT.debugBadge('connecté : ' + moi.login + ' · chaîne : ' + c.login);
+
+      async function synchronise() {
+        var d = await OVT.helix('/streams?user_id=' + encodeURIComponent(c.id));
+        var stream = (d.data || [])[0] || null;
+        if (stream && typeof stream.viewer_count === 'number') {
+          affiche(stream.viewer_count);
+        } else {
+          OVT.off(root); /* hors live → rien (règle d'or) */
+          if (OVT.DEBUG) OVT.debugBadge('hors ligne — widget masqué');
+        }
+      }
+
+      await synchronise();
+      setInterval(function () { synchronise().catch(function (e) {
+        OVT.off(root);
+        if (OVT.DEBUG) OVT.debugBadge('synchronisation : ' + e.message);
+      }); }, 60000); /* actualisation chaque minute */
+    })().catch(function (e) {
+      if (OVT.DEBUG) OVT.debugBadge('❌ ' + e.message);
+      console.warn('compteur de viewers :', e.message);
+    });
+  })();
+  </script>
+</body>
+</html>

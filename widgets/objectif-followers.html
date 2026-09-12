@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Widget — Objectif followers</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; height: 100vh; padding: 20px; }
+    #ovt .ovt-goal { width: 29rem; max-width: 100%; }
+    #ovt .ovt-haut { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
+    #ovt .ovt-valeur { font-size: 1.4rem; font-weight: 800; }
+    #ovt .ovt-pct { font-size: 0.95rem; font-weight: 600; color: var(--ovt-accent); }
+    #ovt.complete .ovt-card { border-color: var(--ovt-accent); animation: ovt-pulse 1.6s ease infinite; }
+    #ovt.complete .ovt-pct { color: var(--ovt-ok); }
+    @keyframes ovt-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(169, 112, 255, 0.0), var(--ovt-shadow); }
+      50%      { box-shadow: 0 0 26px 4px rgba(169, 112, 255, 0.45), var(--ovt-shadow); }
+    }
+  </style>
+</head>
+<body>
+  <div id="ovt"></div>
+
+  <script src="../assets/ovt.js"></script>
+  <script>
+  (function () {
+    OVT.echelle();
+    var root = document.getElementById('ovt');
+    var cible = OVT.reglages().objectif; /* définie dans le panneau ou via ?objectif= */
+    var total = 0;
+
+    function affiche() {
+      var pct = Math.min(100, Math.round((total / cible) * 100));
+
+      root.textContent = '';
+      var carte = document.createElement('div');
+      carte.className = 'ovt-card ovt-goal';
+
+      var enveloppe = document.createElement('div');
+      enveloppe.style.width = '100%';
+
+      var haut = document.createElement('div');
+      haut.className = 'ovt-haut';
+
+      var gauche = document.createElement('div');
+      var lab = document.createElement('span');
+      lab.className = 'ovt-label';
+      lab.textContent = 'Objectif followers';
+      var val = document.createElement('span');
+      val.className = 'ovt-valeur';
+      val.appendChild(document.createTextNode(' ' + total + ' '));
+      var barre = document.createElement('span');
+      barre.style.opacity = '.55';
+      barre.textContent = '/ ' + cible;
+      val.appendChild(barre);
+      gauche.appendChild(lab);
+      gauche.appendChild(val);
+
+      var pctEl = document.createElement('div');
+      pctEl.className = 'ovt-pct';
+      pctEl.textContent = pct + ' %';
+
+      haut.appendChild(gauche);
+      haut.appendChild(pctEl);
+
+      var track = document.createElement('div');
+      track.className = 'ovt-track';
+      var fill = document.createElement('div');
+      fill.className = 'ovt-fill';
+      fill.style.width = pct + '%';
+      track.appendChild(fill);
+
+      enveloppe.appendChild(haut);
+      enveloppe.appendChild(track);
+      carte.appendChild(enveloppe);
+      root.appendChild(carte);
+
+      root.classList.toggle('complete', pct >= 100);
+      OVT.on(root);
+    }
+
+    async function synchronise(id) {
+      var d = await OVT.helix('/channels/followers?broadcaster_id=' + encodeURIComponent(id) + '&first=1');
+      total = d.total || 0;
+      affiche();
+    }
+
+    /* ---------- mode démo ---------- */
+    function demo() {
+      OVT.demoBadge();
+      cible = 1000;
+      total = 642;
+      affiche();
+      setInterval(function () { total = Math.min(cible, total + Math.ceil(Math.random() * 7)); affiche(); }, 3000);
+    }
+    if (OVT.DEMO) return demo();
+
+    /* ---------- production ---------- */
+    /* pas d'objectif défini → rien à afficher (règle d'or) */
+    if (!cible) {
+      if (OVT.DEBUG) OVT.debugBadge('aucun objectif défini (panneau de config ou ?objectif=…)');
+      return;
+    }
+
+    (async function () {
+      var r = OVT.reglages();
+      if (!r.token) {
+        if (OVT.DEBUG) OVT.debugBadge('token manquant');
+        OVT.autoRecharge(); /* se connecte tout seul quand le dock se connecte */
+        return;
+      }
+      var moi = await OVT.me();
+      var c = await OVT.canal();
+      if (OVT.DEBUG) OVT.debugBadge('connecté : ' + moi.login + ' · chaîne : ' + c.login);
+
+      await synchronise(c.id);
+      /* Pas d'abonnement temps réel ici : l'API est interrogée toutes
+         les 30 s → aucun conflit avec le widget « Dernier follower ».  */
+      setInterval(function () { synchronise(c.id).catch(function (e) {
+        if (OVT.DEBUG) OVT.debugBadge('synchronisation : ' + e.message);
+      }); }, 30000);
+    })().catch(function (e) {
+      if (OVT.DEBUG) OVT.debugBadge('❌ ' + e.message);
+      console.warn('objectif followers :', e.message);
+    });
+  })();
+  </script>
+</body>
+</html>
