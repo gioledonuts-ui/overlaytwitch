@@ -1,10 +1,14 @@
-VERSION 7 — 12 septembre 2026
+VERSION 8 — 12 septembre 2026
 
-Dernieres modifications :
-- Chat toujours visible (panneau affiche meme sans message)
-- Correction : le bot rejoint bien ta chaine #7gionny (avant il etait sourd)
-- Opacite du chat +25% et carte du sondage presque opaque
-- Ton ID de chaine est trouve automatiquement (plus besoin de le chercher)
-- Connexion simplifiee dans secrets.json (1 seul fichier a remplir)
+Dernieres corrections (importantes) :
+- LE CHAT EST CORRIGE : le bot rejoint bien ta chaine #7gionny
+  (avant, il etait connecte mais sourd = aucun message ne remontait)
+- Le panneau du chat est TOUJOURS affiche (en bas a droite), meme vide
+- demarrer-pont.bat ferme tout seul un ancien pont (fini l'erreur "port occupe")
+- mettre-a-jour.bat force la copie des fichiers (plus de fichier saute)
+- Opacite du chat +25% et carte du sondage quasi opaque
+- Ton ID de chaine est trouve automatiquement
 
-Si ce fichier affiche "VERSION 7", ta mise a jour a bien fonctionne.
+Si ce fichier affiche "VERSION 8", tu as bien la derniere version.
+Ensuite : lance demarrer-pont.bat, puis dans OBS clic droit sur la source
+"Overlay debat" -> "Actualiser".
