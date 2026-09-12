@@ -37,9 +37,9 @@ local function dossier_du_script()
 end
 
 function script_load(settings)
-	local bat = dossier_du_script() .. "lancer-pont-auto.bat"
-	-- lance le fichier .bat dans une fenetre separee, sans bloquer OBS
-	local cmd = 'start "" "' .. bat .. '"'
-	obs.script_log(obs.LOG_INFO, "Lancement du pont : " .. cmd)
+	local vbs = dossier_du_script() .. "lancer-app.vbs"
+	-- lance la mini-app (icone dans la barre systeme) sans aucune fenetre
+	local cmd = 'start "" wscript.exe "' .. vbs .. '"'
+	obs.script_log(obs.LOG_INFO, "Lancement de la mini-app 7G : " .. cmd)
 	os.execute(cmd)
 end
