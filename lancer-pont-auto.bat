@@ -23,8 +23,8 @@ rem Installer les dependances si besoin
 for %%I in ("%NODE%") do set "NODEDIR=%%~dpI"
 if not exist node_modules goto lance
 echo Installation des dependances...
-if exist "%NODEDIR%npm.cmd" call "%NODEDIR%npm.cmd" install --no-audit --no-fund
-if not exist "%NODEDIR%npm.cmd" call npm install --no-audit --no-fund
+if exist "%NODEDIR%npm.cmd" call "%NODEDIR%npm.cmd" install --omit=dev --no-audit --no-fund
+if not exist "%NODEDIR%npm.cmd" call npm install --omit=dev --no-audit --no-fund
 
 :lance
 start "7GIONNY - Pont" "%NODE%" server.js
