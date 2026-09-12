@@ -1,14 +1,17 @@
-VERSION 8 — 12 septembre 2026
+VERSION 9 — 12 septembre 2026
 
-Dernieres corrections (importantes) :
-- LE CHAT EST CORRIGE : le bot rejoint bien ta chaine #7gionny
-  (avant, il etait connecte mais sourd = aucun message ne remontait)
-- Le panneau du chat est TOUJOURS affiche (en bas a droite), meme vide
-- demarrer-pont.bat ferme tout seul un ancien pont (fini l'erreur "port occupe")
-- mettre-a-jour.bat force la copie des fichiers (plus de fichier saute)
-- Opacite du chat +25% et carte du sondage quasi opaque
-- Ton ID de chaine est trouve automatiquement
+CORRECTION IMPORTANTE DU CHAT :
+- Le TEXTE de tes messages s'affiche enfin (avant : seul le pseudo apparaissait)
+- Les BADGES (sub, mod, etc.) s'affichent aussi
+- Les commandes !vote fonctionnent avec les bons pseudos
 
-Si ce fichier affiche "VERSION 8", tu as bien la derniere version.
-Ensuite : lance demarrer-pont.bat, puis dans OBS clic droit sur la source
-"Overlay debat" -> "Actualiser".
+Diagnostic ajoute pour /poll :
+- La fenetre noire affiche maintenant ce qu'elle recoit de Twitch
+  (ex. "SONDAGE DETECTE" ou "HTTP 401 = mauvais token")
+
+Si tu lances /poll sur Twitch et que rien n'apparait, regarde la fenetre noire
+et copie-moi ce qu'elle ecrit a propos de [twitch-poll].
+
+Si ce fichier affiche "VERSION 9", tu as la derniere version.
+Ensuite : relance demarrer-pont.bat, puis dans OBS : clic droit sur la source
+-> "Actualiser".
