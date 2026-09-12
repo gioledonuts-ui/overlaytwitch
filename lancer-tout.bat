@@ -48,7 +48,10 @@ if not defined OBS if exist "%LocalAppData%\Programs\obs-studio\bin\64bit\obs64.
 
 if defined OBS (
   echo        Lancement d'OBS...
-  start "" "%OBS%"
+  rem OBS a besoin de son propre dossier comme repertoire de travail,
+  rem sinon il affiche "failed to find locale/en-US.ini".
+  for %%I in ("%OBS%") do set "OBSDIR=%%~dpI"
+  start "" /D "%OBSDIR%" "%OBS%"
 ) else (
   echo        OBS introuvable : ouvre-le manuellement.
 )
