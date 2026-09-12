@@ -173,9 +173,9 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   box-shadow:0 0 8px rgba(145,70,255,.9);animation:pulse 1.6s ease-in-out infinite}
 /* — Monogramme 7G : signature discrète, présente sur les 3 zones — */
 .mark7g{display:inline-flex;align-items:center;justify-content:center;
-  width:18px;height:18px;border-radius:4px;flex:none;
-  border:1px solid rgba(145,70,255,.5);color:var(--violet);
-  font-family:'Bebas Neue',sans-serif;font-size:10px;letter-spacing:.05em;line-height:1}
+  width:20px;height:20px;border-radius:5px;flex:none;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(145,70,255,.35),0 1px 6px rgba(0,0,0,.5)}
+.mark7g img{width:100%;height:100%;object-fit:cover;display:block}
 .chat__head .mark7g{margin-left:auto}
 /* badges Twitch : image officielle, chip texte en repli si hors-ligne */
 .cbadges{display:inline-flex;gap:3px;flex:none;align-items:center;margin-top:2px}
@@ -279,7 +279,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   max-width:540px;text-align:center;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 /* monogramme 7G : coin haut-droit, discret */
-.alert .mark7g{position:absolute;top:14px;right:16px;opacity:.45;z-index:2}
+.alert .mark7g{position:absolute;top:14px;right:16px;opacity:.7;z-index:2}
 /* FOLLOW : le plus simple */
 .alert--follow{min-width:540px}
 .alert--follow .alert__user{font-size:52px}
@@ -326,7 +326,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   <div id="card" aria-hidden="true">
     <div class="pad">
       <div class="head">
-        <span class="mark7g">7G</span>
+        <span class="mark7g"><img src="assets/logo-7g.png" alt="7G"></span>
         <div class="chip" id="chip"><span class="dot"></span><span id="chipTxt">DÉBAT EN DIRECT</span></div>
         <div id="timer"><span id="tMin">--</span><span id="tColon">:</span><span id="tSec">--</span></div>
       </div>
@@ -356,7 +356,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 
   <!-- ═══ CHAT TWITCH — panneau gauche (fictif en démo, réel via le pont) ═══ -->
   <div class="chat" id="chat" aria-hidden="true">
-    <div class="chat__head"><span class="dot"></span>CHAT DE 7GIONNY<span class="mark7g">7G</span></div>
+    <div class="chat__head"><span class="dot"></span>CHAT DE 7GIONNY<span class="mark7g"><img src="assets/logo-7g.png" alt="7G"></span></div>
     <div class="chat__pin" id="chatPin"></div>
     <div class="chat__list" id="chatList"></div>
     <div class="chat__goal" id="chatGoal">
@@ -920,7 +920,9 @@ function showAlert(a) {
   d.className = 'alert alert--' + t.kind;
   const bg = document.createElement('div'); bg.className = 'alert__bg';
   d.appendChild(bg);
-  const mk = document.createElement('span'); mk.className = 'mark7g'; mk.textContent = '7G';
+  const mk = document.createElement('span'); mk.className = 'mark7g';
+  const mki = document.createElement('img'); mki.src = 'assets/logo-7g.png'; mki.alt = '7G';
+  mk.appendChild(mki);
   d.appendChild(mk);
   const ic = document.createElement('img');
   ic.className = 'alert__icon'; ic.src = t.icon; ic.alt = '';

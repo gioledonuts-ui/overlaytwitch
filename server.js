@@ -414,6 +414,86 @@ if (CLIENT_ID) {
   })();
 }
 
+/* ═══ SUB GOAL AUTO (vrai nombre d'abonnés) ══════════════════════
+   Récupère le total de subs de la chaîne via Helix (GET /subscriptions,
+   champ `total`) et met à jour le compteur du sub goal automatiquement.
+   Nécessite le scope channel:read:subscriptions sur le token utilisateur. */
+async function syncSubGoal() {
+  if (!CLIENT_ID || !POLL_OAUTH || !resolvedBroadcasterId) return;
+  try {
+    const r = await fetch('https://api.twitch.tv/helix/subscriptions?broadcaster_id=' + resolvedBroadcasterId + '&first=1', {
+      headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + POLL_OAUTH }
+    });
+    if (!r.ok) {
+      if (r.status === 401 || r.status === 403) console.warn('[sub-goal] HTTP ' + r.status + ' — scope channel:read:subscriptions manquant sur le token');
+      return;
+    }
+    const d = await r.json();
+    if (typeof d.total === 'number' && d.total !== goalState.current) {
+      goalState.current = d.total;
+      const payload = 'data: ' + JSON.stringify(Object.assign({ goal: 1 }, goalState)) + '\n\n';
+      for (const res of sse) res.write(payload);
+      console.log('[sub-goal] synchronisé : ' + d.total + ' abonnés');
+    }
+  } catch (e) {}
+}
+
+/* ═══ FOLLOWS (EventSub WebSocket, temps réel) ═══════════════════
+   Twitch n'envoie PAS les follows via IRC : on utilise EventSub WebSocket
+   (channel.follow v2). Nécessite le scope moderator:read:followers. */
+function connectFollows() {
+  if (!CLIENT_ID || !POLL_OAUTH || !resolvedBroadcasterId) return;
+  let ws = null;
+  const token = POLL_OAUTH;
+  function ouvrir(url) {
+    try { ws = new WebSocket(url || 'wss://eventsub.wss.twitch.tv:443'); }
+    catch (e) { console.warn('[follows] WebSocket indisponible (Node trop ancien) :', e.message); return; }
+    ws.onopen = () => {};
+    ws.onmessage = async (ev) => {
+      let msg; try { msg = JSON.parse(ev.data); } catch (e) { return; }
+      const t = msg.metadata && msg.metadata.message_type;
+      if (t === 'session_welcome') {
+        const sessionId = msg.payload.session.id;
+        try {
+          await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
+            method: 'POST',
+            headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'channel.follow', version: '2',
+              condition: { broadcaster_user_id: resolvedBroadcasterId, moderator_user_id: resolvedBroadcasterId },
+              transport: { method: 'websocket', session_id: sessionId }
+            })
+          });
+          console.log('[follows] EventSub connecté — les alertes de follow sont actives');
+        } catch (e) { console.warn('[follows] abonnement EventSub refusé :', e.message); }
+      } else if (t === 'notification' && msg.metadata && msg.metadata.subscription_type === 'channel.follow') {
+        const evt = msg.payload.event;
+        const nom = evt.user_name || evt.user_login || 'un viewer';
+        broadcastAlert({ type: 'follow', user: nom });
+        console.log('[alerte] follow : ' + nom);
+      } else if (t === 'session_reconnect') {
+        const u = msg.payload.session && msg.payload.session.reconnect_url;
+        try { ws.close(); } catch (e) {}
+        ouvrir(u);
+      }
+    };
+    ws.onclose = () => { if (ws) setTimeout(() => ouvrir(), 10000); };
+    ws.onerror = () => { try { ws.close(); } catch (e) {} };
+  }
+  ouvrir();
+}
+
+/* — Lancement des connexions "données" (sub goal + follows) — */
+if (CLIENT_ID && POLL_OAUTH) {
+  (async () => {
+    if (await resolveBroadcaster()) {
+      syncSubGoal();
+      setInterval(syncSubGoal, 60 * 1000);   // sub goal toutes les minutes
+      connectFollows();
+    }
+  })();
+}
+
 /* ═══ Serveur HTTP + SSE ════════════════════════════════════════ */
 const server = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://localhost');
@@ -604,5 +684,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`  Démo →  http://localhost:${PORT}/   (démonstration auto + fond caméra)`);
   console.log(`  Chat →  ${chatOn ? 'actif (' + CHAT_NICK + ' → écoute #' + CHAT_CHANNEL + ')' : 'inactif (CHAT_OAUTH / CHAT_NICK manquants)'}`);
   console.log(`  /poll → ${helixOn ? 'actif (polling Helix 2,5 s)' : (CLIENT_ID && POLL_OAUTH ? 'détection de la chaîne…' : 'inactif (CLIENT_ID / POLL_OAUTH manquants)')}`);
+  console.log(`  Sub goal → ${CLIENT_ID && POLL_OAUTH ? 'auto (vrai nombre de subs)' : 'manuel (POST /api/goal)'}`);
+  console.log(`  Follows → ${CLIENT_ID && POLL_OAUTH ? 'EventSub (alertes temps réel)' : 'inactif (token manquant)'}`);
   console.log('');
 });

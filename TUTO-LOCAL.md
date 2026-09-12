@@ -154,22 +154,30 @@ Pour afficher ton **vrai chat**, il suffit de remplir 2 cases du fichier **`secr
 
 ---
 
-## 📊 (Optionnel) Activer les sondages natifs `/poll`
+## 📊 Activer les sondages + abonnés + follows (LE token principal)
 
-Pour que le widget capture tes sondages `/poll` de Twitch automatiquement, remplis
-2 cases du fichier **`secrets.json`** :
+Le champ **`POLL_OAUTH`** sert maintenant à 3 choses à la fois : les sondages `/poll`,
+le compteur de subs (sub goal) et les alertes de follow. Il faut donc générer UN token
+avec les 3 droits d'un coup.
 
 1. **`CLIENT_ID`** → déjà pré-rempli (`53shw…`). Tu peux le laisser tel quel.
-2. **`POLL_OAUTH`** → génère un token en cliquant sur ce lien :
+2. **`POLL_OAUTH`** → génère un token en cliquant sur CE lien (il contient les 3 droits) :
    ```
-   https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=channel:read:polls
+   https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=channel:read:polls+channel:read:subscriptions+moderator:read:followers
    ```
    → **Autoriser** → copie ce qui suit `access_token=` dans la barre d'adresse
-   → colle-le dans `POLL_OAUTH` (**sans** le préfixe `oauth:` cette fois).
-3. Sauvegarde, relance `demarrer-pont.bat`. La fenêtre doit afficher : `/poll → actif`.
+   → colle-le dans `POLL_OAUTH` (**sans** le préfixe `oauth:`).
+3. Sauvegarde, relance `demarrer-pont.bat`. La fenêtre doit afficher :
+   - `/poll → actif`
+   - `Sub goal → auto (vrai nombre de subs)`
+   - `Follows → EventSub (alertes temps réel)`
 
 > 💡 Ton ID de chaîne est trouvé **automatiquement** par le programme (à partir du
 > token) : tu n'as rien d'autre à chercher.
+>
+> ⚠️ **Important** : si tu avais déjà un `POLL_OAUTH` avec seulement le droit
+> « sondages », **régénère-le avec ce nouveau lien** (il contient les 3 droits),
+> sinon le sub goal et les follows ne fonctionneront pas.
 
 ---
 
@@ -182,11 +190,14 @@ Toutes les connexions se font dans **UN seul fichier** : `secrets.json` (Bloc-no
 | `CHAT_NICK` | ton pseudo Twitch (ex. `7gionny`) |
 | `CHAT_OAUTH` | `oauth:` + token (lien "chat" ci-dessus) |
 | `CLIENT_ID` | déjà rempli (`53shw…`) |
-| `POLL_OAUTH` | token du lien "sondages" (sans `oauth:`) |
+| `POLL_OAUTH` | token du lien "sondages + abonnés + follows" (sans `oauth:`) |
 | `ADMIN_TOKEN` | laisse vide pour l'instant |
 
 Une fois rempli + `demarrer-pont.bat` relancé, la fenêtre affiche :
-`Chat → actif` et `/poll → actif`.
+`Chat → actif`, `/poll → actif`, `Sub goal → auto` et `Follows → EventSub`.
+
+> 💡 **Subs / gifts / resubs / raids** : déjà automatiques (via le bot chat), rien à faire.
+> **Follows** : actifs dès que `POLL_OAUTH` a le bon droit (lien ci-dessus).
 
 ---
 

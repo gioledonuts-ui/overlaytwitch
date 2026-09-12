@@ -1,24 +1,22 @@
-VERSION 13 — 12 septembre 2026
+VERSION 14 — 12 septembre 2026
 
-CORRECTION MAJEURE DES EMOTES :
+NOUVEAU LOGO + CONNEXIONS :
 
-Twitch a change son systeme : les nouvelles emotes ont des identifiants
-"emotesv2_..." (plus des numeros). Mon code utilisait l'ancienne URL,
-qui ne marchait que pour les vieux numeros. C'est pour ca que tes emotes
-ne s'affichaient pas (ex. x7gionABSOLUTE).
+- NOUVEAU LOGO "7G" généré par IA (assets/logo-7g.png) : il remplace
+  l'ancien petit "7G" texte partout (carte du débat, chat, alertes).
 
-Corrige : les emotes "emotesv2_..." utilisent maintenant la bonne URL
-(emoticons/v2/...), donc elles s'affichent en images.
+- SUB GOAL AUTO : le compteur du sub goal est maintenant branché sur
+  ton VRAI nombre d'abonnés (via l'API Twitch, mis à jour chaque minute).
 
-A confirmer : ecris une emote Twitch dans ton chat -> elle doit s'afficher
-en image (plus en texte).
+- FOLLOWS (alertes temps réel) : quand quelqu'un te suit, l'alerte
+  "NOUVEAU FOLLOW" s'affiche automatiquement (via EventSub).
 
-Rappel des choses deja OK :
-- Question du debat agrandie (2 lignes) ✅
-- Alertes testables avec tester-alertes.bat ✅
-- Sondage /poll + timer + votes ✅
-- Badges : a faire plus tard (pas encore)
+IMPORTANT : pour que ces 2 nouvelles fonctions marchent, il faut
+regénérer ton token POLL_OAUTH avec le NOUVEAU lien (qui contient les
+3 droits : sondages + abonnés + follows). Voir TUTO-LOCAL.md.
 
-Si ce fichier affiche "VERSION 13", tu as la derniere version.
+Rappel : les subs / gifts / resubs / raids étaient déjà automatiques.
+
+Si ce fichier affiche "VERSION 14", tu as la derniere version.
 Ensuite : relance demarrer-pont.bat, puis dans OBS : clic droit sur la source
 -> "Actualiser".
