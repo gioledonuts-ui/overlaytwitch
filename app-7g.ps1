@@ -1,9 +1,8 @@
 # ============================================================
 #  7GIONNY - Mini-application (icone dans la barre systeme)
 #  Lance le pont en arriere-plan (aucune fenetre noire).
-#  Demarre MINIMISE : seule l'icone apparait en bas a droite.
-#  Clic sur l'icone = ouvrir le panneau (petite fenetre).
-#  Refermer la fenetre = tout continue, on retourne dans l'icone.
+#  Demarre MINIMISE. Clic sur l'icone = ouvrir/revenir au panneau
+#  (une seule fenetre : si elle est deja ouverte, on la remet devant).
 # ============================================================
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -47,6 +46,33 @@ $proc = Start-Process -FilePath $node -ArgumentList 'server.js' -WorkingDirector
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+# --- petit helper pour retrouver/remettre devant la fenetre du panneau ---
+Add-Type @"
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+public class Win7g {
+  public delegate bool EnumProc(IntPtr hWnd, IntPtr lParam);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, IntPtr lParam);
+  [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr hWnd, StringBuilder s, int n);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int cmd);
+  public static IntPtr found = IntPtr.Zero;
+  public static bool Find(string part) {
+    found = IntPtr.Zero;
+    EnumWindows(delegate(IntPtr h, IntPtr l) {
+      if (!IsWindowVisible(h)) return true;
+      StringBuilder sb = new StringBuilder(256);
+      GetWindowText(h, sb, 256);
+      if (sb.ToString().IndexOf(part, StringComparison.OrdinalIgnoreCase) >= 0) { found = h; return false; }
+      return true;
+    }, IntPtr.Zero);
+    return found != IntPtr.Zero;
+  }
+}
+"@
+
 $tray = New-Object System.Windows.Forms.NotifyIcon
 $icoPath = "$dir\assets\logo-7g.ico"
 if (Test-Path $icoPath) { $tray.Icon = New-Object System.Drawing.Icon($icoPath) }
@@ -64,7 +90,11 @@ foreach ($b in @(
 )) { if (Test-Path $b) { $browser = $b; break } }
 
 $openPanel = {
-  if ($browser) {
+  # une seule fenetre : si elle est deja ouverte, on la remet devant
+  if ([Win7g]::Find('Panneau')) {
+    [Win7g]::ShowWindow([Win7g]::found, 9) | Out-Null   # SW_RESTORE
+    [Win7g]::SetForegroundWindow([Win7g]::found) | Out-Null
+  } elseif ($browser) {
     Start-Process $browser -ArgumentList '--app=http://localhost:8321/panneau', '--window-size=560,820', '--window-position=60,60'
   } else {
     Start-Process 'http://localhost:8321/panneau'
@@ -72,7 +102,9 @@ $openPanel = {
 }
 $quit = {
   $tray.Visible = $false
-  if ($proc -and -not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
+  Get-NetTCPConnection -LocalPort 8321 -State Listen -ErrorAction SilentlyContinue |
+    Select-Object -ExpandProperty OwningProcess -Unique |
+    ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
   [System.Windows.Forms.Application]::Exit()
 }
 
@@ -83,10 +115,7 @@ $m2 = $menu.Items.Add('Quitter'); $m2.Add_Click($quit)
 $tray.ContextMenuStrip = $menu
 $tray.Add_Click($openPanel)
 
-# --- demarre MINIMISE : pas d'ouverture auto de la fenetre ---
-# --- petit rappel discret pour dire que c'est lance ---
-$tray.ShowBalloonTip(3000, '7GIONNY', "Pont lance. Clique sur l'icone pour ouvrir le panneau.", [System.Windows.Forms.ToolTipIcon]::Info)
+# --- demarre MINIMISE : pas d'ouverture auto ni notification ---
 
-# --- rester en arriere-plan (boucle de messages) ---
 [System.Windows.Forms.Application]::Run()
 $mutex.ReleaseMutex()

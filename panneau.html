@@ -182,17 +182,21 @@
     </div>
   </section>
 
-  <!-- LIENS + RELANCE -->
+  <!-- MISE À JOUR & RELANCE -->
   <section class="card">
-    <h2><span class="num">6</span>Liens & relance</h2>
-    <p class="sub">Les adresses à retenir.</p>
+    <h2><span class="num">6</span>Mise à jour & relance</h2>
+    <p class="sub">Mets à jour l'overlay depuis GitHub, puis redémarre le pont (pas OBS).</p>
+    <div class="row">
+      <button class="btn primary" id="btnUpdate">⬇ Mettre à jour</button>
+      <span class="note" id="updateEtat" style="margin:0"></span>
+    </div>
+    <div class="row">
+      <button class="btn" id="btnRelancer">↻ Redémarrer le pont</button>
+      <span class="note" style="margin:0">(redémarre uniquement le pont, pas OBS)</span>
+    </div>
+    <div class="divider"></div>
     <div class="row"><label>OBS (source navigateur)</label><div class="mono" id="urlObs"></div></div>
     <div class="row"><label>Démo (aperçu)</label><div class="mono" id="urlDemo"></div></div>
-    <div class="divider"></div>
-    <div class="row">
-      <button class="btn" id="btnRelancer">↻ Relancer le pont</button>
-      <span class="note" style="margin:0">(équivaut à relancer demarrer-pont.bat)</span>
-    </div>
   </section>
 </div>
 
@@ -311,10 +315,35 @@ document.querySelectorAll('[data-alert]').forEach(b => {
   });
 });
 
-/* ---------- relance ---------- */
+/* ---------- mise à jour ---------- */
+$('btnUpdate').addEventListener('click', async () => {
+  const btn = $('btnUpdate'), etat = $('updateEtat');
+  btn.disabled = true; btn.textContent = 'Mise à jour en cours...';
+  etat.textContent = 'Téléchargement de la dernière version...';
+  try {
+    const r = await fetch(API + '/api/update', { method:'POST' });
+    const j = await r.json();
+    if (j.ok) {
+      etat.innerHTML = '<span class="ok">✓ À jour (' + (j.version || 'OK') + ').</span>';
+      btn.textContent = 'Redémarre le pont pour appliquer';
+      btn.disabled = false;
+    } else {
+      etat.innerHTML = '<span class="bad">Échec : ' + (j.error || '?') + '</span>';
+      btn.textContent = '⬇ Mettre à jour';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    etat.innerHTML = '<span class="bad">Impossible de mettre à jour (pas d\'internet ?).</span>';
+    btn.textContent = '⬇ Mettre à jour';
+    btn.disabled = false;
+  }
+});
+
+/* ---------- redémarrer le pont (pas OBS) ---------- */
 $('btnRelancer').addEventListener('click', async () => {
-  await post(API + '/api/config', {}).catch(()=>{});
-  toast('Pour relancer le pont : ferme la fenêtre noire puis relance demarrer-pont.bat');
+  try { await fetch(API + '/api/restart', { method:'POST' }); } catch(e) {}
+  toast('Redémarrage du pont...');
+  setTimeout(() => location.reload(), 2500);
 });
 
 /* ---------- init ---------- */

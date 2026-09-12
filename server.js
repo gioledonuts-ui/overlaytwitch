@@ -13,6 +13,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { execFile, spawn } = require('child_process');
 
 const PORT = +(process.env.PORT || 8321);
 
@@ -835,6 +836,32 @@ const server = http.createServer((req, res) => {
           send(200, 'application/json', JSON.stringify({ ok: true, note: 'Relance demarrer-pont.bat pour appliquer les nouvelles clés.' }));
         } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false, err: String(e.message || e) })); }
       });
+      return;
+    }
+
+    /* — MISE À JOUR (panneau) : télécharge la dernière version depuis GitHub
+         et remplace les fichiers. Le pont redémarre ensuite via /api/restart. — */
+    if (u.pathname === '/api/update' && req.method === 'POST') {
+      execFile('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(__dirname, 'update.ps1')],
+        { timeout: 300000, windowsHide: true },
+        (err, stdout, stderr) => {
+          if (err) return send(500, 'application/json', JSON.stringify({ ok: false, error: String(stderr || err.message || 'échec').trim().slice(0, 300) }));
+          const out = String(stdout || '').trim();
+          if (out.startsWith('ERREUR')) return send(500, 'application/json', JSON.stringify({ ok: false, error: out.slice(0, 300) }));
+          send(200, 'application/json', JSON.stringify({ ok: true, version: out }));
+        });
+      return;
+    }
+
+    /* — REDÉMARRAGE du pont seul (PAS OBS) — relance node puis s'arrête — */
+    if (u.pathname === '/api/restart' && req.method === 'POST') {
+      send(200, 'application/json', JSON.stringify({ ok: true }));
+      const nodePath = process.execPath;
+      const cmd = 'Start-Sleep -Seconds 1; Start-Process -FilePath "' + nodePath + '" -ArgumentList "server.js" -WorkingDirectory "' + __dirname + '" -WindowStyle Hidden';
+      const ps = spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-Command', cmd],
+        { detached: true, stdio: 'ignore', windowsHide: true });
+      ps.unref();
+      setTimeout(() => process.exit(0), 600);
       return;
     }
 
