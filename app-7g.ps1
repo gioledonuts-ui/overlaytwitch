@@ -58,6 +58,7 @@ public class Win7g {
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int cmd);
+  [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
   public static IntPtr found = IntPtr.Zero;
   public static bool Find(string part) {
     found = IntPtr.Zero;
@@ -102,9 +103,14 @@ $openPanel = {
 }
 $quit = {
   $tray.Visible = $false
+  # ferme le pont (port 8321) ET la fenetre du panneau
   Get-NetTCPConnection -LocalPort 8321 -State Listen -ErrorAction SilentlyContinue |
     Select-Object -ExpandProperty OwningProcess -Unique |
     ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+  # ferme la fenetre du panneau si elle est encore ouverte
+  if ([Win7g]::Find('Panneau')) {
+    [Win7g]::PostMessage([Win7g]::found, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null   # WM_CLOSE
+  }
   [System.Windows.Forms.Application]::Exit()
 }
 
@@ -113,7 +119,12 @@ $m1 = $menu.Items.Add('Ouvrir le panneau de controle'); $m1.Add_Click($openPanel
 $menu.Items.Add('-') | Out-Null
 $m2 = $menu.Items.Add('Quitter'); $m2.Add_Click($quit)
 $tray.ContextMenuStrip = $menu
-$tray.Add_Click($openPanel)
+
+# le panneau s'ouvre uniquement au CLIC GAUCHE ; le clic droit = menu
+$tray.Add_MouseClick({
+  param($sender, $e)
+  if ($e.Button -eq [System.Windows.Forms.MouseButtons]::Left) { & $openPanel }
+})
 
 # --- demarre MINIMISE : pas d'ouverture auto ni notification ---
 

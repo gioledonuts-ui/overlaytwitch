@@ -21,16 +21,21 @@ try {
   $src = Join-Path $extract 'overlaytwitch-main'
   if (-not (Test-Path (Join-Path $src 'widget.html'))) { throw 'extraction impossible' }
 
-  # 3. sauvegarde de tes cles (secrets.json)
+  # 3. sauvegarde de tes cles et reglages (secrets.json + config-perso.json)
   $secretsPath = Join-Path $dir 'secrets.json'
   $secretsBackup = Join-Path $env:TEMP 'secrets.backup.json'
   if (Test-Path $secretsPath) { Copy-Item $secretsPath $secretsBackup -Force }
 
+  $configPath = Join-Path $dir 'config-perso.json'
+  $configBackup = Join-Path $env:TEMP 'config-perso.backup.json'
+  if (Test-Path $configPath) { Copy-Item $configPath $configBackup -Force }
+
   # 4. copie des fichiers
   Copy-Item (Join-Path $src '*') -Destination $dir -Recurse -Force
 
-  # 5. restaure tes cles
+  # 5. restaure tes cles et reglages
   if (Test-Path $secretsBackup) { Copy-Item $secretsBackup $secretsPath -Force }
+  if (Test-Path $configBackup) { Copy-Item $configBackup $configPath -Force }
 
   # 6. affiche la version
   if (Test-Path (Join-Path $dir 'VERSION.txt')) {
