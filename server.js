@@ -25,17 +25,28 @@ try {
 } catch (e) { console.warn('[config] secrets.json illisible (ignoré) :', e.message); }
 const env = (k, d) => (process.env[k] !== undefined && process.env[k] !== '') ? process.env[k] : (SECRETS[k] !== undefined && SECRETS[k] !== '' ? SECRETS[k] : d);
 
+/* Nettoie un token : retire le préfixe "oauth:" (s'il y est collé par erreur),
+   les espaces, guillemets et retours à la ligne. Un token Twitch est une suite
+   de lettres/chiffres SANS "oauth:" devant (le "oauth:" c'est uniquement pour le CHAT). */
+function cleanToken(raw) {
+  let t = String(raw || '').trim();
+  t = t.replace(/^["']|["']$/g, '').trim();                    // guillemets éventuels
+  t = t.replace(/^oauth:/i, '').trim();                        // préfixe oauth: collé par erreur
+  t = t.replace(/\s+/g, '');                                   // espaces / retours à la ligne
+  return t;
+}
+
 const ADMIN_TOKEN = env('ADMIN_TOKEN', '');
 const ALLOWED = String(env('ALLOWED_USERS', '')).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
 /* — Capture des sondages natifs /poll (Helix, polling 2,5 s) — */
-const CLIENT_ID = env('CLIENT_ID', '');
-const BROADCASTER_ID = env('BROADCASTER_ID', '');
-const POLL_OAUTH = env('POLL_OAUTH', '');      // user token · scope channel:read:polls
+const CLIENT_ID = cleanToken(env('CLIENT_ID', ''));
+const BROADCASTER_ID = cleanToken(env('BROADCASTER_ID', ''));
+const POLL_OAUTH = cleanToken(env('POLL_OAUTH', ''));      // user token · scope channel:read:polls
 
 /* — Chat Twitch (tmi.js optionnel) — */
-const CHAT_OAUTH = env('CHAT_OAUTH', '');
-const CHAT_NICK = env('CHAT_NICK', '');
+const CHAT_OAUTH = env('CHAT_OAUTH', '');   // le "oauth:" EST attendu ici (tmi.js)
+const CHAT_NICK = cleanToken(env('CHAT_NICK', ''));
 /* Canal à écouter = ta chaîne Twitch (où le bot doit lire les messages).
    Par défaut = CHAT_NICK (si tu utilises ton propre compte comme bot).
    Si ton bot est un compte séparé, mets ici le nom de TA chaîne (ex. 7gionny). */
@@ -306,6 +317,8 @@ async function resolveBroadcaster() {
      et quels droits il possède (sondages, abonnés, follows). — */
 async function checkToken() {
   if (!POLL_OAUTH) { console.warn('[auth] aucun token POLL_OAUTH dans secrets.json'); return; }
+  // affiche la longueur + les 6 premiers caractères (pour vérifier qu'il est bien lu)
+  console.log('[auth] token lu : ' + POLL_OAUTH.length + ' caractères, commence par "' + POLL_OAUTH.slice(0, 6) + '..."');
   try {
     const r = await fetch('https://id.twitch.tv/oauth2/validate', {
       headers: { 'Authorization': 'OAuth ' + POLL_OAUTH }

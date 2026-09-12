@@ -1,22 +1,24 @@
-VERSION 16 — 12 septembre 2026
+VERSION 17 — 12 septembre 2026
 
-DIAGNOSTIC COMPLET DU TOKEN :
+Le token POLL_OAUTH est INVALIDE ("Invalid OAuth token"). Deux causes
+possibles et comment je les ai corrigées / diagnostiquées :
 
-J'ai ajoute une verification du token au demarrage. Relance demarrer-pont.bat
-et regarde les lignes "[auth] ..." en bas de la fenetre noire. Elles vont te
-dire EXACTEMENT ce qui ne va pas :
+1) Le token a "oauth:" collé devant, des espaces ou des guillemets.
+   -> CORRIGE : le programme nettoie maintenant tout seul (il retire
+   "oauth:", les espaces, les guillemets). Plus besoin de le refaire.
 
-- "[auth] token VALIDE — compte : 7gionny — droits : ..."  -> le token est bon
-  (et tu verras s'il MANQUE un droit, avec un ⚠️)
+2) Le token est vraiment faux / expiré / mal copié.
+   -> Dans ce cas il faut le REGENERER.
 
-- "[auth] token INVALIDE (HTTP 401)"  -> le token est faux/expire
-  -> il faut le regenerer
+VERIFIE TOI-MEME :
+Relance demarrer-pont.bat et regarde la ligne :
+   "[auth] token lu : XX caractères, commence par \"XXXXXX...\""
+Un token Twitch valide fait ~30 caractères (lettres + chiffres).
 
-- "[auth] aucun token POLL_OAUTH"  -> le champ est vide dans secrets.json
+Si ça affiche encore "Invalid OAuth token", c'est que le token est faux :
+regénère-le avec ce lien exact, puis colle UNIQUEMENT ce qui suit
+access_token= (sans oauth:, sans espace, sans guillemets) :
 
-- "[auth] GET /users → HTTP 401/403 ..."  -> le token ne correspond pas au
-  Client ID, ou le droit est manquant
+https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=channel:read:polls+channel:read:subscriptions+moderator:read:followers
 
-COPIE-MOI ces lignes "[auth] ..." et je te dirai precisement quoi corriger.
-
-Si ce fichier affiche "VERSION 16", tu as la derniere version.
+Si ce fichier affiche "VERSION 17", tu as la derniere version.
