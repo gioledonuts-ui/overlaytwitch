@@ -419,23 +419,31 @@ if (CLIENT_ID) {
    champ `total`) et met à jour le compteur du sub goal automatiquement.
    Nécessite le scope channel:read:subscriptions sur le token utilisateur. */
 async function syncSubGoal() {
-  if (!CLIENT_ID || !POLL_OAUTH || !resolvedBroadcasterId) return;
+  if (!CLIENT_ID || !POLL_OAUTH || !resolvedBroadcasterId) {
+    console.warn('[sub-goal] impossible : CLIENT_ID / POLL_OAUTH / chaîne manquants');
+    return;
+  }
   try {
     const r = await fetch('https://api.twitch.tv/helix/subscriptions?broadcaster_id=' + resolvedBroadcasterId + '&first=1', {
       headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + POLL_OAUTH }
     });
     if (!r.ok) {
-      if (r.status === 401 || r.status === 403) console.warn('[sub-goal] HTTP ' + r.status + ' — scope channel:read:subscriptions manquant sur le token');
+      let detail = '';
+      try { const j = await r.json(); detail = j.message || j.error || JSON.stringify(j); } catch (e) {}
+      console.warn('[sub-goal] HTTP ' + r.status + (detail ? ' — ' + detail : ''));
       return;
     }
     const d = await r.json();
+    console.log('[sub-goal] réponse reçue : total=' + d.total + ', points=' + d.points + ', data.length=' + ((d.data && d.data.length) || 0));
     if (typeof d.total === 'number' && d.total !== goalState.current) {
       goalState.current = d.total;
       const payload = 'data: ' + JSON.stringify(Object.assign({ goal: 1 }, goalState)) + '\n\n';
       for (const res of sse) res.write(payload);
       console.log('[sub-goal] synchronisé : ' + d.total + ' abonnés');
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('[sub-goal] erreur :', e.message || e);
+  }
 }
 
 /* ═══ FOLLOWS (EventSub WebSocket, temps réel) ═══════════════════

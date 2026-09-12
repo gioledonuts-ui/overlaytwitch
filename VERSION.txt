@@ -1,22 +1,23 @@
-VERSION 14 — 12 septembre 2026
+VERSION 15 — 12 septembre 2026
 
-NOUVEAU LOGO + CONNEXIONS :
+DIAGNOSTIC SUB GOAL :
 
-- NOUVEAU LOGO "7G" généré par IA (assets/logo-7g.png) : il remplace
-  l'ancien petit "7G" texte partout (carte du débat, chat, alertes).
+J'ai ajoute des messages clairs dans la fenetre noire pour savoir
+POURQUOI le sub goal reste a 0. Relance demarrer-pont.bat puis regarde
+la fenetre noire : elle affiche maintenant l'une de ces 3 lignes :
 
-- SUB GOAL AUTO : le compteur du sub goal est maintenant branché sur
-  ton VRAI nombre d'abonnés (via l'API Twitch, mis à jour chaque minute).
+1) "[sub-goal] réponse reçue : total=XX"     -> CA MARCHE (XX = tes subs)
+2) "[sub-goal] HTTP 401 ... scope manquant"  -> ton token n'a pas le
+   droit "abonnés". Il faut le REGENERER avec le lien complet (voir
+   TUTO-LOCAL.md, section "sondages + abonnés + follows").
+3) "[sub-goal] impossible ... manquants"     -> le token n'est pas rempli
 
-- FOLLOWS (alertes temps réel) : quand quelqu'un te suit, l'alerte
-  "NOUVEAU FOLLOW" s'affiche automatiquement (via EventSub).
+LA CAUSE LA PLUS PROBABLE : ton token actuel a seulement le droit
+"sondages". Pour le sub goal + les follows, il faut un token avec les
+3 droits. Regénère-le avec ce lien exact :
 
-IMPORTANT : pour que ces 2 nouvelles fonctions marchent, il faut
-regénérer ton token POLL_OAUTH avec le NOUVEAU lien (qui contient les
-3 droits : sondages + abonnés + follows). Voir TUTO-LOCAL.md.
+https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=channel:read:polls+channel:read:subscriptions+moderator:read:followers
 
-Rappel : les subs / gifts / resubs / raids étaient déjà automatiques.
+puis colle le nouveau token dans POLL_OAUTH (dans secrets.json).
 
-Si ce fichier affiche "VERSION 14", tu as la derniere version.
-Ensuite : relance demarrer-pont.bat, puis dans OBS : clic droit sur la source
--> "Actualiser".
+Si ce fichier affiche "VERSION 15", tu as la derniere version.
