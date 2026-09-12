@@ -1,17 +1,22 @@
-VERSION 11 — 12 septembre 2026
+VERSION 12 — 12 septembre 2026
 
-CORRECTIONS :
-- EMOTES TWITCH : elles s'affichent enfin en images (2 bugs corriges :
-  la facon de lire les emotes + la mauvaise URL des images).
-- EMOJIS : police emoji mise en priorite pour un affichage en couleur.
-- TIMER CORRIGE : pour un /poll, le compteur affiche maintenant la VRAIE
-  duree du sondage Twitch (avant il mettait toujours 2 min a cause d'un
-  repli fixe de 120 secondes).
-- PIED DE CARTE : "1 VOTE" (plus "1 VOTES") et l'espacement est corrige :
-  la commande/sondage est au centre, le total a droite, bien separes.
+NOUVEAU + CORRECTIONS :
 
-Les badges restent a faire (on verra ca plus tard).
+- QUESTION DU DEBAT : agrandie (46px), peut tenir sur 2 lignes,
+  avec une ombre portee pour bien ressortir. La carte est un peu
+  plus haute (248px) pour laisser de la place. Fini la question coupee.
 
-Si ce fichier affiche "VERSION 11", tu as la derniere version.
+- NOUVEAU FICHIER : tester-alertes.bat
+  -> double-clic dessus pour declencher TOUTES les animations d'alerte
+     (follow, sub, resub, sub offert, sub communautaire, raid) sans
+     avoir besoin d'un vrai follow/sub. Regarde OBS pendant ~45 secondes.
+
+- EMOTES : j'ai ajoute un message de diagnostic dans la fenetre noire.
+  Quand quelqu'un ecrit une emote Twitch, la fenetre affiche
+  "[chat] emotes detectees : ...". Si tu vois ce message, les emotes
+  sont bien recues. Si tu ne le vois jamais, dis-moi ce que la fenetre
+  affiche quand tu ecris une emote.
+
+Si ce fichier affiche "VERSION 12", tu as la derniere version.
 Ensuite : relance demarrer-pont.bat, puis dans OBS : clic droit sur la source
 -> "Actualiser".

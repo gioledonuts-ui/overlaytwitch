@@ -46,7 +46,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
    880 × 208 px · centré · bottom 96 px (compact, face du streamer au centre) */
 #card{
   position:absolute;left:50%;bottom:96px;
-  width:880px;height:208px;
+  width:880px;height:248px;
   transform:translate(-50%,46px);
   opacity:0;visibility:hidden;
   background:linear-gradient(180deg,rgba(18,18,21,.97) 0%,rgba(10,10,10,.96) 100%);
@@ -90,8 +90,10 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 #timer.is-off{visibility:hidden}
 
 /* — Question (hauteur de ligne aérée : aucun rognage des lettres) — */
-#question{margin-top:10px;padding:0 0 6px;font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:34px;line-height:1.15;
-  letter-spacing:.03em;color:var(--blanc);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#question{margin-top:12px;padding:0 0 8px;font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:46px;line-height:1.18;
+  letter-spacing:.02em;color:var(--blanc);text-align:center;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  text-shadow:0 2px 12px rgba(0,0,0,.5)}
 
 /* — Options : label · barre · pourcentage — */
 .opts{margin-top:13px;display:flex;flex-direction:column;gap:9px}

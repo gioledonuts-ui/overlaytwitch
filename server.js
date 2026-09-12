@@ -230,6 +230,7 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
 
     /* diffusion au widget (tous les messages, comme le vrai chat Twitch) :
        badges officiels (sub/mod/vip/staff…), emotes + GIFs animés, highlight/pin */
+    if (emotes) console.log('[chat] emotes détectées :', emotes, '→', text.slice(0, 50));
     broadcastChat({
       user: username,
       msg: text,
