@@ -1,22 +1,24 @@
-VERSION 12 — 12 septembre 2026
+VERSION 13 — 12 septembre 2026
 
-NOUVEAU + CORRECTIONS :
+CORRECTION MAJEURE DES EMOTES :
 
-- QUESTION DU DEBAT : agrandie (46px), peut tenir sur 2 lignes,
-  avec une ombre portee pour bien ressortir. La carte est un peu
-  plus haute (248px) pour laisser de la place. Fini la question coupee.
+Twitch a change son systeme : les nouvelles emotes ont des identifiants
+"emotesv2_..." (plus des numeros). Mon code utilisait l'ancienne URL,
+qui ne marchait que pour les vieux numeros. C'est pour ca que tes emotes
+ne s'affichaient pas (ex. x7gionABSOLUTE).
 
-- NOUVEAU FICHIER : tester-alertes.bat
-  -> double-clic dessus pour declencher TOUTES les animations d'alerte
-     (follow, sub, resub, sub offert, sub communautaire, raid) sans
-     avoir besoin d'un vrai follow/sub. Regarde OBS pendant ~45 secondes.
+Corrige : les emotes "emotesv2_..." utilisent maintenant la bonne URL
+(emoticons/v2/...), donc elles s'affichent en images.
 
-- EMOTES : j'ai ajoute un message de diagnostic dans la fenetre noire.
-  Quand quelqu'un ecrit une emote Twitch, la fenetre affiche
-  "[chat] emotes detectees : ...". Si tu vois ce message, les emotes
-  sont bien recues. Si tu ne le vois jamais, dis-moi ce que la fenetre
-  affiche quand tu ecris une emote.
+A confirmer : ecris une emote Twitch dans ton chat -> elle doit s'afficher
+en image (plus en texte).
 
-Si ce fichier affiche "VERSION 12", tu as la derniere version.
+Rappel des choses deja OK :
+- Question du debat agrandie (2 lignes) ✅
+- Alertes testables avec tester-alertes.bat ✅
+- Sondage /poll + timer + votes ✅
+- Badges : a faire plus tard (pas encore)
+
+Si ce fichier affiche "VERSION 13", tu as la derniere version.
 Ensuite : relance demarrer-pont.bat, puis dans OBS : clic droit sur la source
 -> "Actualiser".

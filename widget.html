@@ -794,7 +794,12 @@ function appendMsg(cm, m) {
     if (it.s > pos) cm.appendChild(document.createTextNode(text.slice(pos, it.s)));
     const img = document.createElement('img');
     img.className = 'cemote';
-    img.src = 'https://static-cdn.jtvnw.net/emotes/v1/' + it.id + '/3.0';
+    // Twitch a DEUX formats d'emotes :
+    //   - ancien : IDs numériques (ex. 30251) → /emotes/v1/{id}/3.0
+    //   - nouveau : IDs "emotesv2_..." → /emoticons/v2/{id}/default/dark/3.0
+    img.src = String(it.id).startsWith('emotesv2_')
+      ? 'https://static-cdn.jtvnw.net/emoticons/v2/' + it.id + '/default/dark/3.0'
+      : 'https://static-cdn.jtvnw.net/emotes/v1/' + it.id + '/3.0';
     img.alt = text.slice(it.s, it.e + 1);
     img.onerror = () => { try { img.replaceWith(document.createTextNode(img.alt)); } catch (e) {} };
     cm.appendChild(img);
