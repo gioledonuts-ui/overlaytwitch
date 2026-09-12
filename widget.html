@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1920, initial-scale=1"/>
+<title>7GIONNY · Debate Overlay</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   7GIONNY — DÉBAT / SONDAGE OVERLAY  (v1.0)
+   DA : Noir mat #0A0A0A · Violet #7000FF / #9146FF · Blanc #FFFFFF
+   Grille de référence : 1920 × 1080 · Lower-third · 100 % transparent
+   ─────────────────────────────────────────────────────────────────── */
+@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/inter-400.woff2') format('woff2')}
+@font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/inter-600.woff2') format('woff2')}
+@font-face{font-family:'Inter';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/inter-700.woff2') format('woff2')}
+@font-face{font-family:'Inter';font-style:normal;font-weight:800;font-display:swap;src:url('fonts/inter-800.woff2') format('woff2')}
+@font-face{font-family:'Bebas Neue';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/bebas-400.woff2') format('woff2')}
+
+:root{
+  --noir:#0A0A0A;
+  --violet:#9146FF;
+  --violet-deep:#7000FF;
+  --blanc:#FFFFFF;
+  --gris:#9AA0A6;
+  --gris-fonce:#6B7280;
+  --ligne:rgba(255,255,255,.08);
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --ease-in:cubic-bezier(.55,0,.75,.25);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:transparent}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+
+/* — Scène de référence 1920×1080, mise à l'échelle au viewport — */
+#scene{position:absolute;top:0;left:0;width:1920px;height:1080px;transform-origin:top left;pointer-events:none}
+
+/* — Fond caméra simulé (APERÇU HORS OBS UNIQUEMENT · ?bg=1) — */
+#bgSim{position:absolute;inset:0;background:radial-gradient(1300px 750px at 50% 36%,#17181c 0%,#0d0d0f 55%,#060607 100%)}
+#bgSim::before{content:"CAMÉRA · PLEIN ÉCRAN · 1080P";position:absolute;top:54px;left:0;right:0;text-align:center;
+  font-size:12px;font-weight:600;letter-spacing:.55em;color:rgba(255,255,255,.26)}
+#bgSim::after{content:"";position:absolute;inset:0;
+  background-image:linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px);
+  background-size:80px 80px}
+
+/* ═══ CARTE DU DÉBAT — lower third ═══
+   880 × 208 px · centré · bottom 96 px (compact, face du streamer au centre) */
+#card{
+  position:absolute;left:50%;bottom:96px;
+  width:880px;height:208px;
+  transform:translate(-50%,46px);
+  opacity:0;visibility:hidden;
+  background:linear-gradient(180deg,rgba(18,18,21,.82) 0%,rgba(10,10,10,.80) 100%);
+  -webkit-backdrop-filter:blur(18px) saturate(1.3);
+  backdrop-filter:blur(18px) saturate(1.3);
+  border:1px solid var(--ligne);
+  border-radius:12px;
+  box-shadow:0 30px 70px rgba(0,0,0,.55),0 4px 18px rgba(0,0,0,.42),
+    inset 0 1px 0 rgba(255,255,255,.05);
+  transition:opacity .65s var(--ease-out),transform .65s var(--ease-out);
+}
+
+#card.is-live{opacity:1;transform:translate(-50%,0);visibility:visible}
+#card.is-exit{opacity:0;transform:translate(-50%,26px);
+  transition:opacity .42s var(--ease-in),transform .42s var(--ease-in)}
+#card.is-hidden{visibility:hidden}
+#card.is-hidden.is-exit{transition:none}
+
+.pad{position:absolute;inset:18px 24px;display:flex;flex-direction:column}
+
+/* — En-tête : monogramme 7G (gauche) · chip centrée · timer à droite — */
+.head{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
+.head .mark7g{justify-self:start}
+.head #timer{justify-self:end}
+.chip{display:inline-flex;align-items:center;gap:9px;padding:6px 14px;border-radius:4px;
+  border:1px solid rgba(145,70,255,.42);font-family:'Bebas Neue',sans-serif;font-weight:400;
+  font-size:13px;letter-spacing:.18em;color:#E7E9EE;
+  transition:border-color .3s,color .3s}
+.chip .dot{width:6px;height:6px;border-radius:50%;background:var(--violet);
+  box-shadow:0 0 8px rgba(145,70,255,.9);animation:pulse 1.6s ease-in-out infinite}
+.chip.is-result{border-color:var(--violet);color:#fff}
+.chip.is-result .dot{animation:none;box-shadow:0 0 12px rgba(145,70,255,1)}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.78)}}
+
+#timer{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.08em;color:var(--gris);
+  font-variant-numeric:tabular-nums;transition:color .3s,text-shadow .3s}
+/* les deux-points pulsent : on sent le temps passer */
+#timer #tColon{animation:colon 1s steps(1) infinite}
+@keyframes colon{0%,54%{opacity:1}55%,100%{opacity:.18}}
+#timer.is-low{color:var(--violet);text-shadow:0 0 14px rgba(145,70,255,.55)}
+#timer.is-off{visibility:hidden}
+
+/* — Question (hauteur de ligne aérée : aucun rognage des lettres) — */
+#question{margin-top:10px;padding:0 0 6px;font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:34px;line-height:1.15;
+  letter-spacing:.03em;color:var(--blanc);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* — Options : label · barre · pourcentage — */
+.opts{margin-top:13px;display:flex;flex-direction:column;gap:9px}
+.opt{display:grid;grid-template-columns:172px 1fr 60px;align-items:center;gap:14px}
+/* badge A/B : ancre de lecture (et de la commande chat) */
+.lbl{display:flex;align-items:center;gap:8px;min-width:0;font-size:13px;font-weight:700;line-height:1.15;color:var(--blanc);text-align:left;transition:opacity .45s}
+.ab{flex:none;width:17px;height:17px;border-radius:3px;display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:800;border:1px solid rgba(145,70,255,.55);color:var(--violet)}
+.ab--b{border-color:rgba(255,255,255,.45);color:#fff}
+.lbl__row{display:flex;align-items:center;gap:8px;min-width:0}
+.lbl__t{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* badge GAGNANT — apparaît sur la ligne victorieuse */
+.tag{flex:none;font-size:8px;font-weight:800;letter-spacing:.22em;color:var(--violet);
+  border:1px solid rgba(145,70,255,.55);border-radius:3px;padding:2px 6px;
+  opacity:0;transform:scale(.9);transition:opacity .3s var(--ease-out),transform .3s var(--ease-out)}
+.opt.is-winner .tag{opacity:1;transform:scale(1)}
+#optB.is-winner .tag{color:#fff;border-color:rgba(255,255,255,.6)}
+.bar{position:relative;height:9px;border-radius:4.5px;overflow:hidden;
+  background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.09);transition:opacity .45s}
+.fill{position:absolute;top:0;bottom:0;left:0;width:0%;border-radius:4px;
+  transition:width .7s var(--ease-out),filter .25s var(--ease-out),box-shadow .25s var(--ease-out)}
+.fill--a{background:linear-gradient(90deg,var(--violet-deep),var(--violet));
+  box-shadow:0 0 10px rgba(145,70,255,.30)}
+/* liseré lumineux à la tête de la barre A (détail de mouvement) */
+.fill--a::after{content:"";position:absolute;right:0;top:0;bottom:0;width:2px;
+  background:rgba(255,255,255,.85);opacity:.55}
+.fill--b{background:linear-gradient(90deg,#D9DBE0,#FFFFFF);
+  box-shadow:0 0 6px rgba(255,255,255,.10)}
+.fill.is-flash{filter:brightness(1.45)}
+/* — CONTRASTE AVANCE / RECU : à chaque vote, la barre qui gagne s'illumine,
+      celle qui perd s'éteint. Le sens du match se lit d'un coup d'œil. — */
+.opt.is-up .fill{filter:brightness(1.65) saturate(1.35)}
+.opt.is-up .fill--a{box-shadow:0 0 22px rgba(145,70,255,.85)}
+.opt.is-up .fill--b{box-shadow:0 0 22px rgba(255,255,255,.8)}
+.opt.is-down .fill{filter:brightness(.5) saturate(.55)}
+.pct{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.06em;color:var(--gris-fonce);
+  text-align:right;font-variant-numeric:tabular-nums;
+  transition:color .35s,text-shadow .35s,transform .3s var(--ease-out);opacity:1}
+.pct.is-lead{color:var(--blanc)}
+.opt.is-up .pct{color:var(--blanc);transform:scale(1.25)}
+.opt.is-down .pct{color:var(--gris-fonce)}
+
+/* — Pied : commande centrée · total des votes à droite (sous les %) — */
+.foot{margin-top:auto;display:grid;grid-template-columns:1fr auto 1fr;align-items:baseline;
+  font-size:10px;font-weight:600;letter-spacing:.18em;color:var(--gris-fonce)}
+.hint{justify-self:center}
+.hint b{color:var(--gris);font-weight:700}
+#total{justify-self:end;font-variant-numeric:tabular-nums}
+
+/* — Barre de décompte du temps (discret, en bas de carte) — */
+.timebar{position:absolute;left:0;right:0;bottom:0;height:3px;border-radius:0 0 12px 12px;
+  background:rgba(255,255,255,.06);overflow:hidden}
+.timebar__fill{height:100%;width:100%;
+  background:linear-gradient(90deg,var(--violet-deep),var(--violet));
+  transition:width .3s linear,background .3s,box-shadow .3s}
+#card.is-low .timebar__fill{background:linear-gradient(90deg,var(--violet),#C79BFF);
+  box-shadow:0 0 12px rgba(145,70,255,.85)}
+/* 5 dernières secondes : le décompte pulse (le tic-tac s'accélère en audio) */
+#card.is-critical .timebar__fill{animation:tbPulse .55s ease-in-out infinite}
+@keyframes tbPulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ═══ CHAT TWITCH — 430 × 596 px · DROITE · bottom 160 · ~50 % transparent ═══ */
+.chat{position:absolute;right:48px;bottom:160px;width:430px;height:596px;
+  display:flex;flex-direction:column;
+  background:rgba(10,10,12,.62);
+  -webkit-backdrop-filter:blur(12px) saturate(1.2);
+  backdrop-filter:blur(12px) saturate(1.2);
+  border:1px solid rgba(255,255,255,.10);border-radius:12px;
+  box-shadow:0 20px 50px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.04);
+  opacity:0;visibility:hidden;transform:translateY(24px);
+  transition:opacity .5s var(--ease-out),transform .5s var(--ease-out)}
+.chat.is-on{opacity:1;visibility:visible;transform:none}
+.chat__head{display:flex;align-items:center;gap:9px;padding:13px 18px 11px;
+  font-family:'Bebas Neue',sans-serif;font-size:15px;font-weight:400;letter-spacing:.22em;color:#E7E9EE;
+  border-bottom:1px solid rgba(255,255,255,.06)}
+.chat__head .dot{width:6px;height:6px;border-radius:50%;background:var(--violet);
+  box-shadow:0 0 8px rgba(145,70,255,.9);animation:pulse 1.6s ease-in-out infinite}
+/* — Monogramme 7G : signature discrète, présente sur les 3 zones — */
+.mark7g{display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;border-radius:4px;flex:none;
+  border:1px solid rgba(145,70,255,.5);color:var(--violet);
+  font-family:'Bebas Neue',sans-serif;font-size:10px;letter-spacing:.05em;line-height:1}
+.chat__head .mark7g{margin-left:auto}
+/* badges Twitch : image officielle, chip texte en repli si hors-ligne */
+.cbadges{display:inline-flex;gap:3px;flex:none;align-items:center;margin-top:2px}
+.cbadge{width:18px;height:18px;border-radius:4px}
+.cchip{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:16px;padding:0 5px;
+  border-radius:4px;font-size:8px;font-weight:800;letter-spacing:.08em;
+  background:rgba(145,70,255,.18);color:var(--violet);border:1px solid rgba(145,70,255,.5)}
+.cchip--mod{background:rgba(255,255,255,.10);color:#fff;border-color:rgba(255,255,255,.45)}
+.cchip--me{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.55)}
+/* emotes / GIFs inline */
+.cemote{height:22px;width:auto;vertical-align:-6px;margin:0 2px;border-radius:3px}
+/* message MIS EN AVANT (highlight Twitch) : encart violet */
+.cmsg.is-hl{background:rgba(145,70,255,.13);border:1px solid rgba(145,70,255,.45);
+  border-radius:8px;padding:5px 8px;margin-left:-8px}
+/* message ÉPINGLÉ : en haut du chat, style blanc, un cran plus gros */
+.chat__pin{display:none;margin:10px 14px 2px;padding:8px 11px;border-radius:8px;
+  border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.09)}
+.chat__pin.is-on{display:block;animation:cin .35s var(--ease-out)}
+.chat__pin .cmsg{animation:none}
+.chat__pin .cn{font-size:17px}
+.chat__pin .ctext{font-size:15px}
+.chat__pin .cflag{flex:none}
+/* liste : les messages remplissent TOUT le panneau ; fondu progressif en HAUT
+   (là où ils disparaissent), rendu pro pas « IA » */
+.chat__list{flex:1;overflow:hidden;padding:12px 18px;
+  display:flex;flex-direction:column;justify-content:flex-end;gap:11px;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 64px);
+  mask-image:linear-gradient(180deg,transparent 0,#000 64px)}
+/* — Typographie chat : pseudo en BEBAS (mis en avant), texte en Inter 500 lisible — */
+.cmsg{display:flex;gap:8px;font-size:15px;line-height:1.45;animation:cin .35s var(--ease-out);
+  font-family:'Inter',system-ui,'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif}
+@keyframes cin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.cmsg .cn{flex:none;max-width:148px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:16px;letter-spacing:.06em;color:var(--blanc)}
+.cmsg .cn--mod{color:var(--violet)}
+.cmsg .cn--me{color:var(--blanc)}
+.cbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.creply{font-size:11px;line-height:1.3;color:var(--gris);font-weight:600}
+.creply b{color:var(--violet);font-weight:700}
+.cmsg .ctext{font-weight:500;color:rgba(255,255,255,.95);word-break:break-word}
+/* — SUB GOAL (rallonge sous le chat, séparateur pro) — */
+.chat__goal{border-top:1px solid rgba(255,255,255,.09);padding:12px 18px 15px}
+.goal__top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+.goal__label{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:.22em;color:var(--violet);
+  transition:color .4s}
+.goal__count{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:.1em;color:var(--blanc);
+  font-variant-numeric:tabular-nums}
+.goal__bar{height:8px;border-radius:4px;background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.08);overflow:hidden}
+.goal__fill{height:100%;width:0%;border-radius:4px;
+  background:linear-gradient(90deg,var(--violet-deep),var(--violet));
+  box-shadow:0 0 10px rgba(145,70,255,.4);transition:width .8s var(--ease-out)}
+.chat__goal.is-done .goal__label{color:var(--blanc)}
+.chat__goal.is-done .goal__fill{background:linear-gradient(90deg,var(--violet),#C79BFF)}
+
+/* ═══ ALERTES — haut centre · top 80 px · FOND UNIQUE (aucune transition d'image) ═══
+   Les éléments STATIQUES (icônes, labels) sont des images générées (fond noir →
+   invisible en blend « screen »). Seul le DYNAMIQUE (pseudo, nombres) reste en texte
+   live pour s'adapter à la largeur.
+   Séparation de couleurs : PSEUDOS = bleu clair #7CC7FF (celui qui donne ET celui qui
+   reçoit, même couleur — s'accorde avec le violet du fond) · LE RESTE = blanc / gris clair.
+   Icoônes/labels : PNG transparents (plus de blend, plus de rectangle noir, pas de flou). */
+#alerts{position:absolute;top:80px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:14px}
+/* Composition CENTRÉE : icône / label à filets / pseudo / détail —
+   hiérarchie typographique : label espacé violet, pseudo bleu énorme, détail italique */
+.alert{position:relative;display:flex;flex-direction:column;align-items:center;
+  gap:10px;overflow:hidden;min-width:560px;padding:34px 70px;border-radius:18px;
+  background:rgba(10,10,12,.9);
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 28px 70px rgba(0,0,0,.55);
+  animation:alertIn .9s var(--ease-out)}
+/* image de fond en calque séparé : elle FADE-IN sur ~1,2 s → plus de « pop » noir
+   au premier chargement (et les assets sont préchargés à l'ouverture de la page) */
+.alert__bg{position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:url('assets/alert-bg.png') center/cover no-repeat;
+  opacity:0;animation:bgFade 1.2s ease-out .1s forwards}
+@keyframes bgFade{to{opacity:1}}
+.alert.out{animation:alertOut .35s var(--ease-in) forwards}
+@keyframes alertIn{from{opacity:0;transform:translateY(-34px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes alertOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-22px)}}
+.alert > .alert__icon,.alert > .alert__body{position:relative;z-index:1}
+.alert__icon{width:100px;height:100px;object-fit:contain}
+/* label : Bebas violet très espacé + filet de chaque côté (touch TV) */
+.alert__labeltxt{font-family:'Bebas Neue',sans-serif;font-size:22px;font-weight:400;
+  letter-spacing:.5em;color:#B06CFF;line-height:1;
+  display:flex;align-items:center;gap:16px}
+.alert__labeltxt::before,.alert__labeltxt::after{content:"";width:46px;height:1px;flex:none}
+.alert__labeltxt::before{background:linear-gradient(90deg,transparent,rgba(176,108,255,.75))}
+.alert__labeltxt::after{background:linear-gradient(90deg,rgba(176,108,255,.75),transparent)}
+.alert__body{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+/* PSEUDO : bleu clair uni, très grand, lueur bleue */
+.alert__user{font-family:'Bebas Neue',sans-serif;font-size:56px;letter-spacing:.06em;line-height:1;
+  color:#7CC7FF;filter:drop-shadow(0 0 16px rgba(80,170,255,.55))}
+/* détail : Inter italique grisé — le nom du receveur ressort en bleu gras non italique */
+.alert__sub{font-size:14px;font-weight:400;font-style:italic;letter-spacing:.03em;color:#B9BEC9}
+.alert__sub .hl{color:#7CC7FF;font-style:normal;font-weight:700}
+/* message personnalisé du sub (slot dédié : centré, filet au-dessus, 2 lignes max) */
+.alert__divider{width:44px;height:1px;background:rgba(255,255,255,.18)}
+.alert__msg{font-size:13px;font-weight:400;font-style:italic;color:#9AA0A6;line-height:1.45;
+  max-width:540px;text-align:center;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* monogramme 7G : coin haut-droit, discret */
+.alert .mark7g{position:absolute;top:14px;right:16px;opacity:.45;z-index:2}
+/* FOLLOW : le plus simple */
+.alert--follow{min-width:540px}
+.alert--follow .alert__user{font-size:52px}
+/* SUB : le plus imposant + lueur (l'écart se VOIT) */
+.alert--sub{min-width:700px;padding:38px 80px;border-color:rgba(145,70,255,.55);
+  box-shadow:0 28px 70px rgba(0,0,0,.6),0 0 44px rgba(145,70,255,.35)}
+.alert--sub::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 45%,rgba(145,70,255,.26),transparent 70%)}
+.alert--sub .alert__icon{width:120px;height:120px}
+.alert--sub .alert__labeltxt{font-size:28px}
+.alert--sub .alert__user{font-size:72px;filter:drop-shadow(0 0 24px rgba(80,170,255,.7))}
+.alert--sub .alert__sub{color:#CFC4E8;font-size:15px}
+/* RAID : blanc net */
+.alert--raid{min-width:660px;border-color:rgba(255,255,255,.35)}
+.alert--raid .alert__icon{width:110px;height:110px}
+.alert--raid .alert__labeltxt{font-size:24px;color:#E7E9EE}
+.alert--raid .alert__labeltxt::before{background:linear-gradient(90deg,transparent,rgba(231,233,238,.6))}
+.alert--raid .alert__labeltxt::after{background:linear-gradient(90deg,rgba(231,233,238,.6),transparent)}
+.alert--raid .alert__user{font-size:62px}
+
+/* ═══ ÉTAT RÉSULTAT (5 s de sentence) ═══ */
+.opt.is-loser .lbl,.opt.is-loser .bar,.opt.is-loser .pct{opacity:.3}
+.opt.is-winner .lbl{color:#fff}
+.opt.is-winner .pct{color:var(--blanc);text-shadow:0 0 16px rgba(145,70,255,.55)}
+.opt.is-winner .fill--a{animation:glowA 1.5s ease-in-out infinite}
+.opt.is-winner .fill--b{animation:glowB 1.5s ease-in-out infinite}
+@keyframes glowA{0%,100%{box-shadow:0 0 12px rgba(145,70,255,.35)}50%{box-shadow:0 0 28px rgba(145,70,255,.85)}}
+@keyframes glowB{0%,100%{box-shadow:0 0 10px rgba(255,255,255,.22)}50%{box-shadow:0 0 26px rgba(255,255,255,.7)}}
+
+/* — Stagger des entrées (65 ms entre blocs) — */
+.head,#question,.opts,.foot{opacity:0;transform:translateY(10px);
+  transition:opacity .5s var(--ease-out),transform .5s var(--ease-out)}
+#card.is-live .head{transition-delay:.08s}
+#card.is-live #question{transition-delay:.15s}
+#card.is-live .opts{transition-delay:.22s}
+#card.is-live .foot{transition-delay:.3s}
+#card.is-live .head,#card.is-live #question,#card.is-live .opts,#card.is-live .foot{opacity:1;transform:none}
+</style>
+</head>
+<body>
+<div id="scene">
+  <div id="bgSim" hidden></div>
+
+  <div id="card" aria-hidden="true">
+    <div class="pad">
+      <div class="head">
+        <span class="mark7g">7G</span>
+        <div class="chip" id="chip"><span class="dot"></span><span id="chipTxt">DÉBAT EN DIRECT</span></div>
+        <div id="timer"><span id="tMin">--</span><span id="tColon">:</span><span id="tSec">--</span></div>
+      </div>
+
+      <h1 id="question">—</h1>
+
+      <div class="opts">
+        <div class="opt" id="optA" data-choice="A">
+          <div class="lbl"><span class="ab ab--a">A</span><div class="lbl__row"><span class="lbl__t" id="lblA">—</span><span class="tag">GAGNANT</span></div></div>
+          <div class="bar"><div class="fill fill--a" id="fillA"></div></div>
+          <div class="pct" id="pctA">—</div>
+        </div>
+        <div class="opt" id="optB" data-choice="B">
+          <div class="lbl"><span class="ab ab--b">B</span><div class="lbl__row"><span class="lbl__t" id="lblB">—</span><span class="tag">GAGNANT</span></div></div>
+          <div class="bar"><div class="fill fill--b" id="fillB"></div></div>
+          <div class="pct" id="pctB">—</div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <span id="total">0 VOTES</span>
+        <span class="hint" id="hint"><b>!vote A</b> · <b>!vote B</b></span>
+      </div>
+    </div>
+    <div class="timebar" aria-hidden="true"><div class="timebar__fill" id="timeFill"></div></div>
+  </div>
+
+  <!-- ═══ CHAT TWITCH — panneau gauche (fictif en démo, réel via le pont) ═══ -->
+  <div class="chat" id="chat" aria-hidden="true">
+    <div class="chat__head"><span class="dot"></span>CHAT DE 7GIONNY<span class="mark7g">7G</span></div>
+    <div class="chat__pin" id="chatPin"></div>
+    <div class="chat__list" id="chatList"></div>
+    <div class="chat__goal" id="chatGoal">
+      <div class="goal__top"><span class="goal__label" id="goalLabel">SUB GOAL</span><span class="goal__count" id="goalCount">0 / 50</span></div>
+      <div class="goal__bar"><div class="goal__fill" id="goalFill"></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ ALERTES — haut centre : follow / sub / gift / raid ═══ -->
+  <div id="alerts" aria-hidden="true"></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   Moteur du widget — JS pur, zéro dépendance
+   Modes :
+     /widget.html            → mode OBS (transparent, connecté au pont)
+     ?demo=1&bg=1&loop=1     → démo autonome (aucun serveur requis)
+     ?ws=http://host:8321    → pont externe
+     ?mute=1                 → silencie le sound design
+   ═══════════════════════════════════════════════════════════════════ */
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const scene = $('scene'), card = $('card'), bgSim = $('bgSim');
+const E = {
+  chip: $('chip'), chipTxt: $('chipTxt'), timer: $('timer'), question: $('question'),
+  lblA: $('lblA'), lblB: $('lblB'), fillA: $('fillA'), fillB: $('fillB'),
+  pctA: $('pctA'), pctB: $('pctB'), total: $('total'), hint: $('hint'),
+  tMin: $('tMin'), tSec: $('tSec'), timeFill: $('timeFill'),
+  optA: $('optA'), optB: $('optB')
+};
+
+/* ── Paramètres d'URL ─────────────────────────────────────────── */
+const q = new URLSearchParams(window.__AUTO__ || '');
+for (const [k, v] of new URLSearchParams(location.search)) q.set(k, v);
+const MUTE = q.get('mute') === '1';
+const DEMO = q.get('demo') === '1';
+const LOOP = q.get('loop') === '1';
+const BG   = q.get('bg')   === '1';
+const API  = q.get('ws') || (location.protocol.startsWith('http') ? location.origin : 'http://localhost:8321');
+
+if (BG) { bgSim.hidden = false; card.style.pointerEvents = 'auto'; }
+
+/* ── Mise à l'échelle de la scène 1920×1080 ───────────────────── */
+function fit() {
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  scene.style.transform = 'scale(' + s + ')';
+  scene.style.left = Math.max(0, (innerWidth  - 1920 * s) / 2) + 'px';
+  scene.style.top  = Math.max(0, (innerHeight - 1080 * s) / 2) + 'px';
+}
+addEventListener('resize', fit); fit();
+
+/* ═══════════════════════════════════════════════════════════════
+   SOUND DESIGN — 100 % synthétisé en Web Audio (aucun fichier,
+   aucune musique, aucun instrument : bruitages de signal uniquement)
+   ═══════════════════════════════════════════════════════════════ */
+let ctx = null, attempts = 0;
+function audio() {
+  if (MUTE) return null;
+  if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+  if (ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+    if (++attempts > 60) return null;               // autoplay bloqué → on se tait proprement
+  }
+  return ctx.state === 'running' ? ctx : null;
+}
+addEventListener('pointerdown', () => audio());
+addEventListener('visibilitychange', () => audio());
+
+function noiseBuffer(c, dur) {
+  const b = c.createBuffer(1, Math.max(1, (c.sampleRate * dur) | 0), c.sampleRate);
+  const d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  return b;
+}
+
+/* 1) Impact de basse lourd — apparition du débat */
+function sfxDrop() {
+  const c = audio(); if (!c) return;
+  const t = c.currentTime;
+  const o = c.createOscillator(); o.type = 'sine';
+  o.frequency.setValueAtTime(58, t);
+  o.frequency.exponentialRampToValueAtTime(26, t + .8);
+  const g = c.createGain();
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.exponentialRampToValueAtTime(.85, t + .025);
+  g.gain.exponentialRampToValueAtTime(.0001, t + 1);
+  const n = c.createBufferSource(); n.buffer = noiseBuffer(c, 1);
+  const f = c.createBiquadFilter(); f.type = 'lowpass';
+  f.frequency.setValueAtTime(1000, t);
+  f.frequency.exponentialRampToValueAtTime(50, t + .9);
+  const ng = c.createGain();
+  ng.gain.setValueAtTime(.32, t);
+  ng.gain.exponentialRampToValueAtTime(.0001, t + .9);
+  o.connect(g).connect(c.destination);
+  n.connect(f).connect(ng).connect(c.destination);
+  o.start(t); o.stop(t + 1.05); n.start(t);
+}
+
+/* 2) Click mécanique discret — changement de leader */
+function sfxTick() {
+  const c = audio(); if (!c) return;
+  const t = c.currentTime;
+  const n = c.createBufferSource(); n.buffer = noiseBuffer(c, .05);
+  const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2600; f.Q.value = 1.1;
+  const g = c.createGain();
+  g.gain.setValueAtTime(.16, t);
+  g.gain.exponentialRampToValueAtTime(.0001, t + .045);
+  n.connect(f).connect(g).connect(c.destination); n.start(t);
+  const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = 1400;
+  const og = c.createGain();
+  og.gain.setValueAtTime(.07, t);
+  og.gain.exponentialRampToValueAtTime(.0001, t + .03);
+  o.connect(og).connect(c.destination); o.start(t); o.stop(t + .05);
+}
+
+/* 3) Validation nette — clôture / sentence */
+function sfxConfirm() {
+  const c = audio(); if (!c) return;
+  const t = c.currentTime;
+  const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = 720;
+  const g = c.createGain();
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.exponentialRampToValueAtTime(.38, t + .012);
+  g.gain.exponentialRampToValueAtTime(.0001, t + .5);
+  o.connect(g).connect(c.destination); o.start(t); o.stop(t + .55);
+  const o2 = c.createOscillator(); o2.type = 'sine'; o2.frequency.value = 1440;
+  const g2 = c.createGain();
+  g2.gain.setValueAtTime(.0001, t + .015);
+  g2.gain.exponentialRampToValueAtTime(.1, t + .03);
+  g2.gain.exponentialRampToValueAtTime(.0001, t + .28);
+  o2.connect(g2).connect(c.destination); o2.start(t); o2.stop(t + .3);
+}
+
+/* ── Lecture HTML Audio : bruitages rendus (sounds/*.wav) ─────────
+   Fichiers hébergés dans le projet (zéro asset externe).
+   Si l'autoplay reste bloqué après 3 essais → repli sur le synthé. */
+const SOUNDS = {
+  impact:  { el: new Audio('sounds/impact.wav'),  vol: 0.95, fb: sfxDrop },
+  click:   { el: new Audio('sounds/click.wav'),   vol: 0.5,  fb: sfxTick },
+  victory: { el: new Audio('sounds/victory.wav'), vol: 0.95, fb: sfxConfirm },
+  clock:   { el: new Audio('sounds/clock.wav'),   vol: 0.22 }
+};
+for (const k in SOUNDS) { SOUNDS[k].el.preload = 'auto'; SOUNDS[k].el.volume = SOUNDS[k].vol; }
+let htmlFails = 0, useSynth = false, unlocked = false;
+function unlockAudio() {                 // débloque l'audio au premier geste (navigateur)
+  if (unlocked) return;
+  unlocked = true;
+  for (const k in SOUNDS) {
+    const el = SOUNDS[k].el;
+    el.muted = true;
+    el.play().then(() => { el.pause(); el.currentTime = 0; }).catch(() => {});
+    el.muted = false;
+  }
+}
+addEventListener('pointerdown', unlockAudio);
+/* — Sons : TOUT est actif (impact à l'apparition, click au changement de
+     leader, validation à la clôture + tic-tac en continu).
+     Pour couper un son précis, mets son flag à false. — */
+const SFX = { impact: true, click: true, victory: true };
+function playSound(name) {
+  if (MUTE || !SFX[name]) return;
+  const s = SOUNDS[name];
+  if (!s) return;
+  if (useSynth && s.fb) { s.fb(); return; }
+  s.el.currentTime = 0;
+  const p = s.el.play();
+  if (p && p.catch) p.catch(() => { if (++htmlFails >= 3) useSynth = true; if (s.fb) s.fb(); });
+}
+
+/* — Tic-tac de chrono : boucle discrète pendant tout le débat — */
+function sfxClockSoft() {                    // repli synthé du tic-tac
+  const c = audio(); if (!c) return;
+  const t = c.currentTime;
+  const n = c.createBufferSource(); n.buffer = noiseBuffer(c, .03);
+  const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2800; f.Q.value = 1.2;
+  const g = c.createGain();
+  g.gain.setValueAtTime(.05, t);
+  g.gain.exponentialRampToValueAtTime(.0001, t + .025);
+  n.connect(f).connect(g).connect(c.destination); n.start(t);
+}
+let clockTimer = null, clockStartT = null;
+function startClock() {
+  if (MUTE || clockTimer) return;
+  const el = SOUNDS.clock.el;
+  el.loop = true; el.currentTime = 0; el.playbackRate = 1;
+  el.play().catch(() => { if (!clockTimer) startClockFallback(); });
+}
+/* repli synthé : self-rescheduling → s'accélère aussi dans les 5 dernières s */
+function startClockFallback() {
+  if (clockTimer) return;
+  clockFallbackTick();
+}
+function clockFallbackTick() {
+  sfxClockSoft();
+  const rem = cur ? Math.max(0, (cur.endsAt || 0) - Date.now()) : 999999;
+  const iv = rem <= 5000 ? Math.max(170, 500 - ((5000 - rem) / 5000) * 330) : 500;
+  clockTimer = setTimeout(clockFallbackTick, iv);
+}
+function stopClock() {
+  const el = SOUNDS.clock.el;
+  el.pause(); el.currentTime = 0; el.playbackRate = 1;
+  if (clockTimer) { clearTimeout(clockTimer); clockTimer = null; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MACHINE À ÉTATS  ·  idle → live → ended → (sortie) → idle
+   ═══════════════════════════════════════════════════════════════ */
+let mode = 'idle';          // idle | live | ended
+let cur = null;             // état courant envoyé par le pont
+let lastLeader = null, tickLock = 0, exiting = false;
+let endTimer = null, exitTimer = null;
+
+let debateTotal = 0;              // durée totale du débat courant (barre de décompte)
+function setTimer(ms) {
+  if (ms < 0) ms = 0;
+  const s = Math.ceil(ms / 1000);
+  E.tMin.textContent = String(Math.floor(s / 60)).padStart(2, '0');
+  E.tSec.textContent = String(s % 60).padStart(2, '0');
+}
+
+/* — Retour visuel avance / recul (flash 550 ms par option) — */
+let lastPA = null, lastPB = null;
+const pulseT = { A: null, B: null };
+function pulse(c, dir) {
+  const opt = c === 'A' ? E.optA : E.optB;
+  opt.classList.remove('is-up', 'is-down');
+  void opt.offsetWidth;                          // force reflow → relance le flash
+  opt.classList.add(dir);
+  clearTimeout(pulseT[c]);
+  pulseT[c] = setTimeout(() => opt.classList.remove('is-up', 'is-down'), 550);
+}
+
+function render() {
+  if (!cur) return;
+  const now = Date.now();
+  const va = cur.va || 0, vb = cur.vb || 0, tot = va + vb;
+  const pA = tot ? Math.round(va / tot * 100) : 0;
+  const pB = tot ? 100 - pA : 0;
+  E.fillA.style.width = pA + '%';
+  E.fillB.style.width = pB + '%';
+  E.pctA.textContent = tot ? pA + '%' : '—';
+  E.pctB.textContent = tot ? pB + '%' : '—';
+  /* — CONTRASTE AVANCE / RECU : à chaque vote, la barre qui gagne s'illumine,
+        celle qui perd s'éteint — */
+  if (mode === 'live' && tot > 0) {
+    if (lastPA !== null) {
+      if (pA !== lastPA) pulse('A', pA > lastPA ? 'up' : 'down');
+      if (pB !== lastPB) pulse('B', pB > lastPB ? 'up' : 'down');
+    }
+    lastPA = pA; lastPB = pB;
+  }
+  const lead = tot ? (va > vb ? 'A' : vb > va ? 'B' : null) : null;
+  E.pctA.classList.toggle('is-lead', lead === 'A');
+  E.pctB.classList.toggle('is-lead', lead === 'B');
+  if (mode === 'live' && lead && lead !== lastLeader && now - tickLock > 350) {
+    playSound('click');
+    const f = lead === 'A' ? E.fillA : E.fillB;
+    f.classList.add('is-flash');
+    setTimeout(() => f.classList.remove('is-flash'), 130);
+    tickLock = now;
+  }
+  if (mode === 'live') lastLeader = lead;
+  const rem = (cur.endsAt || 0) - now;
+  setTimer(rem);
+  const low = mode === 'live' && rem <= 15000;
+  E.timer.classList.toggle('is-low', low);
+  card.classList.toggle('is-low', low);
+  if (mode === 'live' && debateTotal > 0) {
+    E.timeFill.style.width = (Math.max(0, Math.min(1, rem / debateTotal)) * 100).toFixed(2) + '%';
+  } else if (mode === 'ended') {
+    E.timeFill.style.width = '0%';
+  }
+  /* tic-tac : plus présent en fin, et S'ACCÉLÈRE dans les 5 dernières secondes */
+  if (!MUTE) {
+    const cl = SOUNDS.clock.el;
+    cl.volume = low ? 0.3 : 0.22;
+    cl.playbackRate = (mode === 'live' && rem <= 5000)
+      ? Math.min(2.6, 1 + (1 - rem / 5000) * 1.6)
+      : 1;
+  }
+  card.classList.toggle('is-critical', mode === 'live' && rem <= 5000);
+  E.total.textContent = tot.toLocaleString('fr-FR') + ' VOTES';
+}
+
+function beginExit() {
+  if (exiting) return;
+  exiting = true;
+  card.classList.add('is-exit');
+  exitTimer = setTimeout(() => {
+    card.classList.remove('is-live');
+    card.classList.add('is-hidden');
+    mode = 'idle'; cur = null; lastLeader = null; exiting = false;
+    E.timer.classList.add('is-off');
+  }, 460);
+}
+
+function setState(next) {
+  const prev = mode;
+  clearTimeout(endTimer); clearTimeout(exitTimer);
+  mode = next.mode;
+
+  if (next.mode === 'idle') {
+    if (mode !== 'idle') mode = prev;             // on restaure (sortie pilotée ci-dessous)
+    if (prev === 'live' && !exiting) beginExit(); // le pont a tout coupé → sortie animée
+    else if (prev === 'ended' && !exiting) beginExit();
+    mode = 'idle'; cur = null; lastLeader = null;
+    E.timer.classList.add('is-off');
+    return;
+  }
+
+  exiting = false;
+  card.classList.remove('is-hidden', 'is-exit');
+  cur = next;
+  E.question.textContent = next.question;
+  E.lblA.textContent = next.a;
+  E.lblB.textContent = next.b;
+  E.timer.classList.remove('is-off');
+  setTimer((next.endsAt || 0) - Date.now());
+  E.hint.innerHTML = next.source === 'twitch'
+    ? 'SONDAGE TWITCH · EN COURS'
+    : next.source === 'demo'
+      ? 'MODE APERÇU'
+      : '<b>!vote A</b> · <b>!vote B</b>';
+
+  if (next.mode === 'live') {
+    if (next.startsAt) debateTotal = Math.max(2000, next.endsAt - next.startsAt);
+    else if (prev === 'idle') debateTotal = Math.max(2000, next.endsAt - Date.now());
+    if (prev === 'idle') {
+      lastPA = 0; lastPB = 0;                        // référence pour le 1er vote
+      playSound('impact');
+      clearTimeout(clockStartT);
+      clockStartT = setTimeout(startClock, 250);    // tic-tac dès le début du débat
+    }
+    E.chip.classList.remove('is-result');
+    E.chipTxt.textContent = 'DÉBAT EN DIRECT';
+    E.optA.classList.remove('is-winner', 'is-loser');
+    E.optB.classList.remove('is-winner', 'is-loser');
+    card.classList.add('is-live');
+    render();
+  }
+  else if (next.mode === 'ended') {
+    /* ── Sentence : 5 s ── */
+    E.chip.classList.add('is-result');
+    E.chipTxt.textContent = 'RÉSULTAT';
+    E.timer.classList.add('is-off');
+    lastPA = lastPB = null;                          // plus de pulse pendant la sentence
+    clearTimeout(clockStartT); stopClock();
+    E.timeFill.style.width = '0%';
+    const va = next.va || 0, vb = next.vb || 0;
+    const w = next.winner === 'A' || next.winner === 'B' ? next.winner : (va >= vb ? 'A' : 'B');
+    (w === 'A' ? E.optA : E.optB).classList.add('is-winner');
+    (w === 'A' ? E.optB : E.optA).classList.add('is-loser');
+    card.classList.add('is-live');
+    render();
+    playSound('victory');
+    endTimer = setTimeout(beginExit, 5000);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TRANSPORT — EventSource (SSE) + fallback polling 1,5 s
+   ═══════════════════════════════════════════════════════════════ */
+let lastMsg = 0, es = null, pollTimer = null;
+
+function apply(m) {
+  if (!m) return;
+  lastMsg = Date.now();
+  if (m.chat) { pushChat(m); return; }      // message du vrai chat (via le pont)
+  if (m.pin) { m.pin === 0 ? clearPin() : setPin(m); return; }   // message épinglé
+  if (m.goal) { setGoal(m); return; }                     // sub goal
+  if (m.alert) { queueAlert(m); return; }                 // follow / sub / raid
+  if (m.mode) setState(m);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CHAT — panneau gauche. En démo : messages fictifs.
+   En live : messages du chat Twitch diffusés par le pont (SSE).
+   ═══════════════════════════════════════════════════════════════ */
+const chatPanel = $('chat'), chatList = $('chatList');
+const chatPin = $('chatPin'), goalWrap = $('chatGoal');
+const goalLabel = $('goalLabel'), goalCount = $('goalCount'), goalFill = $('goalFill');
+const MAX_CHAT = 14;
+/* couleurs vives et stables par pseudo (identité du spectateur) */
+const CHAT_COLORS = ['#FFD166','#FF7B9C','#6BE585','#5EC8F2','#FF9F45','#C79BFF','#4EE3C4','#FF6B6B'];
+function chatColor(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return CHAT_COLORS[Math.abs(h) % CHAT_COLORS.length];
+}
+/* — Badge Twitch : image officielle (static-cdn.jtvnw.net), chip texte en repli — */
+const BADGE_CHIP = { broadcaster: 'STAFF', moderator: 'MOD', vip: 'VIP',
+  subscriber: v => 'SUB ' + (v || 1), premium_painter: 'PAINT', channel_team: 'TEAM' };
+function makeBadge(id, v) {
+  const img = document.createElement('img');
+  img.className = 'cbadge';
+  img.src = 'https://static-cdn.jtvnw.net/badges/en/v1/' + id + '/' + (v || 1) + '/3/dot';
+  img.alt = id;
+  const chip = document.createElement('span');
+  chip.className = 'cchip' + (id === 'broadcaster' || id === 'vip' ? ' cchip--me' : id === 'moderator' ? ' cchip--mod' : '');
+  chip.textContent = (typeof BADGE_CHIP[id] === 'function') ? BADGE_CHIP[id](v || 1)
+    : (BADGE_CHIP[id] || id.toUpperCase().slice(0, 5));
+  img.onerror = () => { try { img.replaceWith(chip); } catch (e) {} };
+  return img;
+}
+/* — Texte du message : emotes/GIFs Twitch tokenisés + URLs .gif/.webp brutes — */
+function appendMsg(cm, m) {
+  const text = String(m.msg || '').slice(0, 200);
+  let items = [];
+  if (m.emotes) {
+    let sets = {};
+    try { sets = JSON.parse(m.emoteSets || '{}'); } catch (e) {}
+    items = String(m.emotes).split('/').filter(Boolean).map(p => {
+      const i = p.indexOf(':'); if (i < 0) return null;
+      const id = p.slice(0, i);
+      const rng = p.slice(i + 1).split('-').map(Number);
+      if (!isFinite(rng[0]) || !isFinite(rng[1])) return null;
+      return { id, s: rng[0], e: rng[1], animated: sets[id] === 1 || sets[id] === true };
+    }).filter(Boolean).sort((a, b) => a.s - b.s);
+  }
+  let pos = 0;
+  for (const it of items) {
+    if (it.s < pos || it.e >= text.length) continue;
+    if (it.s > pos) cm.appendChild(document.createTextNode(text.slice(pos, it.s)));
+    const img = document.createElement('img');
+    img.className = 'cemote';
+    img.src = 'https://static-cdn.jtvnw.net/emote-images/' + it.id;
+    img.alt = text.slice(it.s, it.e + 1);
+    img.onerror = () => { try { img.replaceWith(document.createTextNode(img.alt)); } catch (e) {} };
+    cm.appendChild(img);
+    pos = it.e + 1;
+  }
+  if (pos < text.length) {
+    /* GIFs / WebP inline : URL externes ou locales (ex. démo) */
+    const parts = text.slice(pos).split(/(https?:\/\/[^\s]+\.(?:gif|webp)(?:\?[^\s]*)?|demo\/[\w.-]+\.(?:gif|webp))/i);
+    let n = 0;
+    for (const part of parts) {
+      if (!part) continue;
+      if (/^(https?:\/\/[^\s]+\.(?:gif|webp)|demo\/[\w.-]+\.(?:gif|webp))/i.test(part) && n < 2) {
+        const g = document.createElement('img');
+        g.className = 'cemote'; g.src = part; g.alt = 'gif';
+        g.onerror = () => { try { g.replaceWith(document.createTextNode('[gif]')); } catch (e) {} };
+        cm.appendChild(g); n++;
+      } else cm.appendChild(document.createTextNode(part));
+    }
+  }
+}
+/* — Ligne de message complète : [badges] [pseudo] [↪ réponse / texte] — */
+function buildMsgRow(m, withPinIcon) {
+  const role = m.role === 'me' ? 'me' : (m.role === 'mod' ? 'mod' : 'user');
+  const d = document.createElement('div');
+  d.className = 'cmsg' + (m.highlight ? ' is-hl' : '');
+  if (withPinIcon) {
+    const f = document.createElement('span'); f.className = 'cflag'; f.textContent = '📌';
+    d.appendChild(f);
+  }
+  if (m.badges && typeof m.badges === 'object' && Object.keys(m.badges).length) {
+    const bb = document.createElement('span'); bb.className = 'cbadges';
+    for (const [id, b] of Object.entries(m.badges).slice(0, 4)) bb.appendChild(makeBadge(id, b && b.version));
+    d.appendChild(bb);
+  }
+  const cn = document.createElement('span');
+  cn.className = 'cn' + (role !== 'user' ? ' cn--' + role : '');
+  cn.textContent = String(m.user || 'spectateur').slice(0, 24);
+  if (role === 'user') cn.style.color = chatColor(cn.textContent);
+  const cb = document.createElement('span'); cb.className = 'cbody';
+  if (m.replyTo) {
+    const r = document.createElement('span'); r.className = 'creply';
+    r.textContent = '↪ ';
+    const b = document.createElement('b'); b.textContent = '@' + String(m.replyTo).slice(0, 24);
+    r.appendChild(b);
+    cb.appendChild(r);
+  }
+  const ct = document.createElement('span'); ct.className = 'ctext';
+  appendMsg(ct, m);
+  cb.appendChild(ct);
+  d.appendChild(cn); d.appendChild(cb);
+  return d;
+}
+function pushChat(m) {
+  chatList.appendChild(buildMsgRow(m));
+  while (chatList.children.length > MAX_CHAT) chatList.removeChild(chatList.firstChild);
+  chatPanel.classList.add('is-on');
+}
+/* ═══ ALERTES (haut centre) : file d'attente + variantes Twitch ═══ */
+/* Préchargement des assets d'alertes à l'ouverture : au premier follow/sub/raid,
+   plus de fond noir qui « pop » (l'image est déjà en cache) */
+for (const u of ['assets/alert-bg.png','assets/icon-follow.png','assets/icon-sub.png','assets/icon-raid.png']) {
+  const im = new Image(); im.src = u;
+}
+/* — SONS D'ALERTES PERSONNALISABLES —
+   Dépose tes fichiers dans sounds/ (.wav, .mp3 ou .ogg) :
+     sounds/alert-follow.*  → joué à chaque NOUVEAU FOLLOW
+     sounds/alert-sub.*     → joué à chaque NOUVEAU SUB (toutes variantes)
+     sounds/alert-raid.*    → joué à chaque RAID
+   Fichier absent = pas de son (rien ne casse). Volume réglable dans ALERT_SOUNDS. */
+const ALERT_SOUNDS = { follow: 0.9, sub: 0.9, raid: 0.9 };
+const alertAudio = {};
+(function initAlertSounds() {
+  const probe = url => new Promise(res => {
+    const a = new Audio(url); a.preload = 'auto';
+    a.addEventListener('canplaythrough', () => res(a), { once: true });
+    a.addEventListener('error', () => res(null), { once: true });
+    setTimeout(() => res(null), 4000);
+  });
+  (async () => {
+    for (const kind of ['follow', 'sub', 'raid']) {
+      for (const ext of ['wav', 'mp3', 'ogg']) {
+        const a = await probe('sounds/alert-' + kind + '.' + ext);
+        if (a) { a.volume = ALERT_SOUNDS[kind]; alertAudio[kind] = a; break; }
+      }
+    }
+  })();
+})();
+const alertsEl = $('alerts');
+const alertQueue = [];
+const PLAN_NAMES = { 1000: 'Tier 1', 2000: 'Tier 2', 3000: 'Tier 3' };
+function alertText(a) {
+  const SUB_ICON = 'assets/icon-sub.png';
+  switch (a.alert) {
+    case 'follow':    return { kind: 'follow', icon: 'assets/icon-follow.png', labelTxt: 'NOUVEAU FOLLOW', user: a.user, subText: 'Bienvenue dans le chat !', hold: 5200 };
+    /* LOGIQUE MOIS : 1er mois → juste « 1 mois ». Revenant → « X mois consécutif — Y mois total »
+       + SLOT message personnalisé du sub (a.message) */
+    case 'sub':       return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subText: '1 mois', subMsg: a.message || undefined, hold: 6500 };
+    case 'resub':     {
+      const streak = (a.stints || 0) + 1;          // mois consécutif (R-number)
+      const total = a.total || streak;             // mois total (données connues)
+      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user,
+        subText: streak >= 2 ? streak + ' mois consécutif — ' + total + ' mois total' : total + ' mois',
+        subMsg: a.message || undefined, hold: 6500 };
+    }
+    case 'gift':      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subPre: 'a offert un abonnement à ', subHl: a.viewer || 'un spectateur', subMsg: a.message || undefined, hold: 6500 };
+    case 'anon':      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: 'UN ANONYME', subPre: 'a offert un abonnement à ', subHl: a.viewer || 'un spectateur', subMsg: a.message || undefined, hold: 6500 };
+    case 'community': return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subText: 'a offert des abonnements à tout le chat', subMsg: a.message || undefined, hold: 6500 };
+    case 'prime':     return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subText: 'a offert un abonnement Prime', subMsg: a.message || undefined, hold: 6500 };
+    case 'raid':      return { kind: 'raid', icon: 'assets/icon-raid.png', labelTxt: 'RAID', user: a.user, subText: 'arrive avec ' + (a.viewers || '?') + ' spectateurs', subMsg: a.message || undefined, hold: 6000 };
+  }
+  return null;
+}
+function showAlert(a) {
+  const t = alertText(a);
+  if (!t) return;
+  const d = document.createElement('div');
+  d.className = 'alert alert--' + t.kind;
+  const bg = document.createElement('div'); bg.className = 'alert__bg';
+  d.appendChild(bg);
+  const mk = document.createElement('span'); mk.className = 'mark7g'; mk.textContent = '7G';
+  d.appendChild(mk);
+  const ic = document.createElement('img');
+  ic.className = 'alert__icon'; ic.src = t.icon; ic.alt = '';
+  ic.onerror = () => ic.remove();
+  const bd = document.createElement('span'); bd.className = 'alert__body';
+  const lb = document.createElement('span'); lb.className = 'alert__labeltxt'; lb.textContent = t.labelTxt;
+  const us = document.createElement('span'); us.className = 'alert__user'; us.textContent = t.user || '???';
+  const sb = document.createElement('span'); sb.className = 'alert__sub';
+  if (t.subText) sb.textContent = t.subText;
+  else {
+    if (t.subPre) sb.appendChild(document.createTextNode(t.subPre));
+    const h = document.createElement('span'); h.className = 'hl'; h.textContent = t.subHl || '';
+    sb.appendChild(h);
+  }
+  bd.append(lb, us, sb);
+  if (t.subMsg) {   /* message personnalisé du sub : slot dédié, sous la ligne de détail */
+    const dv = document.createElement('span'); dv.className = 'alert__divider';
+    const mg = document.createElement('span'); mg.className = 'alert__msg';
+    mg.textContent = '« ' + t.subMsg + ' »';
+    bd.append(dv, mg);
+  }
+  d.append(ic, bd);
+  alertsEl.appendChild(d);
+  while (alertsEl.children.length > 1) alertsEl.removeChild(alertsEl.firstChild);
+  const au = alertAudio[t.kind];
+  if (au) { au.currentTime = 0; const p = au.play(); if (p && p.catch) p.catch(() => {}); }
+  setTimeout(() => { d.classList.add('out'); setTimeout(() => d.remove(), 320); }, t.hold);
+}
+function queueAlert(a) {
+  alertQueue.push(a);
+  processAlerts();
+}
+function processAlerts() {
+  if (alertsEl.children.length > 0) { setTimeout(processAlerts, 1500); return; }
+  const a = alertQueue.shift();
+  if (a) showAlert(a);
+}
+/* — Message ÉPINGLÉ (haut du chat, apparaît / disparaît) — */
+function setPin(m) {
+  chatPin.replaceChildren(buildMsgRow(m, true));
+  chatPin.classList.add('is-on');
+}
+function clearPin() { chatPin.classList.remove('is-on'); }
+/* — SUB GOAL (rallonge sous le chat) — */
+function setGoal(g) {
+  const cur = Math.max(0, Math.round(+g.current || 0));
+  const tgt = Math.max(1, Math.round(+g.target || 1));
+  if (g.label) goalLabel.textContent = String(g.label).slice(0, 24).toUpperCase();
+  goalCount.textContent = cur + ' / ' + tgt;
+  goalFill.style.width = Math.min(100, (cur / tgt) * 100).toFixed(1) + '%';
+  goalWrap.classList.toggle('is-done', cur >= tgt);
+}
+
+/* — Chat fictif (démo) : badges, highlight, réponses, emotes, GIFs — en boucle — */
+const FAKE_CHAT = [
+  { user: '7GIONNY', role: 'me', msg: 'Préparez vos arguments, le débat commence 💬',
+    badges: { broadcaster: { version: 1 } } },
+  { user: 'Louna', role: 'mod', msg: 'Le chat est prêt 🔥',
+    badges: { moderator: { version: 1 }, subscriber: { version: 3 } } },
+  { user: 'yassine', msg: 'j’suis parti sur le A personnellement 🤔',
+    badges: { subscriber: { version: 1 } } },
+  { user: 'maeva', msg: 'le B c’est plus subtil quand même 👌',
+    badges: { vip: { version: 1 } }, highlight: true },
+  { user: 'Théo', role: 'mod', msg: 'On reste sérieux, débat mûr comme d’habitude ⚖️',
+    badges: { moderator: { version: 1 } } },
+  { user: 'amelie', msg: 'c’est dur de trancher honnêtement Kreygasm',
+    emotes: '30251:34-41', emoteSets: '{"30251":1}' },
+  { user: 'kevin', msg: 'le format court m’a appris plein de trucs 💯',
+    badges: { subscriber: { version: 2 } } },
+  { user: 'noah', msg: 'regarde ce gif https://media.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif',
+    replyTo: 'yassine' },
+  { user: '7GIONNY', role: 'me', msg: 'Exactement, c’est le cœur du sujet.',
+    badges: { broadcaster: { version: 1 } }, highlight: true },
+  { user: 'sacha', msg: 'c’est la CatJAM', emotes: '125584839:9-14',
+    emoteSets: '{"125584839":1}' },
+  { user: 'emma', msg: 'je suis d’accord avec le A 😅', replyTo: '7GIONNY' },
+  { user: 'rachel', msg: 'ou un gif local : demo/gif-demo.gif' }
+];
+let fakeIdx = 0, fakeFirst = true;
+function fakeChatLoop() {
+  const delay = fakeFirst ? 1200 : 1600 + Math.random() * 1800;
+  fakeFirst = false;
+  setTimeout(() => {
+    const m = FAKE_CHAT[fakeIdx % FAKE_CHAT.length]; fakeIdx++;
+    pushChat(m);
+    if (DEMO) fakeChatLoop();
+  }, delay);
+}
+
+/* — Démo : sub goal + message épinglé (apparaît puis disparaît) — */
+function demoChatExtras() {
+  setGoal({ current: 47, target: 60, label: 'SUB GOAL' });
+  setTimeout(() => setPin({
+    user: '7GIONNY', role: 'me',
+    msg: 'Le débat commence dans 1 minute, préparez vos arguments !',
+    badges: { broadcaster: { version: 1 } }
+  }), 8000);
+  setTimeout(() => clearPin(), 34000);
+}
+/* — Démo : suivi / sub / gift / anonyme / resub / raid (séquence en boucle) — */
+function demoAlerts() {
+  const seq = [
+    { t: 2500,  a: { alert: 'follow', user: 'kevin' } },
+    { t: 11000, a: { alert: 'sub', user: 'amelie', plan: 2000, message: 'Merci 7GIONNY pour tous ces débats 👌' } },
+    { t: 19500, a: { alert: 'gift', user: 'Théo', viewer: 'yassine' } },
+    { t: 28000, a: { alert: 'anon', viewer: 'emma' } },
+    { t: 36500, a: { alert: 'resub', user: 'Louna', stints: 2, total: 12 } },
+    { t: 45000, a: { alert: 'raid', user: 'UNAUTRECREATOR', viewers: 1240, message: 'Salut le chat, on arrive avec vous !' } }
+  ];
+  for (const s of seq) setTimeout(() => queueAlert(s.a), s.t);
+  setTimeout(demoAlerts, 62000);
+}
+
+async function pollState() {
+  try {
+    const r = await fetch(API + '/api/state', { cache: 'no-store' });
+    apply(await r.json());
+  } catch (e) { /* hors-ligne : on réessaie au prochain tick */ }
+}
+
+function connect() {
+  if (q.get('poll') === '1') {            // mode distant (ex. Vercel) : polling 1 s, pas de SSE
+    pollTimer = setInterval(pollState, 1000);
+    pollState();
+    return;
+  }
+  try {
+    es = new EventSource(API + '/events');
+    es.onmessage = e => { try { apply(JSON.parse(e.data)); } catch (err) {} };
+    es.onopen = () => { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } };
+    es.onerror = () => { if (!pollTimer) { pollTimer = setInterval(pollState, 1500); pollState(); } };
+  } catch (e) {
+    pollTimer = setInterval(pollState, 1500);
+  }
+  /* garde-fou : si le flux se coupe pendant un débat, on re-synchro */
+  setInterval(() => { if (mode !== 'idle' && Date.now() - lastMsg > 7000) pollState(); }, 3000);
+}
+
+function vote(choice, user) {
+  fetch(API + '/api/vote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ choice, user: user || 'viewer-' + Math.random().toString(36).slice(2, 8) })
+  }).catch(() => {});
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MODE DÉMO — simulation autonome (aucun serveur requis)
+   ═══════════════════════════════════════════════════════════════ */
+const DEMO_DEBATES = [
+  { q: 'Le format court a-t-il tué la culture générale ?', a: "Oui, la profondeur s'accélère", b: "Non, l'accès s'élargit", t: 40 },
+  { q: 'Un débat sans conclusion est-il vain ?', a: 'Oui, tout doit trancher', b: "Non, l'essentiel est de confronter", t: 36 },
+  { q: 'Le live est-il devenu un média d\u2019opinion ?', a: 'Oui, il oriente les foules', b: 'Non, il fait exister les voix', t: 42 }
+];
+let demoIdx = 0, demoVotes = null, demoTimer = null, demoEndTimer = null;
+
+function demoStart() {
+  const d = DEMO_DEBATES[demoIdx % DEMO_DEBATES.length]; demoIdx++;
+  demoVotes = { A: 0, B: 0, bias: Math.random() < .5 ? 1.07 : .93 };
+  const d0 = Date.now();
+  setState({ mode: 'live', question: d.q, a: d.a, b: d.b, va: 0, vb: 0,
+             startsAt: d0, endsAt: d0 + d.t * 1000, source: 'demo' });
+  demoTimer = setInterval(() => {
+    if (!demoVotes || !cur) return;
+    let n = Math.random() < .6 ? 1 + (Math.random() * 3 | 0) : 0;
+    while (n--) (Math.random() < demoVotes.bias ? demoVotes.A++ : demoVotes.B++);
+    setState({ mode: 'live', question: cur.question, a: cur.a, b: cur.b,
+               startsAt: cur.startsAt, va: demoVotes.A, vb: demoVotes.B, endsAt: cur.endsAt, source: 'demo' });
+  }, 520);
+  demoEndTimer = setTimeout(demoEnd, d.t * 1000);
+}
+function demoEnd() {
+  if (!cur) return;
+  clearInterval(demoTimer);
+  const w = demoVotes.A >= demoVotes.B ? 'A' : 'B';
+  setState({ mode: 'ended', question: cur.question, a: cur.a, b: cur.b,
+             startsAt: cur.startsAt, va: demoVotes.A, vb: demoVotes.B, endsAt: Date.now(), winner: w, source: 'demo' });
+  demoVotes = null;
+  if (LOOP) setTimeout(demoStart, 9000);
+}
+
+/* — Vote par clic (aperçu uniquement) — */
+function clickVote(choice) {
+  if (mode !== 'live') return;
+  if (DEMO && demoVotes) {
+    demoVotes[choice]++;
+    setState({ mode: 'live', question: cur.question, a: cur.a, b: cur.b,
+               startsAt: cur.startsAt, va: demoVotes.A, vb: demoVotes.B, endsAt: cur.endsAt, source: 'demo' });
+  } else vote(choice);
+}
+E.optA.addEventListener('click', () => clickVote('A'));
+E.optB.addEventListener('click', () => clickVote('B'));
+
+/* ── Boucle d'affichage (timer) + démarrage ──────────────────── */
+setInterval(() => { if (mode !== 'idle') render(); }, 250);
+if (DEMO) { demoStart(); fakeChatLoop(); demoChatExtras(); demoAlerts(); } else {
+  connect();
+  fetch('api/goal').then(r => r.json()).then(setGoal).catch(() => {});
+}
+})();
+</script>
+</body>
+</html>

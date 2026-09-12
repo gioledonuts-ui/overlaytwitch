@@ -1,0 +1,22 @@
+{
+  "name": "7gionny-debate-overlay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Widget débat/sondage Twitch pour OBS — DA noire & violet électrique, lower-third, 100 % transparent. (7GIONNY)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "tmi.js": "^1.8.5"
+  },
+  "devDependencies": {
+    "@fontsource/bebas-neue": "^5.2.0",
+    "@fontsource/inter": "^5.2.0",
+    "jsdom": "^30.0.1",
+    "pngjs": "^7.0.0"
+  }
+}
