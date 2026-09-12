@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Widget — Objectif followers</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; height: 100vh; }
+    #ovt .ovt-goal { width: 460px; }
+    #ovt .ovt-haut { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+    #ovt .ovt-valeur { font-size: 22px; font-weight: 800; }
+    #ovt .ovt-pct { font-size: 15px; font-weight: 600; color: var(--ovt-accent); }
+    #ovt.complete .ovt-card { border-color: var(--ovt-accent); animation: ovt-pulse 1.6s ease infinite; }
+    #ovt.complete .ovt-pct { color: var(--ovt-ok); }
+    @keyframes ovt-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(169, 112, 255, 0.0), var(--ovt-shadow); }
+      50%      { box-shadow: 0 0 26px 4px rgba(169, 112, 255, 0.45), var(--ovt-shadow); }
+    }
+  </style>
+</head>
+<body>
+  <div id="ovt"></div>
+
+  <script src="../assets/ovt.js"></script>
+  <script>
+  (function () {
+    var root = document.getElementById('ovt');
+    var cible = OVT.settings.objectif; /* définie dans le panneau ou via ?objectif= */
+    var total = 0;
+
+    function affiche() {
+      var pct = Math.min(100, Math.round((total / cible) * 100));
+      root.innerHTML =
+        '<div class="ovt-card ovt-goal">' +
+          '<div style="width:100%">' +
+            '<div class="ovt-haut">' +
+              '<div><span class="ovt-label">Objectif followers</span>&nbsp; ' +
+              '<span class="ovt-valeur">' + total + ' <span style="opacity:.55">/ ' + cible + '</span></span></div>' +
+              '<div class="ovt-pct">' + pct + ' %</div>' +
+            '</div>' +
+            '<div class="ovt-track"><div class="ovt-fill" style="width:' + pct + '%"></div></div>' +
+          '</div>' +
+        '</div>';
+      root.classList.toggle('complete', pct >= 100);
+      root.classList.add('on');
+    }
+
+    async function synchronise(moi) {
+      var d = await OVT.helix('/channels/followers?broadcaster_id=' + encodeURIComponent(moi.id));
+      total = d.total || 0;
+      affiche();
+    }
+
+    /* ---------- mode démo (aperçu du design uniquement) ---------- */
+    function demo() {
+      OVT.demoBadge();
+      cible = 1000;
+      total = 642;
+      affiche();
+      setInterval(function () { total = Math.min(cible, total + Math.ceil(Math.random() * 7)); affiche(); }, 3000);
+    }
+
+    if (OVT.DEMO) return demo();
+
+    /* ---------- mode production ---------- */
+    /* pas d'objectif défini → rien à afficher (règle d'or) */
+    if (!cible) {
+      if (OVT.DEBUG) OVT.debugBadge('aucun objectif défini (panneau de config ou ?objectif=…)');
+      return;
+    }
+
+    (async function () {
+      var moi = await OVT.me();
+      if (OVT.DEBUG) OVT.debugBadge('connecté : ' + moi.login);
+
+      await synchronise(moi);
+      setInterval(function () { synchronise(moi).catch(function () {}); }, 300000); /* resynchronisation toutes les 5 min */
+
+      OVT.eventsub(
+        [{
+          type: 'channel.follow',
+          version: '2',
+          condition: { broadcaster_user_id: moi.id, moderator_user_id: moi.id }
+        }],
+        {
+          onEvent: function (ev, type) {
+            if (type === 'channel.follow') { total++; affiche(); }
+          },
+          onStatus: OVT.DEBUG ? function (s, info) { OVT.debugBadge('temps réel : ' + s + (info ? ' — ' + info : '')); } : undefined
+        }
+      );
+    })().catch(function (e) {
+      if (OVT.DEBUG) OVT.debugBadge('❌ ' + e.message);
+    });
+  })();
+  </script>
+</body>
+</html>

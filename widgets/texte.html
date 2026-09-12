@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Widget — Texte (points de chaîne)</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; height: 100vh; }
+    #ovt .ovt-card { flex-direction: column; gap: 6px; max-width: 900px; padding: 22px 34px; text-align: center; }
+    #ovt .ovt-user { font-size: 14px; font-weight: 600; color: var(--ovt-accent-2); letter-spacing: 0.05em; }
+    #ovt .ovt-texte {
+      font-size: 34px; font-weight: 800; line-height: 1.25;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      word-wrap: break-word; overflow-wrap: break-word;
+    }
+    #ovt .ovt-timer { width: 100%; height: 4px; background: rgba(255, 255, 255, 0.15); border-radius: 99px; overflow: hidden; margin-top: 10px; }
+    #ovt .ovt-timer > i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, var(--ovt-accent), var(--ovt-accent-2)); transform-origin: left; }
+  </style>
+</head>
+<body>
+  <div id="ovt"></div>
+
+  <script src="../assets/ovt.js"></script>
+  <script>
+  (function () {
+    var root = document.getElementById('ovt');
+    var duree = Math.max(3, OVT.settings.duree || 12) * 1000;
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    /* affiche un texte puis le masque */
+    function affiche(item) {
+      root.innerHTML =
+        '<div class="ovt-card">' +
+          '<div class="ovt-user">@' + esc(item.user) + '</div>' +
+          '<div class="ovt-texte">' + esc(item.text) + '</div>' +
+          '<div class="ovt-timer"><i></i></div>' +
+        '</div>';
+      requestAnimationFrame(function () {
+        root.classList.add('on');
+        var bar = root.querySelector('.ovt-timer > i');
+        bar.style.transition = 'transform ' + duree + 'ms linear';
+        requestAnimationFrame(function () { bar.style.transform = 'scaleX(0)'; });
+      });
+      return new Promise(function (r) { setTimeout(r, duree); });
+    }
+
+    function masque() {
+      root.classList.remove('on');
+      return new Promise(function (r) { setTimeout(function () { root.innerHTML = ''; r(); }, 500); });
+    }
+
+    /* file d'attente : les textes arrivent l'un après l'autre */
+    var file = [];
+    var occupe = false;
+    function defile() {
+      if (occupe || !file.length) return;
+      occupe = true;
+      (async function () {
+        while (file.length) { await affiche(file.shift()); }
+        await masque();
+        occupe = false;
+      })();
+    }
+
+    /* réception d'un échange de points de chaîne */
+    function recoit(ev, type) {
+      if (type !== 'channel.channel_points_custom_reward_redemption.add') return;
+      if (ev.status === 'canceled') return;
+
+      /* filtre optionnel sur le nom de la récompense */
+      var filtre = (OVT.settings.reward || '').trim().toLowerCase();
+      if (filtre && (ev.reward_title || '').trim().toLowerCase() !== filtre) return;
+
+      /* RÈGLE D'OR : pas de texte → on n'affiche rien du tout */
+      var texte = (ev.user_input || '').trim();
+      if (!texte) return;
+
+      file.push({ user: ev.user_name || 'viewer', text: texte.slice(0, 300) });
+      defile();
+    }
+
+    /* ---------- mode démo (aperçu du design uniquement) ---------- */
+    function demo() {
+      OVT.demoBadge();
+      var echantillons = [
+        { user: 'ViewerExemple', text: 'GG la stream, elle est trop bien 🔥' },
+        { user: 'AutreViewer', text: "Premier message à l'écran, trop stylé !" },
+        { user: 'ModoDémo', text: 'Bonne chance pour la suite du stream 💜' }
+      ];
+      var i = 0;
+      (async function boucle() {
+        await affiche(echantillons[i % echantillons.length]);
+        i++;
+        await masque();
+        setTimeout(boucle, 2500);
+      })();
+    }
+
+    if (OVT.DEMO) return demo();
+
+    /* ---------- mode production ---------- */
+    (async function () {
+      var moi = await OVT.me();
+      if (OVT.DEBUG) OVT.debugBadge('connecté : ' + moi.login);
+      OVT.eventsub(
+        [{
+          type: 'channel.channel_points_custom_reward_redemption.add',
+          version: '1',
+          condition: { broadcaster_user_id: moi.id }
+        }],
+        {
+          onEvent: recoit,
+          onStatus: OVT.DEBUG ? function (s, info) { OVT.debugBadge('temps réel : ' + s + (info ? ' — ' + info : '')); } : undefined
+        }
+      );
+    })().catch(function (e) {
+      /* en production : silence total (règle d'or) ; diagnostic avec ?debug=1 */
+      if (OVT.DEBUG) OVT.debugBadge('❌ ' + e.message);
+    });
+  })();
+  </script>
+</body>
+</html>

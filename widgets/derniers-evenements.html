@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Widget — Derniers événements</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <style>
+    body { display: flex; align-items: flex-start; justify-content: flex-end; height: 100vh; padding: 20px; }
+    #ovt.feed { justify-content: flex-start; }
+    #ovt .ovt-card { padding: 12px 18px; max-width: 480px; gap: 12px; }
+    #ovt .ovt-ico { font-size: 22px; }
+    #ovt .ovt-titre { font-size: 17px; font-weight: 700; line-height: 1.3; }
+    #ovt .ovt-sous { font-size: 13px; opacity: 0.75; margin-top: 2px; }
+    #ovt b { color: var(--ovt-accent-2); }
+  </style>
+</head>
+<body>
+  <div id="ovt" class="feed"></div>
+
+  <script src="../assets/ovt.js"></script>
+  <script>
+  (function () {
+    var feed = document.getElementById('ovt');
+    var MAX = 5; /* nombre d'événements affichés en même temps */
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    function ajoute(html) {
+      var div = document.createElement('div');
+      div.className = 'ovt-card ovt-item';
+      div.innerHTML = html;
+      feed.appendChild(div);
+      feed.classList.add('on');
+
+      /* on garde au maximum MAX événements à l'écran */
+      while (feed.children.length > MAX) {
+        (function (vieux) {
+          vieux.classList.add('bye');
+          setTimeout(function () { vieux.remove(); }, 450);
+        })(feed.firstElementChild);
+      }
+    }
+
+    function recoit(ev, type) {
+      var nom, sous;
+
+      if (type === 'channel.subscribe') {
+        nom = ev.user_name || 'Un viewer';
+        ajoute('<span class="ovt-ico">💜</span><div class="ovt-titre">' +
+          (ev.is_gift ? '<b>' + esc(nom) + '</b> a reçu un abonnement offert'
+                      : '<b>' + esc(nom) + '</b> vient de s\'abonner') +
+          '</div>');
+
+      } else if (type === 'channel.subscription.message') {
+        nom = ev.user_name || 'Un viewer';
+        var mois = ev.cumulative_months || 1;
+        sous = (ev.message && ev.message.text ? esc(ev.message.text).slice(0, 160) : '');
+        ajoute('<span class="ovt-ico">💜</span><div class="ovt-titre"><b>' + esc(nom) +
+          '</b> s\'est réabonné·e — ' + mois + ' mois</div>' +
+          (sous ? '<div class="ovt-sous">' + sous + '</div>' : ''));
+
+      } else if (type === 'channel.subscription.gift') {
+        nom = ev.user_name || 'Un viewer';
+        ajoute('<span class="ovt-ico">🎁</span><div class="ovt-titre"><b>' + esc(nom) +
+          '</b> a offert ' + (ev.total || 1) + ' abonnement' + ((ev.total || 1) > 1 ? 's' : '') + '</div>');
+
+      } else if (type === 'channel.cheer') {
+        nom = ev.user_name || 'Anonyme';
+        sous = (ev.message ? esc(ev.message).slice(0, 160) : '');
+        ajoute('<span class="ovt-ico">💎</span><div class="ovt-titre"><b>' + esc(nom) +
+          '</b> a envoyé <b>' + (ev.bits || 0) + ' bits</b></div>' +
+          (sous ? '<div class="ovt-sous">' + sous + '</div>' : ''));
+
+      } else if (type === 'channel.raid') {
+        nom = ev.from_broadcaster_user_name || 'Une chaîne';
+        ajoute('<span class="ovt-ico">🚀</span><div class="ovt-titre"><b>' + esc(nom) +
+          '</b> arrive en raid — ' + (ev.viewers || 0) + ' viewers</div>');
+      }
+    }
+
+    /* ---------- mode démo (aperçu du design uniquement) ---------- */
+    function demo() {
+      OVT.demoBadge();
+      var ex = [
+        '<span class="ovt-ico">💜</span><div class="ovt-titre"><b>ViewerExemple</b> vient de s\'abonner</div>',
+        '<span class="ovt-ico">💎</span><div class="ovt-titre"><b>ViewerBits</b> a envoyé <b>500 bits</b></div>',
+        '<span class="ovt-ico">🎁</span><div class="ovt-titre"><b>GénéreuxViewer</b> a offert 3 abonnements</div>',
+        '<span class="ovt-ico">🚀</span><div class="ovt-titre"><b>ChaîneExemple</b> arrive en raid — 42 viewers</div>',
+        '<span class="ovt-ico">💜</span><div class="ovt-titre"><b>FidèleViewer</b> s\'est réabonné·e — 6 mois</div>'
+      ];
+      var i = 0;
+      setInterval(function () { ajoute(ex[i % ex.length]); i++; }, 3000);
+      ajoute(ex[0]); i = 1;
+    }
+
+    if (OVT.DEMO) return demo();
+
+    /* ---------- mode production : subs, resubs, gifts, bits, raids ---------- */
+    (async function () {
+      var moi = await OVT.me();
+      if (OVT.DEBUG) OVT.debugBadge('connecté : ' + moi.login);
+      OVT.eventsub(
+        [
+          { type: 'channel.subscribe', version: '1', condition: { broadcaster_user_id: moi.id } },
+          { type: 'channel.subscription.message', version: '1', condition: { broadcaster_user_id: moi.id } },
+          { type: 'channel.subscription.gift', version: '1', condition: { broadcaster_user_id: moi.id } },
+          { type: 'channel.cheer', version: '1', condition: { broadcaster_user_id: moi.id } },
+          { type: 'channel.raid', version: '1', condition: { to_broadcaster_user_id: moi.id } }
+        ],
+        {
+          onEvent: recoit,
+          onStatus: OVT.DEBUG ? function (s, info) { OVT.debugBadge('temps réel : ' + s + (info ? ' — ' + info : '')); } : undefined
+        }
+      );
+    })().catch(function (e) {
+      if (OVT.DEBUG) OVT.debugBadge('❌ ' + e.message);
+    });
+  })();
+  </script>
+</body>
+</html>

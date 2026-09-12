@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panneau — Overlays Twitch</title>
+  <link rel="stylesheet" href="assets/theme.css">
+  <style>
+    /* le panneau est une vraie page (fond opaque), contrairement aux widgets */
+    html, body { overflow: auto !important; }
+    body {
+      background: #0e0b16;
+      background: radial-gradient(1200px 600px at 20% -10%, #241a3f 0%, #0e0b16 55%);
+      min-height: 100vh;
+      padding: 28px 16px 60px;
+      font-family: var(--ovt-font);
+    }
+    main { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+    header h1 { font-size: 30px; font-weight: 800; }
+    header h1 span { color: var(--ovt-accent); }
+    header p { opacity: 0.7; margin-top: 4px; font-size: 15px; }
+    .card {
+      background: rgba(255, 255, 255, 0.045);
+      border: var(--ovt-border);
+      border-radius: var(--ovt-radius);
+      box-shadow: var(--ovt-shadow);
+      padding: 20px 22px;
+    }
+    .card h2 { font-size: 18px; margin-bottom: 6px; }
+    .card h2 .num {
+      display: inline-block; width: 26px; height: 26px; line-height: 26px; text-align: center;
+      background: var(--ovt-accent); color: #14101f; border-radius: 8px; font-size: 15px; margin-right: 8px;
+    }
+    .card p { font-size: 14px; opacity: 0.8; }
+    .row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+    label { font-size: 13px; font-weight: 600; opacity: 0.85; }
+    input {
+      background: #191427; color: #fff; border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 10px; padding: 10px 12px; font-size: 14px; font-family: inherit; outline: none; min-width: 220px;
+    }
+    input:focus { border-color: var(--ovt-accent); }
+    .btn {
+      background: #241d38; color: #fff; border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 10px; padding: 10px 16px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .btn:hover { border-color: var(--ovt-accent); }
+    .btn.primary { background: linear-gradient(90deg, #772ce8, #a970ff); border: none; }
+    .btn.small { padding: 6px 12px; font-size: 13px; }
+    .mono {
+      font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: 12.5px;
+      background: #191427; border: 1px solid rgba(255,255,255,.14); border-radius: 8px;
+      padding: 8px 10px; word-break: break-all; flex: 1; min-width: 260px;
+    }
+    .ok { color: var(--ovt-ok); }
+    .warn { color: #ffd166; }
+    .bad { color: #ff6b81; }
+    .note { font-size: 13px; opacity: 0.75; margin-top: 10px; }
+    .etat { display: flex; align-items: center; gap: 14px; margin: 12px 0; flex-wrap: wrap; }
+    .etat img { width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--ovt-accent); }
+    .etat .qui { font-size: 17px; font-weight: 700; }
+    .pastille { font-size: 13px; font-weight: 600; padding: 4px 12px; border-radius: 99px; border: 1px solid; }
+    .p-vert { color: var(--ovt-ok); border-color: var(--ovt-ok); background: rgba(56,224,143,.08); }
+    .p-orange { color: #ffd166; border-color: #ffd166; background: rgba(255,209,102,.08); }
+    .p-rouge { color: #ff6b81; border-color: #ff6b81; background: rgba(255,107,129,.08); }
+    .widget {
+      border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 14px 16px; margin-top: 12px;
+      display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,.18);
+    }
+    .widget .titre { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .widget .nom { font-weight: 700; font-size: 15px; }
+    .widget .taille { font-size: 12px; opacity: 0.6; }
+    .widget .desc { font-size: 13px; opacity: 0.75; }
+    .widget .url { display: flex; gap: 8px; align-items: stretch; }
+    .widget a.demo-lien { font-size: 12.5px; color: var(--ovt-accent-2); }
+    .grille-demo { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .grille-demo a {
+      font-size: 13px; font-weight: 600; color: #fff; text-decoration: none;
+      background: rgba(169,112,255,.14); border: 1px solid rgba(169,112,255,.45);
+      padding: 8px 14px; border-radius: 99px;
+    }
+    .grille-demo a:hover { background: rgba(169,112,255,.3); }
+    footer { text-align: center; font-size: 12px; opacity: 0.5; margin-top: 8px; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>🎮 Overlays <span>Twitch</span></h1>
+    <p>Panneau de configuration — widgets 100% statiques hébergés sur GitHub Pages, connectés à l'API Twitch.</p>
+  </main>
+
+  <!-- ÉTAPE 1 : application Twitch -->
+  <section class="card">
+    <h2><span class="num">1</span>Identifiant de l'application Twitch</h2>
+    <p>
+      Sur <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener" style="color:var(--ovt-accent)">dev.twitch.tv/console/apps</a>,
+      clique sur <b>« Register Your Application »</b>, mets le nom que tu veux (ex. « Overlays de &lt;ton pseudo&gt; »),
+      colle l'URL de redirection ci-dessous dans <b>« OAuth Redirect URLs »</b>, choisis la catégorie <b>« Other »</b>,
+      puis crée et copie ton <b>Client ID</b>.
+    </p>
+    <div class="row">
+      <div class="mono" id="redirectUri">…</div>
+      <button class="btn small" id="copierRedirect">Copier</button>
+    </div>
+    <div class="row">
+      <label for="clientId">Client ID de ton application</label>
+    </div>
+    <div class="row">
+      <input id="clientId" placeholder="ex. ab1cd2efg3h4i5j6k7l8m9" spellcheck="false" autocomplete="off">
+      <button class="btn" id="sauverClientId">Enregistrer</button>
+    </div>
+  </section>
+
+  <!-- ÉTAPE 2 : connexion -->
+  <section class="card">
+    <h2><span class="num">2</span>Connexion à Twitch</h2>
+    <div id="etat" class="etat"><span class="pastille p-orange">Chargement…</span></div>
+    <div class="row">
+      <button class="btn primary" id="connexion">Se connecter avec Twitch</button>
+      <button class="btn" id="deconnexion" style="display:none">Se déconnecter</button>
+    </div>
+    <div class="note" id="noteToken"></div>
+  </section>
+
+  <!-- ÉTAPE 3 : réglages -->
+  <section class="card">
+    <h2><span class="num">3</span>Réglages des widgets</h2>
+    <div class="row">
+      <label for="duree">Durée d'affichage du texte (secondes)</label>
+      <input id="duree" type="number" min="3" max="120" style="min-width:110px">
+    </div>
+    <div class="row">
+      <label for="reward">Récompense à écouter (nom exact) — vide = toutes les récompenses avec texte</label>
+    </div>
+    <div class="row">
+      <input id="reward" placeholder="ex. Affiche ton message" spellcheck="false" style="min-width:320px">
+    </div>
+    <div class="row">
+      <label for="objectif">Objectif followers</label>
+      <input id="objectif" type="number" min="1" style="min-width:110px">
+    </div>
+    <div class="row">
+      <button class="btn primary" id="sauverReglages">Enregistrer les réglages</button>
+      <span id="reglagesOk" class="ok" style="display:none">✓ Enregistrés — pense à re-copier les URLs OBS ci-dessous</span>
+    </div>
+  </section>
+
+  <!-- ÉTAPE 4 : URLs OBS -->
+  <section class="card">
+    <h2><span class="num">4</span>URLs à coller dans OBS</h2>
+    <p>Dans OBS : <b>Sources → + → Navigateur</b> → colle l'URL du widget → indique la taille conseillée.</p>
+    <p class="note">⚠️ Ces URLs contiennent ta clé de connexion : ne les partage pas. Si tu changes un réglage à l'étape 3, re-copie les URLs.</p>
+    <div id="listeWidgets"></div>
+  </section>
+
+  <!-- Aperçu démo -->
+  <section class="card">
+    <h2>👁 Aperçu du design (mode démo)</h2>
+    <p>Ces liens affichent des contenus d'exemple pour choisir l'emplacement et la taille dans OBS. En production (URLs de l'étape 4), jamais de contenu fictif : pas de donnée = widget invisible.</p>
+    <div class="grille-demo" id="grilleDemo"></div>
+  </section>
+
+  <footer>overlaytwitch — si un widget n'apparaît pas, ajoute <span class="mono" style="padding:2px 6px">&amp;debug=1</span> à la fin de son URL pour voir l'état de la connexion.</footer>
+</main>
+
+<script src="assets/ovt.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var SCOPES = 'moderator:read:followers channel:read:redemptions channel:read:subscriptions bits:read';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var redirectUri = location.origin + location.pathname; /* cette page, sans ?ni# */
+  var baseSite = location.origin + location.pathname.replace(/config\.html.*$/, '');
+
+  /* ---------- définition des widgets ---------- */
+  var WIDGETS = [
+    {
+      f: 'texte.html', nom: 'Texte (points de chaîne)', taille: '1920 × 300',
+      desc: "Affiche le texte envoyé par un viewer quand il échange une récompense de points de chaîne. Rien ne s'affiche s'il n'y a pas de texte.",
+      params: function (r) { return { duree: r.duree, reward: r.reward }; }
+    },
+    {
+      f: 'dernier-follower.html', nom: 'Dernier follower', taille: '460 × 110',
+      desc: 'Le follower le plus récent, mis à jour en temps réel.',
+      params: function () { return {}; }
+    },
+    {
+      f: 'derniers-evenements.html', nom: 'Derniers événements', taille: '540 × 720',
+      desc: 'Fil en direct des abonnements, réabonnements, subs offerts, bits et raids.',
+      params: function () { return {}; }
+    },
+    {
+      f: 'objectif-followers.html', nom: 'Objectif followers', taille: '640 × 150',
+      desc: 'Barre de progression vers ton objectif de followers.',
+      params: function (r) { return { objectif: r.objectif }; }
+    },
+    {
+      f: 'viewers.html', nom: 'Compteur de viewers', taille: '320 × 90',
+      desc: 'Nombre de viewers, actualisé chaque minute. Invisible hors ligne.',
+      params: function () { return {}; }
+    }
+  ];
+
+  /* ---------- utilitaires ---------- */
+  function copier(texte, bouton) {
+    var fait = function () {
+      var vieux = bouton.textContent;
+      bouton.textContent = 'Copié ✓';
+      setTimeout(function () { bouton.textContent = vieux; }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texte).then(fait, function () { recopie(texte); fait(); });
+    } else { recopie(texte); fait(); }
+  }
+  function recopie(t) {
+    var z = document.createElement('textarea');
+    z.value = t; document.body.appendChild(z); z.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    z.remove();
+  }
+  function dateFr(ts) {
+    return new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  function reglages() {
+    return {
+      duree: parseInt($('duree').value, 10) || 12,
+      reward: $('reward').value.trim(),
+      objectif: parseInt($('objectif').value, 10) || 0
+    };
+  }
+
+  function urlWidget(w, avecToken) {
+    var r = reglages();
+    var q = new URLSearchParams();
+    q.set('client_id', OVT.settings.clientId);
+    if (avecToken && OVT.settings.token) q.set('token', OVT.settings.token);
+    var p = w.params(r);
+    Object.keys(p).forEach(function (k) {
+      if (p[k] !== '' && p[k] !== null && p[k] !== undefined && p[k] !== 0) q.set(k, p[k]);
+    });
+    return baseSite + 'widgets/' + w.f + '?' + q.toString();
+  }
+
+  /* ---------- rendu ---------- */
+  function afficherEtat() {
+    var token = OVT.store.get('token', '');
+    var login = OVT.store.get('login', '');
+    var expiry = OVT.store.get('expiry', 0);
+    var avatar = OVT.store.get('avatar', '');
+    var e = $('etat');
+
+    if (token && login) {
+      var jours = expiry ? Math.floor((expiry - Date.now()) / 86400000) : null;
+      var pastille;
+      if (jours === null) pastille = '<span class="pastille p-vert">Connecté</span>';
+      else if (jours <= 2) pastille = '<span class="pastille p-rouge">Token à renouveler ! (' + (jours < 0 ? 'expiré' : jours + ' j restant' + (jours > 1 ? 's' : '')) + ')</span>';
+      else if (jours <= 14) pastille = '<span class="pastille p-orange">Connecté — ' + jours + ' jours restants</span>';
+      else pastille = '<span class="pastille p-vert">Connecté — ' + jours + ' jours restants</span>';
+
+      e.innerHTML = (avatar ? '<img src="' + avatar + '" alt="">' : '') +
+        '<div><div class="qui">' + login + '</div>' +
+        (expiry ? '<div style="font-size:13px;opacity:.7">connexion valable jusqu\'au ' + dateFr(expiry) + '</div>' : '') +
+        '</div>' + pastille;
+      $('connexion').style.display = 'none';
+      $('deconnexion').style.display = '';
+      $('noteToken').innerHTML = 'Le token dure environ <b>60 jours</b>. Quand la pastille passe orange/rouge : reconnecte-toi puis <b>re-copie les URLs OBS</b> (étape 4).';
+    } else {
+      e.innerHTML = '<span class="pastille p-orange">Non connecté</span>';
+      $('connexion').style.display = '';
+      $('deconnexion').style.display = 'none';
+      $('noteToken').innerHTML = '';
+    }
+    afficherWidgets();
+  }
+
+  function afficherWidgets() {
+    var conteneur = $('listeWidgets');
+    var connecte = !!OVT.store.get('token', '');
+    conteneur.innerHTML = '';
+
+    WIDGETS.forEach(function (w) {
+      var div = document.createElement('div');
+      div.className = 'widget';
+      var ligneUrl;
+      if (connecte) {
+        ligneUrl =
+          '<div class="url">' +
+            '<div class="mono">' + urlWidget(w, true) + '</div>' +
+            '<button class="btn small copier">Copier l\'URL</button>' +
+          '</div>';
+      } else {
+        ligneUrl = '<div class="note">Connecte-toi (étape 2) pour générer l\'URL OBS de ce widget.</div>';
+      }
+      div.innerHTML =
+        '<div class="titre"><span class="nom">' + w.nom + '</span><span class="taille">taille OBS conseillée : ' + w.taille + '</span></div>' +
+        '<div class="desc">' + w.desc + '</div>' +
+        ligneUrl;
+      if (connecte) {
+        div.querySelector('.copier').addEventListener('click', function () {
+          copier(urlWidget(w, true), this);
+        });
+      }
+      conteneur.appendChild(div);
+    });
+  }
+
+  function afficherDemo() {
+    var g = $('grilleDemo');
+    g.innerHTML = '';
+    WIDGETS.forEach(function (w) {
+      var a = document.createElement('a');
+      a.href = baseSite + 'widgets/' + w.f + '?demo=1';
+      a.target = '_blank';
+      a.textContent = w.nom;
+      g.appendChild(a);
+    });
+  }
+
+  /* ---------- connexion OAuth (implicit flow) ---------- */
+  $('connexion').addEventListener('click', function () {
+    var clientId = OVT.settings.clientId || $('clientId').value.trim();
+    if (!clientId) { alert('Colle d\'abord ton Client ID (étape 1).'); return; }
+    OVT.store.set('clientId', clientId);
+    var url = 'https://id.twitch.tv/oauth2/authorize' +
+      '?client_id=' + encodeURIComponent(clientId) +
+      '&redirect_uri=' + encodeURIComponent(redirectUri) +
+      '&response_type=token' +
+      '&scope=' + encodeURIComponent(SCOPES);
+    location.href = url;
+  });
+
+  $('deconnexion').addEventListener('click', function () {
+    OVT.store.del('token');
+    OVT.store.del('login');
+    OVT.store.del('expiry');
+    OVT.store.del('avatar');
+    OVT.settings.token = '';
+    afficherEtat();
+  });
+
+  /* retour OAuth : le token arrive dans l'ancre de l'URL (#access_token=…) */
+  function traiteRetour() {
+    if (location.hash.length < 2) return false;
+    var h = new URLSearchParams(location.hash.slice(1));
+    var token = h.get('access_token');
+    if (!token) return false;
+
+    OVT.settings.token = token;
+    OVT.store.set('token', token);
+
+    (async function () {
+      var login = '?', avatar = '', expires = 60 * 24 * 3600;
+      try {
+        var v = await OVT.validate();
+        login = v.login || '?';
+        if (v.expires_in) expires = v.expires_in;
+      } catch (e) { /* id.twitch.tv injoignable : on tente Helix */ }
+      try {
+        var moi = await OVT.me();
+        login = moi.login || login;
+        avatar = moi.profile_image_url || '';
+      } catch (e) {
+        OVT.store.del('token');
+        alert('Connexion refusée : ' + e.message);
+      }
+      OVT.store.set('login', login);
+      OVT.store.set('avatar', avatar);
+      OVT.store.set('expiry', Date.now() + expires * 1000);
+      history.replaceState(null, '', location.pathname);
+      afficherEtat();
+    })();
+    return true;
+  }
+
+  /* ---------- champ client ID + réglages ---------- */
+  $('sauverClientId').addEventListener('click', function () {
+    OVT.store.set('clientId', $('clientId').value.trim());
+    OVT.settings.clientId = $('clientId').value.trim();
+    afficherWidgets();
+    this.textContent = 'Enregistré ✓';
+    setTimeout(function () { $('sauverClientId').textContent = 'Enregistrer'; }, 1500);
+  });
+
+  $('sauverReglages').addEventListener('click', function () {
+    var r = reglages();
+    OVT.store.set('duree', r.duree);
+    OVT.store.set('reward', r.reward);
+    OVT.store.set('objectif', r.objectif);
+    $('reglagesOk').style.display = '';
+    setTimeout(function () { $('reglagesOk').style.display = 'none'; }, 4000);
+    afficherWidgets();
+  });
+
+  $('copierRedirect').addEventListener('click', function () { copier(redirectUri, this); });
+
+  /* ---------- démarrage ---------- */
+  $('redirectUri').textContent = redirectUri;
+  $('clientId').value = OVT.settings.clientId;
+  $('duree').value = OVT.settings.duree || 12;
+  $('reward').value = OVT.settings.reward || '';
+  $('objectif').value = OVT.settings.objectif || 500;
+
+  afficherDemo();
+  if (!traiteRetour()) afficherEtat();
+
+  /* rafraîchit la pastille d'expiration en direct */
+  if (OVT.settings.token) {
+    OVT.validate().then(function (v) {
+      OVT.store.set('expiry', Date.now() + (v.expires_in || 0) * 1000);
+      OVT.store.set('login', v.login || OVT.store.get('login', ''));
+      afficherEtat();
+    }).catch(function () { afficherEtat(); });
+  }
+})();
+</script>
+</body>
+</html>

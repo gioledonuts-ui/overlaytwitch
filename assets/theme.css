@@ -1,0 +1,115 @@
+/* =========================================================
+   OVT — thème des widgets (charte graphique par défaut)
+   Toutes les couleurs / polices se changent ici.
+   TODO charte graphique : remplacer les variables ci-dessous
+   par le logo, les couleurs et la police fournis.
+   ========================================================= */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+:root {
+  --ovt-font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --ovt-fg: #ffffff;                  /* couleur du texte */
+  --ovt-bg: rgba(14, 11, 22, 0.62);   /* fond des cartes (translucide pour OBS) */
+  --ovt-accent: #a970ff;              /* couleur principale */
+  --ovt-accent-2: #ff70d9;            /* couleur secondaire */
+  --ovt-ok: #38e08f;                  /* vert (états positifs) */
+  --ovt-radius: 16px;                 /* arrondi des cartes */
+  --ovt-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  --ovt-border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* OBS : fond obligatoirement transparent */
+html, body { background: transparent !important; overflow: hidden; }
+
+body {
+  font-family: var(--ovt-font);
+  color: var(--ovt-fg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* conteneur racine de chaque widget : invisible tant qu'il n'y a rien à montrer */
+#ovt {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+#ovt.on { opacity: 1; transform: none; }
+
+/* carte vitrée commune */
+.ovt-card {
+  background: var(--ovt-bg);
+  border: var(--ovt-border);
+  border-radius: var(--ovt-radius);
+  box-shadow: var(--ovt-shadow);
+  backdrop-filter: blur(10px);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ovt-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px solid var(--ovt-accent);
+  object-fit: cover;
+  background: #241f33;
+}
+
+.ovt-label {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  font-weight: 600;
+}
+.ovt-value { font-size: 24px; font-weight: 800; line-height: 1.2; }
+.ovt-accent { color: var(--ovt-accent); }
+.ovt-accent2 { color: var(--ovt-accent-2); }
+
+/* barre de progression (objectif followers) */
+.ovt-track {
+  height: 10px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+.ovt-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--ovt-accent), var(--ovt-accent-2));
+  transition: width 0.8s ease;
+}
+
+/* fil d'événements */
+#ovt.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+.ovt-item { animation: ovt-in 0.5s ease both; }
+.ovt-item.bye { opacity: 0; transform: translateX(30px); transition: all 0.4s ease; }
+@keyframes ovt-in {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* badges démo / debug (visibles seulement si demandés dans l'URL) */
+.ovt-badge {
+  position: fixed;
+  left: 8px;
+  bottom: 8px;
+  font: 600 11px var(--ovt-font);
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  letter-spacing: 0.1em;
+  z-index: 999;
+}
+.ovt-badge.demo  { color: #ffd166; border-color: rgba(255, 209, 102, 0.4); }
+.ovt-badge.debug { color: #7fd4ff; border-color: rgba(127, 212, 255, 0.4); }

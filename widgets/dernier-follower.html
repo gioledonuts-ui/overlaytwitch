@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Widget — Dernier follower</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; height: 100vh; }
+    #ovt .ovt-card { gap: 16px; padding: 16px 26px; }
+    #ovt .ovt-value { font-size: 26px; }
+  </style>
+</head>
+<body>
+  <div id="ovt"></div>
+
+  <script src="../assets/ovt.js"></script>
+  <script>
+  (function () {
+    var root = document.getElementById('ovt');
+    var courant = null; /* nom affiché actuellement */
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    function affiche(nom, avatar) {
+      courant = nom;
+      root.innerHTML =
+        '<div class="ovt-card">' +
+          (avatar ? '<img class="ovt-avatar" src="' + esc(avatar) + '" alt="">' : '') +
+          '<div>' +
+            '<div class="ovt-label">Dernier follower</div>' +
+            '<div class="ovt-value">' + esc(nom) + '</div>' +
+          '</div>' +
+        '</div>';
+      root.classList.add('on');
+    }
+
+    /* avatar chargé en différé : on met à jour si c'est toujours le bon viewer */
+    function avatarPour(nom, userId) {
+      OVT.userById(userId).then(function (u) {
+        if (u && u.profile_image_url && courant === nom) {
+          var img = root.querySelector('.ovt-avatar');
+          if (img) img.src = u.profile_image_url;
+        }
+      }).catch(function () {});
+    }
+
+    /* ---------- mode démo (aperçu du design uniquement) ---------- */
+    function demo() {
+      OVT.demoBadge();
+      var noms = ['ViewerExemple', 'NouvelleViewer', 'AbonnéeDuDimanche'];
+      var i = 0;
+      setInterval(function () { affiche(noms[i % noms.length]); i++; }, 4000);
+      affiche(noms[0]); i = 1;
+    }
+
+    if (OVT.DEMO) return demo();
+
+    /* ---------- mode production ---------- */
+    (async function () {
+      var moi = await OVT.me();
+
+      /* état initial : le follower le plus récent (rien si la chaîne n'en a aucun) */
+      var d = await OVT.helix('/channels/followers?broadcaster_id=' + encodeURIComponent(moi.id));
+      if (d.data && d.data.length) {
+        var recents = d.data.slice().sort(function (a, b) {
+          return String(b.followed_at || '').localeCompare(String(a.followed_at || ''));
+        });
+        var f = recents[0];
+        affiche(f.user_name, null);
+        avatarPour(f.user_name, f.user_id);
+      } else if (OVT.DEBUG) {
+        OVT.debugBadge('connecté : ' + moi.login + ' — aucun follower pour le moment');
+      }
+
+      /* temps réel : chaque nouveau follower met à jour le widget */
+      OVT.eventsub(
+        [{
+          type: 'channel.follow',
+          version: '2',
+          condition: { broadcaster_user_id: moi.id, moderator_user_id: moi.id }
+        }],
+        {
+          onEvent: function (ev, type) {
+            if (type !== 'channel.follow') return;
+            affiche(ev.user_name, null);
+            avatarPour(ev.user_name, ev.user_id);
+          },
+          onStatus: OVT.DEBUG ? function (s, info) { OVT.debugBadge('temps réel : ' + s + (info ? ' — ' + info : '')); } : undefined
+        }
+      );
+    })().catch(function (e) {
+      if (OVT.DEBUG) OVT.debugBadge('❌ ' + e.message);
+    });
+  })();
+  </script>
+</body>
+</html>

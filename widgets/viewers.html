@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Widget — Compteur de viewers</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; height: 100vh; }
+    #ovt .ovt-card { gap: 12px; padding: 12px 22px; }
+    #ovt .ovt-ico { font-size: 24px; }
+    #ovt .ovt-value { font-size: 26px; }
+  </style>
+</head>
+<body>
+  <div id="ovt"></div>
+
+  <script src="../assets/ovt.js"></script>
+  <script>
+  (function () {
+    var root = document.getElementById('ovt');
+
+    function affiche(n) {
+      root.innerHTML =
+        '<div class="ovt-card">' +
+          '<span class="ovt-ico">👀</span>' +
+          '<div><div class="ovt-label">Viewers</div><div class="ovt-value">' + n + '</div></div>' +
+        '</div>';
+      root.classList.add('on');
+    }
+
+    function masque() {
+      root.classList.remove('on');
+      setTimeout(function () { if (!root.classList.contains('on')) root.innerHTML = ''; }, 500);
+    }
+
+    async function rafraichit(moi) {
+      var d = await OVT.helix('/streams?user_id=' + encodeURIComponent(moi.id));
+      if (d.data && d.data.length && d.data[0].type === 'live') {
+        affiche(d.data[0].viewer_count || 0);
+      } else {
+        /* hors ligne → aucune donnée → widget invisible (règle d'or) */
+        masque();
+        if (OVT.DEBUG) OVT.debugBadge('connecté : ' + moi.login + ' — stream hors ligne');
+      }
+    }
+
+    /* ---------- mode démo (aperçu du design uniquement) ---------- */
+    function demo() {
+      OVT.demoBadge();
+      var n = 128;
+      affiche(n);
+      setInterval(function () { n = Math.max(1, n + Math.round((Math.random() - 0.45) * 6)); affiche(n); }, 2500);
+    }
+
+    if (OVT.DEMO) return demo();
+
+    /* ---------- mode production : actualisé toutes les minutes ---------- */
+    (async function () {
+      var moi = await OVT.me();
+      await rafraichit(moi);
+      setInterval(function () { rafraichit(moi).catch(function () {}); }, 60000);
+    })().catch(function (e) {
+      if (OVT.DEBUG) OVT.debugBadge('❌ ' + e.message);
+    });
+  })();
+  </script>
+</body>
+</html>
