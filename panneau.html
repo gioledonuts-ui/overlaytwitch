@@ -7,161 +7,141 @@
 <link rel="icon" type="image/x-icon" href="assets/logo-7g.ico">
 <style>
   :root{
-    --violet:#9146FF; --violet-deep:#7000FF; --blanc:#fff;
-    --bg:#0e0b16; --card:rgba(255,255,255,.045); --ligne:rgba(255,255,255,.10);
+    --violet:#9146FF; --violet-2:#772ce8; --blanc:#fff;
+    --bg:#0c0914; --surface:rgba(255,255,255,.035); --surface-2:rgba(255,255,255,.06);
+    --ligne:rgba(255,255,255,.09); --ligne-2:rgba(255,255,255,.14);
     --ok:#38e08f; --warn:#ffd166; --bad:#ff6b81; --dim:#9AA0A6;
   }
   *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
   body{
     font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:var(--blanc);
-    background:radial-gradient(1200px 600px at 20% -10%, #241a3f 0%, #0e0b16 55%);
-    min-height:100vh;padding:28px 16px 80px;-webkit-font-smoothing:antialiased;
+    background:radial-gradient(1200px 700px at 50% -20%, #231a3d 0%, #0c0914 58%);
+    -webkit-font-smoothing:antialiased;min-height:100vh;
   }
-  .wrap{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
-  header{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-  header img{width:52px;height:52px;border-radius:12px;box-shadow:0 4px 18px rgba(145,70,255,.4)}
-  header h1{font-size:28px;font-weight:800}
+  .app{max-width:600px;margin:0 auto;padding:22px 18px 90px;display:flex;flex-direction:column;gap:16px}
+
+  /* ---------- header ---------- */
+  header{display:flex;align-items:center;gap:14px;padding:4px 2px 8px}
+  header .brand{display:flex;align-items:center;gap:13px;flex:1;min-width:0}
+  header img{width:46px;height:46px;border-radius:12px;box-shadow:0 4px 20px rgba(145,70,255,.45)}
+  header h1{font-size:22px;font-weight:800;letter-spacing:.2px;line-height:1.1}
   header h1 span{color:var(--violet)}
-  header p{opacity:.65;font-size:14px;margin-top:2px}
-  .grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
-  .stat{background:var(--card);border:1px solid var(--ligne);border-radius:14px;padding:16px 18px}
-  .stat .t{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
-  .stat .v{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
-  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  header p{font-size:12px;opacity:.55;margin-top:2px}
+  .gear{
+    width:40px;height:40px;border-radius:12px;background:var(--surface);border:1px solid var(--ligne);
+    color:var(--blanc);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:background .2s,border-color .2s;
+  }
+  .gear:hover{background:var(--surface-2);border-color:var(--violet)}
+
+  /* ---------- statut ---------- */
+  .status{display:flex;gap:8px;flex-wrap:wrap}
+  .stat{display:inline-flex;align-items:center;gap:8px;background:var(--surface);
+    border:1px solid var(--ligne);border-radius:99px;padding:7px 13px;font-size:12.5px;font-weight:600}
+  .stat .t{opacity:.55;font-weight:500}
+  .dot{width:8px;height:8px;border-radius:50%;flex:none}
   .dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
   .dot.off{background:var(--bad);box-shadow:0 0 8px var(--bad)}
   .dot.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
-  .card{background:var(--card);border:1px solid var(--ligne);border-radius:14px;padding:20px 22px}
-  .card h2{font-size:17px;margin-bottom:4px}
-  .card h2 .num{display:inline-block;width:24px;height:24px;line-height:24px;text-align:center;
-    background:var(--violet);color:#14101f;border-radius:7px;font-size:14px;margin-right:8px}
-  .card p.sub{font-size:13px;opacity:.65;margin-bottom:14px}
-  .row{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
-  label{font-size:13px;font-weight:600;opacity:.9;min-width:120px}
+
+  /* ---------- cartes ---------- */
+  .card{background:var(--surface);border:1px solid var(--ligne);border-radius:16px;padding:20px 20px 22px}
+  .card h2{font-size:15px;font-weight:700;display:flex;align-items:center;gap:9px;margin-bottom:3px}
+  .card h2 .ico{font-size:17px}
+  .card p.sub{font-size:12.5px;opacity:.55;margin-bottom:15px;line-height:1.45}
+  .field{margin-top:11px}
+  .field label{display:block;font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;opacity:.5;margin-bottom:6px}
+  .row{display:flex;gap:9px;align-items:center;margin-top:11px;flex-wrap:wrap}
+  .row.grow{display:grid;grid-template-columns:1fr 1fr;gap:11px}
   input,select{
-    background:#191427;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:10px;
-    padding:10px 12px;font-size:14px;font-family:inherit;outline:none;flex:1;min-width:150px;
+    background:#171226;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:11px;
+    padding:11px 13px;font-size:14px;font-family:inherit;outline:none;width:100%;min-width:0;
   }
   input:focus,select:focus{border-color:var(--violet)}
-  input[type=color]{flex:none;width:54px;height:40px;padding:3px;cursor:pointer}
+  input[type=color]{padding:3px;height:42px;cursor:pointer;width:100%}
   .btn{
-    background:#241d38;color:#fff;border:1px solid rgba(255,255,255,.16);border-radius:10px;
-    padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+    background:var(--surface-2);color:#fff;border:1px solid var(--ligne-2);border-radius:11px;
+    padding:11px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+    transition:border-color .15s,background .15s;
   }
   .btn:hover{border-color:var(--violet)}
   .btn.primary{background:linear-gradient(90deg,#772ce8,#a970ff);border:none}
-  .btn.small{padding:7px 12px;font-size:13px}
-  .btn:disabled{opacity:.4;cursor:not-allowed}
-  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
-  .note{font-size:13px;opacity:.75;margin-top:10px}
-  .mono{font-family:Consolas,monospace;font-size:12px;background:#191427;border:1px solid rgba(255,255,255,.14);
-    border-radius:8px;padding:8px 10px;word-break:break-all;flex:1;min-width:220px}
-  .divider{height:1px;background:var(--ligne);margin:16px 0}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.small{padding:8px 13px;font-size:13px}
+  .btn.ghost{background:transparent}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
   .chips{display:flex;gap:8px;flex-wrap:wrap}
-  .chipbtn{background:rgba(145,70,255,.14);border:1px solid rgba(145,70,255,.45);color:#fff;
-    padding:8px 14px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer}
-  .chipbtn:hover{background:rgba(145,70,255,.3)}
-  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#14101f;
+  .chipbtn{background:rgba(145,70,255,.12);border:1px solid rgba(145,70,255,.4);color:#fff;
+    padding:9px 15px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s}
+  .chipbtn:hover{background:rgba(145,70,255,.28)}
+
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .note{font-size:12.5px;opacity:.7;line-height:1.5}
+  .mono{font-family:Consolas,monospace;font-size:11.5px;background:#171226;border:1px solid rgba(255,255,255,.12);
+    border-radius:9px;padding:9px 11px;word-break:break-all}
+
+  /* ---------- toast ---------- */
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#171226;
     border:1px solid var(--violet);border-radius:12px;padding:12px 20px;font-size:14px;font-weight:600;
-    box-shadow:0 8px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .3s;z-index:99}
+    box-shadow:0 8px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .3s;z-index:99;max-width:90%;text-align:center}
   .toast.show{opacity:1}
-  .badge-missing{font-size:12px;color:var(--warn)}
+
+  /* ---------- modal paramètres ---------- */
+  .modal{position:fixed;inset:0;background:rgba(6,4,10,.66);backdrop-filter:blur(6px);
+    display:none;align-items:flex-start;justify-content:center;z-index:50;padding:24px 14px;overflow-y:auto}
+  .modal.open{display:flex}
+  .modal__box{width:100%;max-width:540px;background:#151021;border:1px solid var(--ligne-2);
+    border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden;animation:pop .22s var(--ease)}
+  :root{--ease:cubic-bezier(.2,.8,.2,1)}
+  @keyframes pop{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+  .modal__head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;
+    border-bottom:1px solid var(--ligne)}
+  .modal__head h2{font-size:16px;font-weight:700;display:flex;align-items:center;gap:9px}
+  .modal__close{background:transparent;border:none;color:var(--dim);font-size:20px;cursor:pointer;line-height:1;padding:4px}
+  .modal__close:hover{color:#fff}
+  .modal__body{padding:20px;display:flex;flex-direction:column;gap:22px}
+  .modal__section h3{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.5;margin-bottom:12px}
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="app">
+
   <header>
-    <img src="assets/logo-7g.png" alt="7G">
-    <div>
-      <h1>7GIONNY <span>— Panneau de contrôle</span></h1>
-      <p>Personnalise ton overlay, gère ton sub goal et pilote tes débats — sans toucher au code.</p>
+    <div class="brand">
+      <img src="assets/logo-7g.png" alt="7G">
+      <div>
+        <h1>7GIONNY</h1>
+        <p>Panneau de contrôle</p>
+      </div>
     </div>
+    <button class="gear" id="btnParams" title="Paramètres">⚙️</button>
   </header>
 
   <!-- ÉTAT -->
-  <section class="grille" id="statut"></section>
-
-  <!-- CONNEXION -->
-  <section class="card">
-    <h2><span class="num">1</span>Connexion Twitch</h2>
-    <p class="sub">Le token permet les sondages /poll, le compteur de subs et les alertes de follow.</p>
-    <div id="tokenEtat" class="note"></div>
-    <div class="row">
-      <button class="btn" id="btnLienToken">Copier le lien de génération</button>
-      <button class="btn small" id="btnOuvrirToken" style="display:none">Ouvrir le lien</button>
-    </div>
-    <div class="row">
-      <label for="champToken">Token (coller ici)</label>
-      <input id="champToken" type="text" placeholder="colle ce qui suit access_token=" spellcheck="false" autocomplete="off">
-      <button class="btn primary" id="btnSauverToken">Enregistrer</button>
-    </div>
-    <p class="note">⚠️ Après enregistrement, <b>relance</b> demarrer-pont.bat (ou clique « Relancer le pont » en bas).</p>
-  </section>
-
-  <!-- SUB GOAL -->
-  <section class="card">
-    <h2><span class="num">2</span>Sub goal</h2>
-    <p class="sub">Le compteur affiché sous le chat. En mode auto, il suit ton vrai nombre d'abonnés.</p>
-    <div class="row">
-      <label for="goalLabel">Nom</label>
-      <input id="goalLabel" type="text" placeholder="ex. SUB GOAL">
-    </div>
-    <div class="row">
-      <label for="goalTarget">Objectif</label>
-      <input id="goalTarget" type="number" min="1">
-    </div>
-    <div class="row">
-      <label>Compteur</label>
-      <select id="goalAuto">
-        <option value="1">Automatique (vrai nombre de subs)</option>
-        <option value="0">Manuel (je le règle moi-même)</option>
-      </select>
-    </div>
-    <div class="row" id="rowGoalManual" style="display:none">
-      <label for="goalManual">Valeur manuelle</label>
-      <input id="goalManual" type="number" min="0">
-    </div>
-    <div class="row">
-      <button class="btn primary" id="btnSauverGoal">Enregistrer le sub goal</button>
-    </div>
-  </section>
-
-  <!-- APPARENCE -->
-  <section class="card">
-    <h2><span class="num">3</span>Apparence</h2>
-    <p class="sub">Personnalise le titre du chat et la couleur principale.</p>
-    <div class="row">
-      <label for="chatTitle">Titre du chat</label>
-      <input id="chatTitle" type="text" placeholder="CHAT DE 7GIONNY">
-    </div>
-    <div class="row">
-      <label for="accent">Couleur d'accent</label>
-      <input id="accent" type="color">
-    </div>
-    <div class="row">
-      <button class="btn primary" id="btnSauverApparence">Enregistrer l'apparence</button>
-    </div>
-  </section>
+  <section class="status" id="statut"></section>
 
   <!-- DÉBAT -->
   <section class="card">
-    <h2><span class="num">4</span>Lancer un débat</h2>
+    <h2><span class="ico">🎙️</span>Lancer un débat</h2>
     <p class="sub">Même effet que la commande !debate, mais en cliquant ici.</p>
-    <div class="row">
-      <label for="debQuestion">Question</label>
+    <div class="field">
+      <label>Question</label>
       <input id="debQuestion" type="text" placeholder="Le format court a-t-il tué la culture ?">
     </div>
-    <div class="row">
-      <label for="debA">Choix A</label>
-      <input id="debA" type="text" placeholder="Oui">
+    <div class="row grow">
+      <div class="field" style="margin-top:0">
+        <label>Choix A</label>
+        <input id="debA" type="text" placeholder="Oui">
+      </div>
+      <div class="field" style="margin-top:0">
+        <label>Choix B</label>
+        <input id="debB" type="text" placeholder="Non">
+      </div>
     </div>
-    <div class="row">
-      <label for="debB">Choix B</label>
-      <input id="debB" type="text" placeholder="Non">
-    </div>
-    <div class="row">
-      <label for="debDur">Durée (s)</label>
-      <input id="debDur" type="number" value="120" min="15" max="600" style="max-width:120px">
+    <div class="field">
+      <label>Durée (secondes)</label>
+      <input id="debDur" type="number" value="120" min="15" max="600">
     </div>
     <div class="row">
       <button class="btn primary" id="btnDebat">Lancer le débat</button>
@@ -169,10 +149,55 @@
     </div>
   </section>
 
+  <!-- SUB GOAL -->
+  <section class="card">
+    <h2><span class="ico">🎯</span>Sub goal</h2>
+    <p class="sub">Le compteur affiché sous le chat. En auto, il suit ton vrai nombre d'abonnés.</p>
+    <div class="field">
+      <label>Nom</label>
+      <input id="goalLabel" type="text" placeholder="ex. SUB GOAL">
+    </div>
+    <div class="field">
+      <label>Objectif</label>
+      <input id="goalTarget" type="number" min="1">
+    </div>
+    <div class="field">
+      <label>Compteur</label>
+      <select id="goalAuto">
+        <option value="1">Automatique (vrai nombre de subs)</option>
+        <option value="0">Manuel (je le règle moi-même)</option>
+      </select>
+    </div>
+    <div class="field" id="rowGoalManual" style="display:none">
+      <label>Valeur manuelle</label>
+      <input id="goalManual" type="number" min="0">
+    </div>
+    <div class="row">
+      <button class="btn primary" id="btnSauverGoal">Enregistrer</button>
+    </div>
+  </section>
+
+  <!-- APPARENCE -->
+  <section class="card">
+    <h2><span class="ico">🎨</span>Apparence</h2>
+    <p class="sub">Personnalise le titre du chat et la couleur principale.</p>
+    <div class="field">
+      <label>Titre du chat</label>
+      <input id="chatTitle" type="text" placeholder="CHAT DE 7GIONNY">
+    </div>
+    <div class="field">
+      <label>Couleur d'accent</label>
+      <input id="accent" type="color">
+    </div>
+    <div class="row">
+      <button class="btn primary" id="btnSauverApparence">Enregistrer</button>
+    </div>
+  </section>
+
   <!-- ALERTES -->
   <section class="card">
-    <h2><span class="num">5</span>Tester une alerte</h2>
-    <p class="sub">Déclenche une animation d'alerte dans OBS (pour vérifier le rendu).</p>
+    <h2><span class="ico">🔔</span>Tester une alerte</h2>
+    <p class="sub">Déclenche une animation d'alerte dans OBS pour vérifier le rendu.</p>
     <div class="chips">
       <button class="chipbtn" data-alert='{"type":"follow","user":"ViewerExemple"}'>Follow</button>
       <button class="chipbtn" data-alert='{"type":"sub","user":"amelie"}'>Sub</button>
@@ -182,22 +207,49 @@
     </div>
   </section>
 
-  <!-- MISE À JOUR & RELANCE -->
-  <section class="card">
-    <h2><span class="num">6</span>Mise à jour & relance</h2>
-    <p class="sub">Mets à jour l'overlay depuis GitHub, puis redémarre le pont (pas OBS).</p>
-    <div class="row">
-      <button class="btn primary" id="btnUpdate">⬇ Mettre à jour</button>
-      <span class="note" id="updateEtat" style="margin:0"></span>
+</div>
+
+<!-- MODAL PARAMÈTRES -->
+<div class="modal" id="modalParams">
+  <div class="modal__box">
+    <div class="modal__head">
+      <h2>⚙️ Paramètres</h2>
+      <button class="modal__close" id="btnCloseParams">✕</button>
     </div>
-    <div class="row">
-      <button class="btn" id="btnRelancer">↻ Redémarrer le pont</button>
-      <span class="note" style="margin:0">(redémarre uniquement le pont, pas OBS)</span>
+    <div class="modal__body">
+
+      <div class="modal__section">
+        <h3>Connexion Twitch</h3>
+        <div id="tokenEtat" class="note"></div>
+        <div class="row">
+          <button class="btn small" id="btnLienToken">Copier le lien de génération</button>
+        </div>
+        <div class="field">
+          <label>Token (à coller ici)</label>
+          <input id="champToken" type="text" placeholder="colle ce qui suit access_token=" spellcheck="false" autocomplete="off">
+        </div>
+        <div class="row">
+          <button class="btn primary small" id="btnSauverToken">Enregistrer</button>
+        </div>
+        <p class="note" id="tokenNote" style="margin-top:10px"></p>
+      </div>
+
+      <div class="modal__section">
+        <h3>Mise à jour</h3>
+        <div class="row">
+          <button class="btn primary" id="btnUpdate">⬇ Mettre à jour</button>
+        </div>
+        <div id="updateEtat" class="note" style="margin-top:10px"></div>
+      </div>
+
+      <div class="modal__section">
+        <h3>Liens</h3>
+        <div class="field"><label>OBS (source navigateur)</label><div class="mono" id="urlObs"></div></div>
+        <div class="field"><label>Démo (aperçu)</label><div class="mono" id="urlDemo"></div></div>
+      </div>
+
     </div>
-    <div class="divider"></div>
-    <div class="row"><label>OBS (source navigateur)</label><div class="mono" id="urlObs"></div></div>
-    <div class="row"><label>Démo (aperçu)</label><div class="mono" id="urlDemo"></div></div>
-  </section>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -205,10 +257,8 @@
 <script>
 const $ = id => document.getElementById(id);
 const API = location.origin;
-const urlObs = API + '/widget.html';
-const urlDemo = API + '/';
-$('urlObs').textContent = urlObs;
-$('urlDemo').textContent = urlDemo;
+$('urlObs').textContent = API + '/widget.html';
+$('urlDemo').textContent = API + '/';
 
 const TOKEN_LINK = 'https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=channel:read:polls+channel:read:subscriptions+moderator:read:followers';
 
@@ -225,17 +275,22 @@ function copier(txt){
   return Promise.reject();
 }
 
+/* ---------- modal paramètres ---------- */
+$('btnParams').addEventListener('click', () => $('modalParams').classList.add('open'));
+$('btnCloseParams').addEventListener('click', () => $('modalParams').classList.remove('open'));
+$('modalParams').addEventListener('click', e => { if (e.target === $('modalParams')) $('modalParams').classList.remove('open'); });
+
 /* ---------- statut ---------- */
 function dot(ok){ return '<span class="dot ' + (ok ? 'on' : 'off') + '"></span>'; }
 function renderStatut(s){
   const items = [
-    ['Chat Twitch', s.chat ? 'actif' : 'inactif', s.chat],
-    ['Sondages /poll', s.poll ? 'actif' : 'inactif', s.poll],
-    ['Follows (alertes)', s.follows ? 'actif' : 'inactif', s.follows],
-    ['Sub goal', (s.config && s.config.subGoalAuto) ? 'auto (' + s.goal.current + '/' + s.goal.target + ')' : 'manuel', true]
+    ['Chat', s.chat ? 'actif' : 'inactif', s.chat],
+    ['Sondages', s.poll ? 'actifs' : 'inactifs', s.poll],
+    ['Follows', s.follows ? 'actifs' : 'inactifs', s.follows],
+    ['Sub goal', (s.config && s.config.subGoalAuto) ? 'auto · ' + s.goal.current + '/' + s.goal.target : 'manuel', true]
   ];
   $('statut').innerHTML = items.map(([t, v, ok]) =>
-    '<div class="stat"><div class="t">' + t + '</div><div class="v">' + dot(ok) + ' ' + v + '</div></div>'
+    '<div class="stat"><span class="t">' + t + '</span>' + dot(ok) + v + '</div>'
   ).join('');
 }
 
@@ -249,9 +304,7 @@ function renderToken(t){
   }
   let html = '<span class="ok">✓ Token valide</span> — compte <b>' + (t.login || '?') + '</b>.';
   if (t.missing && t.missing.length) {
-    html += ' <span class="badge-missing">⚠️ Droits manquants : ' + t.missing.join(', ') + ' (régénère le token)</span>';
-  } else {
-    html += ' <span class="ok">Tous les droits sont là ✓</span>';
+    html += ' <span class="warn">(droits manquants : ' + t.missing.join(', ') + ')</span>';
   }
   el.innerHTML = html;
 }
@@ -265,13 +318,21 @@ $('btnSauverToken').addEventListener('click', async () => {
   const t = $('champToken').value.trim();
   if (!t) return toast('Colle d\'abord ton token.');
   const r = await post(API + '/api/secrets', { POLL_OAUTH: t });
-  if (r.ok) { toast('Token enregistré ✓'); $('champToken').value=''; }
-  else toast('Erreur : ' + (r.err || '?'));
+  if (r.ok) {
+    toast('Token enregistré ✓');
+    $('champToken').value = '';
+    // le token est lu au demarrage du pont : on le redemarre (PAS OBS, PAS la fenetre)
+    $('tokenNote').innerHTML = '<span class="warn">Le pont redémarre pour prendre en compte le token…</span>';
+    try { await fetch(API + '/api/restart', { method: 'POST' }); } catch (e) {}
+    setTimeout(() => location.reload(), 2500);
+  } else {
+    toast('Erreur : ' + (r.err || '?'));
+  }
 });
 
 /* ---------- sub goal ---------- */
 $('goalAuto').addEventListener('change', () => {
-  $('rowGoalManual').style.display = $('goalAuto').value === '0' ? 'flex' : 'none';
+  $('rowGoalManual').style.display = $('goalAuto').value === '0' ? 'block' : 'none';
 });
 $('btnSauverGoal').addEventListener('click', async () => {
   const body = {
@@ -318,15 +379,16 @@ document.querySelectorAll('[data-alert]').forEach(b => {
 /* ---------- mise à jour ---------- */
 $('btnUpdate').addEventListener('click', async () => {
   const btn = $('btnUpdate'), etat = $('updateEtat');
-  btn.disabled = true; btn.textContent = 'Mise à jour en cours...';
+  btn.disabled = true; btn.textContent = 'Mise à jour...';
   etat.textContent = 'Téléchargement de la dernière version...';
   try {
-    const r = await fetch(API + '/api/update', { method:'POST' });
+    const r = await fetch(API + '/api/update', { method: 'POST' });
     const j = await r.json();
     if (j.ok) {
       etat.innerHTML = '<span class="ok">✓ À jour (' + (j.version || 'OK') + ').</span>';
-      btn.textContent = 'Redémarre le pont pour appliquer';
+      btn.textContent = '↻ Relancer le panneau';
       btn.disabled = false;
+      btn.onclick = () => location.reload();   // ne relance QUE la fenêtre (jamais OBS ni le pont)
     } else {
       etat.innerHTML = '<span class="bad">Échec : ' + (j.error || '?') + '</span>';
       btn.textContent = '⬇ Mettre à jour';
@@ -337,13 +399,6 @@ $('btnUpdate').addEventListener('click', async () => {
     btn.textContent = '⬇ Mettre à jour';
     btn.disabled = false;
   }
-});
-
-/* ---------- redémarrer le pont (pas OBS) ---------- */
-$('btnRelancer').addEventListener('click', async () => {
-  try { await fetch(API + '/api/restart', { method:'POST' }); } catch(e) {}
-  toast('Redémarrage du pont...');
-  setTimeout(() => location.reload(), 2500);
 });
 
 /* ---------- init ---------- */
@@ -359,9 +414,9 @@ async function init(){
       $('goalManual').value = s.config.subGoalManual || 0;
       $('chatTitle').value = s.config.chatTitle || '';
       $('accent').value = s.config.accent || '#9146FF';
-      $('rowGoalManual').style.display = s.config.subGoalAuto ? 'none' : 'flex';
+      $('rowGoalManual').style.display = s.config.subGoalAuto ? 'none' : 'block';
     }
-  } catch(e){ $('statut').innerHTML = '<p class="bad">Impossible de joindre le pont. Lance demarrer-pont.bat.</p>'; }
+  } catch(e){ $('statut').innerHTML = '<p class="bad">Impossible de joindre le pont.</p>'; }
 }
 init();
 setInterval(async () => {
