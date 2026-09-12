@@ -87,18 +87,18 @@ function broadcastChat(m) {
   lastChatBcast = now;
   const badges = (m.badges && typeof m.badges === 'object')
     ? Object.fromEntries(Object.entries(m.badges).slice(0, 6)
-        .map(([id, b]) => [String(id).slice(0, 32), { version: String((b && b.version) || '1').slice(0, 8) }]))
+        .map(([id, v]) => [String(id).slice(0, 32), String(v || '1').slice(0, 8)]))
     : undefined;
   const payload = 'data: ' + JSON.stringify({
     chat: 1,
     user: String(m.user || '').slice(0, 64),
     msg: String(m.msg || '').slice(0, 300),
     role: m.role === 'me' ? 'me' : (m.role === 'mod' ? 'mod' : 'user'),
-    badges,
     emotes: m.emotes ? String(m.emotes).slice(0, 200) : undefined,
     emoteSets: m.emoteSets ? String(m.emoteSets).slice(0, 400) : undefined,
     highlight: m.highlight === true || m.highlight === 1 || m.highlight === '1',
-    replyTo: m.replyTo ? String(m.replyTo).slice(0, 64) : undefined
+    replyTo: m.replyTo ? String(m.replyTo).slice(0, 64) : undefined,
+    color: m.color ? String(m.color).slice(0, 32) : undefined
   }) + '\n\n';
   for (const res of sse) res.write(payload);
 }
@@ -207,6 +207,7 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
     const text = String(message || '');
     const username = (userstate && (userstate['display-name'] || userstate.username)) || '';
     const badges = (userstate && userstate.badges) || {};
+    const color = (userstate && userstate.color) || '';
     const emotes = (userstate && (userstate['emotes-raw'] || userstate.emotes)) || '';
     const replyTo = (userstate && userstate['reply-parent-display-name']) || undefined;
     const highlighted = (userstate && userstate['msg-id']) === 'highlighted-message'
@@ -219,6 +220,7 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
       msg: text,
       role: badges.broadcaster ? 'me' : (badges.moderator ? 'mod' : 'user'),
       badges: badges,
+      color: color,
       emotes: emotes,
       highlight: highlighted,
       replyTo: replyTo
@@ -273,7 +275,7 @@ async function resolveBroadcaster() {
 }
 
 async function helixPolls() {
-  const r = await fetch('https://api.twitch.tv/helix/polls?broadcaster_id=' + resolvedBroadcasterId + '&data=can_vote', {
+  const r = await fetch('https://api.twitch.tv/helix/polls?broadcaster_id=' + resolvedBroadcasterId, {
     headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + POLL_OAUTH }
   });
   if (!r.ok) {
@@ -294,8 +296,8 @@ async function pollLoop() {
     if (++_pollLogCount % 10 === 1) {
       console.log(`[twitch-poll] ${polls.length} sondage(s) reçu(s) · statuts : ${polls.map(p => p.status).join(', ') || '(aucun)'}`);
     }
-    const live = polls.find(p => p.status === 'VOTING');
-    const ended = polls.find(p => p.status === 'ENDED' && p.id === currentPollId);
+    const live = polls.find(p => p.status === 'ACTIVE');
+    const ended = polls.find(p => (p.status === 'COMPLETED' || p.status === 'TERMINATED') && p.id === currentPollId);
 
     if (live) {
       if (state.mode !== 'live') {
@@ -305,8 +307,8 @@ async function pollLoop() {
           console.log(`[twitch-poll] SONDAGE DÉTECTÉ : "${live.title}" → lancement du débat`);
           startDebate({
             question: live.title.slice(0, 140),
-            a: live.choices[0].name.slice(0, 60),
-            b: live.choices[1].name.slice(0, 60),
+            a: live.choices[0].title.slice(0, 60),
+            b: live.choices[1].title.slice(0, 60),
             duration: Math.max(15, Math.floor((ends - Date.now()) / 1000)),
             startsAt: new Date(live.started_at || Date.now()).getTime(),
             source: 'twitch'
@@ -316,13 +318,13 @@ async function pollLoop() {
           currentPollId = live.id;
         }
       } else if (state.source === 'twitch' && currentPollId === live.id) {
-        state.va = live.choices[0].votes_count || 0;
-        state.vb = live.choices[1].votes_count || 0;
+        state.va = live.choices[0].votes || 0;
+        state.vb = live.choices[1].votes || 0;
         state.endsAt = new Date(live.ends_at || state.endsAt).getTime();
         dirty = true;
       }
     } else if (ended && state.mode === 'live' && state.source === 'twitch') {
-      const va = ended.choices[0].votes_count || 0, vb = ended.choices[1].votes_count || 0;
+      const va = ended.choices[0].votes || 0, vb = ended.choices[1].votes || 0;
       state = {
         mode: 'ended', source: 'twitch',
         question: state.question, a: state.a, b: state.b,
@@ -344,6 +346,49 @@ if (CLIENT_ID && POLL_OAUTH) {
       setInterval(pollLoop, 2500);
     } else {
       console.warn('  /poll → impossible de détecter ta chaîne (vérifie CLIENT_ID / POLL_OAUTH)');
+    }
+  })();
+}
+
+/* ═══ BADGES TWITCH (vraies images officielles) ═══════════════════
+   On récupère les badges globaux + ceux de ta chaîne via l'API Helix,
+   puis on les envoie au widget (qui les affiche). Sans ça, impossible
+   d'avoir les vrais badges (sub, mod, vip…), car l'image dépend du set. */
+let badgeMap = null;
+async function loadBadges() {
+  const token = POLL_OAUTH || CHAT_OAUTH;
+  if (!CLIENT_ID || !token) return;
+  const headers = { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + token };
+  try {
+    const map = {};
+    const parse = (json) => {
+      for (const set of (json.data || [])) {
+        const versions = {};
+        for (const v of (set.versions || [])) {
+          if (v.id !== undefined && v.image_url_4x) versions[String(v.id)] = v.image_url_4x;
+        }
+        if (Object.keys(versions).length) map[set.set_id] = versions;
+      }
+    };
+    const [g, c] = await Promise.all([
+      fetch('https://api.twitch.tv/helix/chat/badges/global', { headers }),
+      fetch('https://api.twitch.tv/helix/chat/badges?broadcaster_id=' + resolvedBroadcasterId, { headers })
+    ]);
+    if (g.ok) parse(await g.json());
+    if (c.ok) parse(await c.json());
+    if (Object.keys(map).length) {
+      badgeMap = map;
+      const payload = 'data: ' + JSON.stringify({ badgeMap }) + '\n\n';
+      for (const res of sse) res.write(payload);
+      console.log('[badges] ' + Object.keys(map).length + ' sets de badges chargés');
+    }
+  } catch (e) { /* badges indisponibles : le widget utilise un repli texte */ }
+}
+if (CLIENT_ID) {
+  (async () => {
+    if (await resolveBroadcaster()) {
+      await loadBadges();
+      setInterval(loadBadges, 30 * 60 * 1000); // rechargé toutes les 30 min
     }
   })();
 }

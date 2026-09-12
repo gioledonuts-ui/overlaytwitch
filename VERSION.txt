@@ -1,17 +1,18 @@
-VERSION 9 — 12 septembre 2026
+VERSION 10 — 12 septembre 2026
 
-CORRECTION IMPORTANTE DU CHAT :
-- Le TEXTE de tes messages s'affiche enfin (avant : seul le pseudo apparaissait)
-- Les BADGES (sub, mod, etc.) s'affichent aussi
-- Les commandes !vote fonctionnent avec les bons pseudos
+GROSES CORRECTIONS :
+- LE SONDAGE /poll FONCTIONNE ENFIN : j'avais utilisé les mauvais noms
+  de statuts (VOTING/ENDED au lieu de ACTIVE/COMPLETED) et les mauvais
+  champs (name/votes_count au lieu de title/votes). Corrige.
+  -> Quand tu lances /poll sur Twitch (2 choix), le debat s'affiche tout seul.
 
-Diagnostic ajoute pour /poll :
-- La fenetre noire affiche maintenant ce qu'elle recoit de Twitch
-  (ex. "SONDAGE DETECTE" ou "HTTP 401 = mauvais token")
+- LES VRAIS BADGES TWITCH s'affichent maintenant (images officielles,
+  recuperees via l'API). Sub, mod, vip, bits... plus de faux badges.
 
-Si tu lances /poll sur Twitch et que rien n'apparait, regarde la fenetre noire
-et copie-moi ce qu'elle ecrit a propos de [twitch-poll].
+- Le ":" est ajoute apres le pseudo (ex : "7gionny: message").
 
-Si ce fichier affiche "VERSION 9", tu as la derniere version.
+- La VRAIE COULEUR du pseudo (celle choisie sur Twitch) est utilisee.
+
+Si ce fichier affiche "VERSION 10", tu as la derniere version.
 Ensuite : relance demarrer-pont.bat, puis dans OBS : clic droit sur la source
 -> "Actualiser".

@@ -725,6 +725,7 @@ function apply(m) {
   if (!m) return;
   lastMsg = Date.now();
   if (m.chat) { pushChat(m); return; }      // message du vrai chat (via le pont)
+  if (m.badgeMap) { badgeMap = m.badgeMap; return; }   // vrais badges Twitch (images)
   if (m.pin) { m.pin === 0 ? clearPin() : setPin(m); return; }   // message épinglé
   if (m.goal) { setGoal(m); return; }                     // sub goal
   if (m.alert) { queueAlert(m); return; }                 // follow / sub / raid
@@ -739,6 +740,7 @@ const chatPanel = $('chat'), chatList = $('chatList');
 const chatPin = $('chatPin'), goalWrap = $('chatGoal');
 const goalLabel = $('goalLabel'), goalCount = $('goalCount'), goalFill = $('goalFill');
 const MAX_CHAT = 14;
+let badgeMap = null;   // reçu du pont : { set_id: { version: url_4x } } (vrais badges)
 /* couleurs vives et stables par pseudo (identité du spectateur) */
 const CHAT_COLORS = ['#FFD166','#FF7B9C','#6BE585','#5EC8F2','#FF9F45','#C79BFF','#4EE3C4','#FF6B6B'];
 function chatColor(name) {
@@ -746,19 +748,27 @@ function chatColor(name) {
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
   return CHAT_COLORS[Math.abs(h) % CHAT_COLORS.length];
 }
-/* — Badge Twitch : image officielle (static-cdn.jtvnw.net), chip texte en repli — */
-const BADGE_CHIP = { broadcaster: 'STAFF', moderator: 'MOD', vip: 'VIP',
-  subscriber: v => 'SUB ' + (v || 1), premium_painter: 'PAINT', channel_team: 'TEAM' };
-function makeBadge(id, v) {
+/* — Badge Twitch : VRAIE image officielle (reçue du pont via badgeMap).
+     Si l'image n'est pas encore chargée ou inconnue → chip texte en repli. — */
+const BADGE_CHIP = { broadcaster: 'STREAMER', moderator: 'MOD', vip: 'VIP', staff: 'STAFF',
+  admin: 'ADMIN', global_mod: 'GMOD', premium: 'PRIME', turbo: 'TURBO', bits: v => 'BITS ' + v,
+  subscriber: v => 'SUB ' + (v || 1), 'sub-gifter': v => 'GIFT ' + v, founder: 'FOUNDER',
+  premium_painter: 'PAINT', channel_team: 'TEAM', predictions: 'PRED' };
+function makeBadge(id, version) {
+  const v = String(version || '1');
+  const url = badgeMap && badgeMap[id] && badgeMap[id][v];
+  if (!url) {
+    // pas de vraie image → chip texte (repli, en attendant le chargement des badges)
+    const chip = document.createElement('span');
+    chip.className = 'cchip' + (id === 'broadcaster' || id === 'vip' ? ' cchip--me' : id === 'moderator' ? ' cchip--mod' : '');
+    chip.textContent = (typeof BADGE_CHIP[id] === 'function') ? BADGE_CHIP[id](v)
+      : (BADGE_CHIP[id] || id.toUpperCase().slice(0, 5));
+    return chip;
+  }
   const img = document.createElement('img');
   img.className = 'cbadge';
-  img.src = 'https://static-cdn.jtvnw.net/badges/en/v1/' + id + '/' + (v || 1) + '/3/dot';
+  img.src = url;
   img.alt = id;
-  const chip = document.createElement('span');
-  chip.className = 'cchip' + (id === 'broadcaster' || id === 'vip' ? ' cchip--me' : id === 'moderator' ? ' cchip--mod' : '');
-  chip.textContent = (typeof BADGE_CHIP[id] === 'function') ? BADGE_CHIP[id](v || 1)
-    : (BADGE_CHIP[id] || id.toUpperCase().slice(0, 5));
-  img.onerror = () => { try { img.replaceWith(chip); } catch (e) {} };
   return img;
 }
 /* — Texte du message : emotes/GIFs Twitch tokenisés + URLs .gif/.webp brutes — */
@@ -814,13 +824,14 @@ function buildMsgRow(m, withPinIcon) {
   }
   if (m.badges && typeof m.badges === 'object' && Object.keys(m.badges).length) {
     const bb = document.createElement('span'); bb.className = 'cbadges';
-    for (const [id, b] of Object.entries(m.badges).slice(0, 4)) bb.appendChild(makeBadge(id, b && b.version));
+    for (const [id, v] of Object.entries(m.badges).slice(0, 4)) bb.appendChild(makeBadge(id, v));
     d.appendChild(bb);
   }
   const cn = document.createElement('span');
   cn.className = 'cn' + (role !== 'user' ? ' cn--' + role : '');
-  cn.textContent = String(m.user || 'spectateur').slice(0, 24);
-  if (role === 'user') cn.style.color = chatColor(cn.textContent);
+  cn.textContent = String(m.user || 'spectateur').slice(0, 24) + ':';   // « pseudo : » (deux-points)
+  if (m.color) cn.style.color = m.color;                     // vraie couleur Twitch
+  else if (role === 'user') cn.style.color = chatColor(cn.textContent);
   const cb = document.createElement('span'); cb.className = 'cbody';
   if (m.replyTo) {
     const r = document.createElement('span'); r.className = 'creply';
@@ -959,27 +970,27 @@ function setGoal(g) {
 /* — Chat fictif (démo) : badges, highlight, réponses, emotes, GIFs — en boucle — */
 const FAKE_CHAT = [
   { user: '7GIONNY', role: 'me', msg: 'Préparez vos arguments, le débat commence 💬',
-    badges: { broadcaster: { version: 1 } } },
+    badges: { broadcaster: '1' }, color: '#9146FF' },
   { user: 'Louna', role: 'mod', msg: 'Le chat est prêt 🔥',
-    badges: { moderator: { version: 1 }, subscriber: { version: 3 } } },
+    badges: { moderator: '1', subscriber: '3' }, color: '#00FF7F' },
   { user: 'yassine', msg: 'j’suis parti sur le A personnellement 🤔',
-    badges: { subscriber: { version: 1 } } },
+    badges: { subscriber: '1' }, color: '#FF7B9C' },
   { user: 'maeva', msg: 'le B c’est plus subtil quand même 👌',
-    badges: { vip: { version: 1 } }, highlight: true },
+    badges: { vip: '1' }, highlight: true, color: '#5EC8F2' },
   { user: 'Théo', role: 'mod', msg: 'On reste sérieux, débat mûr comme d’habitude ⚖️',
-    badges: { moderator: { version: 1 } } },
+    badges: { moderator: '1' }, color: '#00FF7F' },
   { user: 'amelie', msg: 'c’est dur de trancher honnêtement Kreygasm',
-    emotes: '30251:34-41', emoteSets: '{"30251":1}' },
+    emotes: '30251:34-41', emoteSets: '{"30251":1}', color: '#FF9F45' },
   { user: 'kevin', msg: 'le format court m’a appris plein de trucs 💯',
-    badges: { subscriber: { version: 2 } } },
+    badges: { subscriber: '2' }, color: '#C79BFF' },
   { user: 'noah', msg: 'regarde ce gif https://media.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif',
-    replyTo: 'yassine' },
+    replyTo: 'yassine', color: '#6BE585' },
   { user: '7GIONNY', role: 'me', msg: 'Exactement, c’est le cœur du sujet.',
-    badges: { broadcaster: { version: 1 } }, highlight: true },
+    badges: { broadcaster: '1' }, highlight: true, color: '#9146FF' },
   { user: 'sacha', msg: 'c’est la CatJAM', emotes: '125584839:9-14',
-    emoteSets: '{"125584839":1}' },
-  { user: 'emma', msg: 'je suis d’accord avec le A 😅', replyTo: '7GIONNY' },
-  { user: 'rachel', msg: 'ou un gif local : demo/gif-demo.gif' }
+    emoteSets: '{"125584839":1}', color: '#4EE3C4' },
+  { user: 'emma', msg: 'je suis d’accord avec le A 😅', replyTo: '7GIONNY', color: '#FF6B6B' },
+  { user: 'rachel', msg: 'ou un gif local : demo/gif-demo.gif', color: '#FFD166' }
 ];
 let fakeIdx = 0, fakeFirst = true;
 function fakeChatLoop() {
@@ -998,7 +1009,7 @@ function demoChatExtras() {
   setTimeout(() => setPin({
     user: '7GIONNY', role: 'me',
     msg: 'Le débat commence dans 1 minute, préparez vos arguments !',
-    badges: { broadcaster: { version: 1 } }
+    badges: { broadcaster: '1' }
   }), 8000);
   setTimeout(() => clearPin(), 34000);
 }
