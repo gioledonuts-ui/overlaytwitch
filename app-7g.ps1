@@ -1,15 +1,17 @@
 # ============================================================
-#  7GIONNY - Mini-application
-#  Lance le pont en arriere-plan + ouvre le panneau dans une
-#  PETITE fenetre (pas de navigateur plein ecran).
+#  7GIONNY - Mini-application (icone dans la barre systeme)
+#  Lance le pont en arriere-plan (aucune fenetre noire).
+#  Demarre MINIMISE : seule l'icone apparait en bas a droite.
+#  Clic sur l'icone = ouvrir le panneau (petite fenetre).
+#  Refermer la fenetre = tout continue, on retourne dans l'icone.
 # ============================================================
 $ErrorActionPreference = 'SilentlyContinue'
 
 $dir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $dir
 
-# --- une seule instance a la fois ---
-$mutex = New-Object System.Threading.Mutex($false, '7GIONNY-Overlay-App')
+# --- une seule instance ---
+$mutex = New-Object System.Threading.Mutex($false, '7GIONNY-Overlay-Tray')
 if (-not $mutex.WaitOne(0, $false)) { exit 0 }
 
 # --- 1. trouver node.exe ---
@@ -38,11 +40,20 @@ if (-not (Test-Path "$dir\node_modules")) {
   }
 }
 
-# --- 4. lancer le pont (node server.js) en arriere-plan ---
-Start-Process -FilePath $node -ArgumentList 'server.js' -WorkingDirectory $dir -WindowStyle Hidden
+# --- 4. lancer le pont (cache) ---
+$proc = Start-Process -FilePath $node -ArgumentList 'server.js' -WorkingDirectory $dir -WindowStyle Hidden -PassThru
 
-# --- 5. ouvrir le panneau dans une PETITE fenetre app ---
-Start-Sleep -Milliseconds 900
+# --- 5. icone dans la barre systeme ---
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+$tray = New-Object System.Windows.Forms.NotifyIcon
+$icoPath = "$dir\assets\logo-7g.ico"
+if (Test-Path $icoPath) { $tray.Icon = New-Object System.Drawing.Icon($icoPath) }
+$tray.Text = '7GIONNY - Overlay'
+$tray.Visible = $true
+
+# --- trouver Chrome/Edge pour la petite fenetre ---
 $browser = $null
 foreach ($b in @(
   "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
@@ -50,13 +61,32 @@ foreach ($b in @(
   "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe",
   "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe",
   "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
-)) {
-  if (Test-Path $b) { $browser = $b; break }
+)) { if (Test-Path $b) { $browser = $b; break } }
+
+$openPanel = {
+  if ($browser) {
+    Start-Process $browser -ArgumentList '--app=http://localhost:8321/panneau', '--window-size=560,820', '--window-position=60,60'
+  } else {
+    Start-Process 'http://localhost:8321/panneau'
+  }
+}
+$quit = {
+  $tray.Visible = $false
+  if ($proc -and -not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
+  [System.Windows.Forms.Application]::Exit()
 }
 
-if ($browser) {
-  # fenetre app propre : pas d'onglets, pas de barre d'adresse, petite taille
-  Start-Process $browser -ArgumentList '--app=http://localhost:8321/panneau', '--window-size=560,820', '--window-position=60,60'
-} else {
-  Start-Process 'http://localhost:8321/panneau'
-}
+$menu = New-Object System.Windows.Forms.ContextMenuStrip
+$m1 = $menu.Items.Add('Ouvrir le panneau de controle'); $m1.Add_Click($openPanel)
+$menu.Items.Add('-') | Out-Null
+$m2 = $menu.Items.Add('Quitter'); $m2.Add_Click($quit)
+$tray.ContextMenuStrip = $menu
+$tray.Add_Click($openPanel)
+
+# --- demarre MINIMISE : pas d'ouverture auto de la fenetre ---
+# --- petit rappel discret pour dire que c'est lance ---
+$tray.ShowBalloonTip(3000, '7GIONNY', "Pont lance. Clique sur l'icone pour ouvrir le panneau.", [System.Windows.Forms.ToolTipIcon]::Info)
+
+# --- rester en arriere-plan (boucle de messages) ---
+[System.Windows.Forms.Application]::Run()
+$mutex.ReleaseMutex()
