@@ -42,16 +42,26 @@ start "" "http://localhost:8321/panneau"
 
 rem ==== 6. Lancer OBS (si trouve) ====
 set "OBS="
-if exist "%ProgramFiles%\obs-studio\bin\64bit\obs64.exe" set "OBS=%ProgramFiles%\obs-studio\bin\64bit\obs64.exe"
-if not defined OBS if exist "%ProgramFiles(x86)%\obs-studio\bin\64bit\obs64.exe" set "OBS=%ProgramFiles(x86)%\obs-studio\bin\64bit\obs64.exe"
-if not defined OBS if exist "%LocalAppData%\Programs\obs-studio\bin\64bit\obs64.exe" set "OBS=%LocalAppData%\Programs\obs-studio\bin\64bit\obs64.exe"
+if exist "%ProgramFiles%\obs-studio\bin\64bit\obs64.exe" (
+  set "OBSDIR=%ProgramFiles%\obs-studio\bin\64bit"
+  set "OBS=%ProgramFiles%\obs-studio\bin\64bit\obs64.exe"
+)
+if not defined OBS if exist "%ProgramFiles(x86)%\obs-studio\bin\64bit\obs64.exe" (
+  set "OBSDIR=%ProgramFiles(x86)%\obs-studio\bin\64bit"
+  set "OBS=%ProgramFiles(x86)%\obs-studio\bin\64bit\obs64.exe"
+)
+if not defined OBS if exist "%LocalAppData%\Programs\obs-studio\bin\64bit\obs64.exe" (
+  set "OBSDIR=%LocalAppData%\Programs\obs-studio\bin\64bit"
+  set "OBS=%LocalAppData%\Programs\obs-studio\bin\64bit\obs64.exe"
+)
 
 if defined OBS (
   echo        Lancement d'OBS...
-  rem OBS a besoin de son propre dossier comme repertoire de travail,
-  rem sinon il affiche "failed to find locale/en-US.ini".
-  for %%I in ("%OBS%") do set "OBSDIR=%%~dpI"
-  start "" /D "%OBSDIR%" "%OBS%"
+  rem OBS a besoin de demarrer DEPUIS son propre dossier, sinon
+  rem il affiche "failed to find locale/en-US.ini".
+  cd /d "%OBSDIR%"
+  start "" obs64.exe
+  cd /d "%~dp0"
 ) else (
   echo        OBS introuvable : ouvre-le manuellement.
 )
