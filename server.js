@@ -36,6 +36,10 @@ const POLL_OAUTH = env('POLL_OAUTH', '');      // user token · scope channel:re
 /* — Chat Twitch (tmi.js optionnel) — */
 const CHAT_OAUTH = env('CHAT_OAUTH', '');
 const CHAT_NICK = env('CHAT_NICK', '');
+/* Canal à écouter = ta chaîne Twitch (où le bot doit lire les messages).
+   Par défaut = CHAT_NICK (si tu utilises ton propre compte comme bot).
+   Si ton bot est un compte séparé, mets ici le nom de TA chaîne (ex. 7gionny). */
+const CHAT_CHANNEL = env('CHAT_CHANNEL', CHAT_NICK);
 
 /* ═══ État global ═══════════════════════════════════════════════ */
 let state = { mode: 'idle' };
@@ -157,7 +161,8 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
   const chat = new tmi.Client({
     options: { debug: false },
     connection: { secure: true, reconnect: true },
-    identity: { username: CHAT_NICK, password: CHAT_OAUTH }
+    identity: { username: CHAT_NICK, password: CHAT_OAUTH },
+    channels: [CHAT_CHANNEL]
   });
   chat.on('initialized', () => console.log(`[chat] connecté comme ${CHAT_NICK}`));
   /* — Pin Twitch : NOTICE « pinned » (le texte du message épinglé arrive en contenu)
@@ -516,7 +521,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log('  ─────────────────────────────────────────────────');
   console.log(`  OBS  →  http://localhost:${PORT}/widget.html`);
   console.log(`  Démo →  http://localhost:${PORT}/   (démonstration auto + fond caméra)`);
-  console.log(`  Chat →  ${chatOn ? 'actif (' + CHAT_NICK + ')' : 'inactif (CHAT_OAUTH / CHAT_NICK manquants)'}`);
+  console.log(`  Chat →  ${chatOn ? 'actif (' + CHAT_NICK + ' → écoute #' + CHAT_CHANNEL + ')' : 'inactif (CHAT_OAUTH / CHAT_NICK manquants)'}`);
   console.log(`  /poll → ${helixOn ? 'actif (polling Helix 2,5 s)' : (CLIENT_ID && POLL_OAUTH ? 'détection de la chaîne…' : 'inactif (CLIENT_ID / POLL_OAUTH manquants)')}`);
   console.log('');
 });
