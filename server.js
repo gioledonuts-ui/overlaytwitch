@@ -90,78 +90,6 @@ function saveConfig() {
   try { fs.writeFileSync(PERSIST_FILE, JSON.stringify(appConfig, null, 2)); } catch (e) {}
 }
 
-/* ═══ VERSIONING & HISTORIQUE DES MISES À JOUR ══════════════════
-   • VERSION.txt (à la racine) = version installée (« v28 », ou
-     l'ancien format « VERSION 26 » — les deux sont compris).
-   • update-info.json (local, jamais écrasé par les MAJ) = date de la
-     dernière mise à jour + historique des versions installées.
-   • La dernière version dispo est lue sur GitHub (brut, cache 5 min) :
-     si elle égale la version installée, le panneau affiche « À jour »
-     et ne retélécharge rien (pas d'actualisation inutile). */
-const VERSION_FILE = path.join(__dirname, 'VERSION.txt');
-const UPDATE_INFO_FILE = path.join(__dirname, 'update-info.json');
-const REMOTE_VERSION_URL = 'https://raw.githubusercontent.com/gioledonuts-ui/overlaytwitch/main/VERSION.txt';
-
-function parseVersion(raw) {
-  const m = String(raw || '').match(/(\d+)/);
-  const num = m ? parseInt(m[1], 10) : 0;
-  return { display: num > 0 ? 'v' + num : '?', num, raw: String(raw || '').trim().slice(0, 24) };
-}
-function readLocalVersion() {
-  try { return parseVersion(fs.readFileSync(VERSION_FILE, 'utf8')); }
-  catch (e) { return { display: '?', num: 0, raw: '' }; }
-}
-let updateInfo = { version: null, updatedAt: null, history: [] };
-try {
-  if (fs.existsSync(UPDATE_INFO_FILE)) {
-    updateInfo = Object.assign(updateInfo, JSON.parse(fs.readFileSync(UPDATE_INFO_FILE, 'utf8')) || {});
-  }
-} catch (e) { console.warn('[version] update-info.json illisible :', e.message); }
-if (!Array.isArray(updateInfo.history)) updateInfo.history = [];
-function saveUpdateInfo() {
-  try { fs.writeFileSync(UPDATE_INFO_FILE, JSON.stringify(updateInfo, null, 2)); } catch (e) {}
-}
-/* 1er démarrage avec ce système : on initialise depuis VERSION.txt
-   (date du fichier = date approximative de la dernière MAJ). */
-(function initUpdateInfo() {
-  const local = readLocalVersion();
-  if (!updateInfo.version || !updateInfo.updatedAt) {
-    let at = new Date().toISOString();
-    try { at = fs.statSync(VERSION_FILE).mtime.toISOString(); } catch (e) {}
-    updateInfo.version = local.display;
-    updateInfo.updatedAt = at;
-    if (local.num > 0 && !updateInfo.history.some(h => h.version === local.display)) {
-      updateInfo.history.push({ version: local.display, date: at });
-    }
-    saveUpdateInfo();
-  }
-})();
-function recordUpdate(newDisplay) {
-  const now = new Date().toISOString();
-  updateInfo.version = newDisplay;
-  updateInfo.updatedAt = now;
-  const last = updateInfo.history[updateInfo.history.length - 1];
-  if (!last || last.version !== newDisplay) {
-    updateInfo.history.push({ version: newDisplay, date: now });
-    updateInfo.history = updateInfo.history.slice(-20);   // 20 dernières entrées max
-  }
-  saveUpdateInfo();
-}
-/* Version distante (GitHub brut) avec cache de 5 min. */
-let remoteCache = { at: 0, data: null };
-async function fetchRemoteVersion() {
-  if (Date.now() - remoteCache.at < 5 * 60 * 1000 && remoteCache.data) return remoteCache.data;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 8000);
-  try {
-    const r = await fetch(REMOTE_VERSION_URL, { signal: ctrl.signal, cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const parsed = parseVersion(await r.text());
-    remoteCache = { at: Date.now(), data: parsed };
-    return parsed;
-  } finally { clearTimeout(timer); }
-}
-
 /* — SUB GOAL : état dérivé de la config (modifiable via le panneau) — */
 const goalState = {
   label: appConfig.subGoalLabel,
@@ -236,64 +164,16 @@ function tally(choice, user = 'anon') {
   if (state.mode !== 'live') return false;
   const c = String(choice).toUpperCase().startsWith('B') ? 'B' : 'A';
   const u = String(user || 'anon').toLowerCase().slice(0, 64);
-  /* Anti-doublon strict : 1 seul vote par utilisateur et par débat.
-     Le premier vote compte, les suivants sont ignorés (pas de remplacement). */
-  if (votes.has(u)) return false;
+  const prev = votes.get(u);
+  if (prev) {
+    if (prev.c === c) return false;
+    state[prev.c === 'A' ? 'va' : 'vb'] = Math.max(0, state[prev.c === 'A' ? 'va' : 'vb'] - 1);
+    votes.delete(u);
+  }
   votes.set(u, { c, ts: Date.now() });
   state[c === 'A' ? 'va' : 'vb']++;
   dirty = true;
   return true;
-}
-
-/* ═══ Vote fluide (sans commande) ══════════════════════════════
-   Les spectateurs votent en écrivant simplement le mot attendu
-   (ex. « voiture ») — insensible à la casse ET aux accents.
-   Méthodes acceptées :
-     • le mot / l'option en toutes lettres (« voiture », « oui je pense »)
-     • « A » / « B » / « 1 » / « 2 » seuls
-     • « !vote A » / « !vote B » (historique, toujours supporté) */
-function normVote(s) {
-  return String(s || '').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
-}
-/* Mot-clé d'une option = son premier mot significatif (≥ 2 lettres).
-   Ex. « Oui, tout s'accélère » → « oui » · « Non, … » → « non ». */
-function voteKeyword(opt) {
-  const words = normVote(opt).split(' ').filter(Boolean);
-  for (const w of words) if (w.length >= 2) return w;
-  return words[0] || '';
-}
-/* Déduit un vote depuis un message libre. Retourne 'A' | 'B' | null.
-   null = pas de vote détecté, ou message ambigu (les 2 options citées). */
-function matchVoteFromText(text) {
-  if (state.mode !== 'live') return null;
-  const raw = String(text || '').trim();
-  if (!raw || raw.startsWith('!')) return null;   // les !commandes sont gérées à part
-  const n = normVote(raw);
-  if (!n) return null;
-  /* A / B / 1 / 2 seuls (match exact uniquement : le « a » de
-     « il a raison » ne doit PAS voter) */
-  if (n === 'a' || n === '1') return 'A';
-  if (n === 'b' || n === '2') return 'B';
-  const na = normVote(state.a), nb = normVote(state.b);
-  const hay = ' ' + n + ' ';
-  /* option citée en toutes lettres (mot entier, pas sous-chaîne :
-     « bus » ne matche pas « business ») */
-  const hasA = na.length >= 2 && (n === na || hay.includes(' ' + na + ' '));
-  const hasB = nb.length >= 2 && (n === nb || hay.includes(' ' + nb + ' '));
-  if (hasA && !hasB) return 'A';
-  if (hasB && !hasA) return 'B';
-  if (hasA && hasB) return null;                  // ambigu → ignoré
-  /* mot-clé (1er mot de l'option) cité comme mot entier */
-  const ka = voteKeyword(state.a), kb = voteKeyword(state.b);
-  if (ka && ka === kb) return null;               // options indiscernables → ignoré
-  const words = new Set(n.split(' '));
-  const inA = ka.length >= 2 && words.has(ka);
-  const inB = kb.length >= 2 && words.has(kb);
-  if (inA && !inB) return 'A';
-  if (inB && !inA) return 'B';
-  return null;
 }
 
 function finish(source) {
@@ -394,15 +274,7 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
       highlight: highlighted,
       replyTo: replyTo
     });
-    /* Vote fluide : un simple mot suffit (« voiture » vote, sans !vote,
-       insensible à la casse — 1 seul vote par personne et par débat) */
-    if (!text.startsWith('!')) {
-      if (state.mode === 'live') {
-        const pick = matchVoteFromText(text);
-        if (pick) tally(pick, username);
-      }
-      return;
-    }
+    if (!text.startsWith('!')) return;
     const [cmd, ...rest] = text.split(' ');
     const c = cmd.toLowerCase();
     const isStaff = (badges.broadcaster || badges.moderator)
@@ -415,10 +287,8 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
       let dur = 120;
       const m = parts[parts.length - 1].match(/^(\d{1,4})\s*(s|sec)?$/i);
       if (m) { dur = +m[1]; parts.pop(); }
-      const qa = parts[0].slice(0, 140), qa_a = parts[1].slice(0, 60), qa_b = parts[2].slice(0, 60);
-      startDebate({ question: qa, a: qa_a, b: qa_b, duration: dur, source: 'chat' });
-      const short = s => (s.length > 28 ? s.slice(0, 27) + '…' : s);
-      chat.say(channel, `[Débat] LANCÉ · ${dur}s · tapez « ${short(qa_a)} » ou « ${short(qa_b)} » (ou !vote A / !vote B)`);
+      startDebate({ question: parts[0].slice(0, 140), a: parts[1].slice(0, 60), b: parts[2].slice(0, 60), duration: dur, source: 'chat' });
+      chat.say(channel, `[Débat] LANCÉ · ${dur}s · tapez !vote A ou !vote B`);
     } else if (c === '!vote') {
       const arg = (rest[0] || '').toLowerCase();
       if (arg === 'a' || arg === '1') tally('A', username);
@@ -807,17 +677,10 @@ const server = http.createServer((req, res) => {
     if (u.pathname === '/api/vote' && req.method === 'POST') {
       readBody().then(d => {
         try {
-          /* {choice:'A'|'B', user} (historique) ou {text:'voiture', user}
-             (vote fluide : le mot suffit, insensible à la casse) */
-          const { choice, user, text } = JSON.parse(d || '{}');
-          let c = choice;
-          if (!c && text) {
-            c = matchVoteFromText(text);
-            if (!c) return send(200, 'application/json', JSON.stringify({ ok: true, matched: false, state }));
-          }
-          const counted = tally(c, user);
+          const { choice, user } = JSON.parse(d || '{}');
+          tally(choice, user);
           broadcast(false);
-          send(200, 'application/json', JSON.stringify({ ok: true, matched: true, counted, state }));
+          send(200, 'application/json', JSON.stringify({ ok: true, state }));
         } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false })); }
       });
       return;
@@ -920,18 +783,6 @@ const server = http.createServer((req, res) => {
       readBody().then(d => {
         try {
           const p = JSON.parse(d || '{}');
-          /* Aperçu « Ambiance générale » : diffusé à l'overlay en direct,
-             mais NI enregistré NI persisté (Enregistrer le fera, Annuler
-             renverra l'ancienne valeur de la même manière). */
-          if (p.preview === true) {
-            const payload = 'data: ' + JSON.stringify({
-              cfg: 1,
-              chatTitle: p.chatTitle !== undefined ? String(p.chatTitle).slice(0, 40) : appConfig.chatTitle,
-              accent: p.accent !== undefined ? String(p.accent).slice(0, 16) : appConfig.accent
-            }) + '\n\n';
-            for (const res of sse) res.write(payload);
-            return send(200, 'application/json', JSON.stringify({ ok: true, preview: true }));
-          }
           if (p.subGoalLabel !== undefined) appConfig.subGoalLabel = String(p.subGoalLabel).slice(0, 24);
           if (p.subGoalTarget !== undefined) appConfig.subGoalTarget = Math.max(1, Math.round(+p.subGoalTarget || 1));
           if (p.subGoalAuto !== undefined) appConfig.subGoalAuto = !!p.subGoalAuto;
@@ -964,32 +815,8 @@ const server = http.createServer((req, res) => {
         poll: helixOn, follows: helixOn,
         token: tokenInfo,
         goal: goalState,
-        config: appConfig,
-        version: readLocalVersion().display,
-        lastUpdate: updateInfo.updatedAt
+        config: appConfig
       }));
-    }
-
-    /* — VERSION (panneau) : version installée, dernière MAJ, dernière
-         version dispo sur GitHub + historique. Si installée == dispo,
-         le panneau affiche « À jour » et ne retélécharge rien. — */
-    if (u.pathname === '/api/version' && req.method === 'GET') {
-      (async () => {
-        const local = readLocalVersion();
-        let latest = null, upToDate = null, checkError = null;
-        try {
-          latest = await fetchRemoteVersion();
-          if (local.num > 0 && latest.num > 0) upToDate = local.num >= latest.num;
-        } catch (e) { checkError = 'Vérification impossible (pas d\'internet ?)'; }
-        send(200, 'application/json', JSON.stringify({
-          current: local.display, currentNum: local.num,
-          latest: latest ? latest.display : null, latestNum: latest ? latest.num : null,
-          upToDate, checkError,
-          lastUpdate: updateInfo.updatedAt,
-          history: updateInfo.history.slice(-10).reverse()
-        }));
-      })().catch(() => send(500, 'application/json', JSON.stringify({ ok: false })));
-      return;
     }
 
     /* — SECRETS (panneau) : écrit les clés dans secrets.json (sans coder) — */
@@ -1021,11 +848,7 @@ const server = http.createServer((req, res) => {
           if (err) return send(500, 'application/json', JSON.stringify({ ok: false, error: String(stderr || err.message || 'échec').trim().slice(0, 300) }));
           const out = String(stdout || '').trim();
           if (out.startsWith('ERREUR')) return send(500, 'application/json', JSON.stringify({ ok: false, error: out.slice(0, 300) }));
-          /* MAJ réussie : on relit la version installée et on horodate. */
-          const installed = readLocalVersion();
-          recordUpdate(installed.display);
-          remoteCache = { at: 0, data: null };   // force une revérification distante
-          send(200, 'application/json', JSON.stringify({ ok: true, version: installed.display, lastUpdate: updateInfo.updatedAt }));
+          send(200, 'application/json', JSON.stringify({ ok: true, version: out }));
         });
       return;
     }

@@ -35,14 +35,12 @@ if not exist "%EXTRACT%\overlaytwitch-main\widget.html" (
 echo        OK : extrait.
 
 echo [3/4] Copie des fichiers (ECRASE tout, meme si la date parait ancienne)...
-rem --- sauvegarde tes cles et reglages (secrets.json + config-perso.json) ---
+rem --- sauvegarde tes cles (secrets.json) ---
 if exist "secrets.json" copy /y "secrets.json" "%TEMP%\secrets.backup.json" >nul
-if exist "config-perso.json" copy /y "config-perso.json" "%TEMP%\config-perso.backup.json" >nul
 rem --- copie FORCEE de tous les fichiers ---
 powershell -NoProfile -Command "Copy-Item -Path '%EXTRACT%\overlaytwitch-main\*' -Destination '%~dp0' -Recurse -Force"
-rem --- restaure tes cles et reglages ---
+rem --- restaure tes cles ---
 if exist "%TEMP%\secrets.backup.json" copy /y "%TEMP%\secrets.backup.json" "secrets.json" >nul
-if exist "%TEMP%\config-perso.backup.json" copy /y "%TEMP%\config-perso.backup.json" "config-perso.json" >nul
 
 echo [4/4] Verification...
 echo.

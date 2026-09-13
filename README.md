@@ -92,12 +92,8 @@ Le pont écoute sur le port **8321** :
 | Commande | Qui | Effet |
 |---|---|---|
 | `!debate Question \| Choix A \| Choix B \| 120` | streamer + mods | Lance un débat (durée en secondes, défaut 120, max 600) |
-| `voiture` (le mot attendu, sans commande) | tout le monde | **Vote fluide** : écrire simplement le mot suffit, insensible à la casse (`Voiture` = `VOITURE` = `voiture`) — 1 seule voix par personne et par débat (le 1er vote compte, les suivants sont ignorés) |
-| `!vote A` / `!vote B` (ou `A` / `B` / `1` / `2` seuls) | tout le monde | Vote classique (toujours supporté, même règle anti-doublon) |
+| `!vote A` / `!vote B` (ou `!vote 1` / `!vote 2`) | tout le monde | Vote (1 voix/utilisateur, le ré-vote **remplace** la précédente) |
 | `!end` | streamer + mods | Clôture et affiche le résultat |
-
-> Le mot à taper s'affiche en bas de la carte dans OBS (ex. `TAPEZ « voiture » OU « vélo »`).
-> Un débat se lance aussi depuis le panneau de contrôle (`/panneau`), sans passer par Twitch.
 
 Exemple :
 ```
@@ -138,8 +134,7 @@ export POLL_OAUTH="oauth:token_utilisateur"   # scope channel:read:polls
 | GET | `/api/state` | — | État courant |
 | GET | `/events` | — | SSE temps réel |
 | POST | `/api/debate` | `{question, a, b, duration?}` | Lance un débat |
-| POST | `/api/vote` | `{choice:"A"\|"B", user}` ou `{text:"voiture", user}` | Vote (1 seul par user, les suivants ignorés ; `text` = vote fluide par mot) |
-| GET | `/api/version` | — | Version installée, dernière MAJ, dernière version dispo, historique |
+| POST | `/api/vote` | `{choice:"A"\|"B", user}` | Vote (dédoublonné par user) |
 | POST | `/api/end` | — | Clôture |
 
 `ADMIN_TOKEN` (env) : si défini, `/api/debate` et `/api/end` exigent l'en-tête `X-Admin-Token`.
