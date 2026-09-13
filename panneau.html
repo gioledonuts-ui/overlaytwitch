@@ -80,6 +80,16 @@
   .note{font-size:12.5px;opacity:.7;line-height:1.5}
   .mono{font-family:Consolas,monospace;font-size:11.5px;background:#171226;border:1px solid rgba(255,255,255,.12);
     border-radius:9px;padding:9px 11px;word-break:break-all}
+  /* liens copiables d'un clic */
+  .mono.copy{cursor:pointer;transition:border-color .15s,background .15s;position:relative}
+  .mono.copy:hover{border-color:var(--violet);background:#1d1530}
+  .mono.copy::after{content:'⧉ copier';position:absolute;top:6px;right:9px;font-size:10px;font-weight:700;
+    letter-spacing:.06em;color:var(--violet);opacity:0;transition:opacity .15s;font-family:inherit}
+  .mono.copy:hover::after{opacity:.9}
+  .mono.copy.copied{border-color:var(--ok);background:rgba(56,224,143,.08)}
+  .mono.copy.copied::after{content:'✓ copié !';color:var(--ok);opacity:1}
+  .hist{margin-top:10px;font-size:12px;opacity:.65;line-height:1.7}
+  .hist b{opacity:1;color:#fff}
 
   /* ---------- toast ---------- */
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#171226;
@@ -177,20 +187,21 @@
     </div>
   </section>
 
-  <!-- APPARENCE -->
+  <!-- AMBIANCE GÉNÉRALE -->
   <section class="card">
-    <h2><span class="ico">🎨</span>Apparence</h2>
-    <p class="sub">Personnalise le titre du chat et la couleur principale.</p>
+    <h2><span class="ico">🎨</span>Ambiance générale</h2>
+    <p class="sub">L'aperçu est <b>instantané dans OBS</b> pendant que tu règles. Enregistre pour garder, ou annule pour revenir en arrière.</p>
     <div class="field">
       <label>Titre du chat</label>
       <input id="chatTitle" type="text" placeholder="CHAT DE 7GIONNY">
     </div>
     <div class="field">
-      <label>Couleur d'accent</label>
+      <label>Couleur d'ambiance</label>
       <input id="accent" type="color">
     </div>
     <div class="row">
       <button class="btn primary" id="btnSauverApparence">Enregistrer</button>
+      <button class="btn ghost" id="btnAnnulerApparence">Annuler</button>
     </div>
   </section>
 
@@ -236,16 +247,19 @@
 
       <div class="modal__section">
         <h3>Mise à jour</h3>
-        <div class="row">
+        <div id="versionInfo" class="note">Chargement de la version…</div>
+        <div class="row" style="margin-top:10px">
           <button class="btn primary" id="btnUpdate">⬇ Mettre à jour</button>
+          <button class="btn small ghost" id="btnCheckUpdate">↻ Vérifier</button>
         </div>
         <div id="updateEtat" class="note" style="margin-top:10px"></div>
+        <div id="updateHist" class="hist"></div>
       </div>
 
       <div class="modal__section">
-        <h3>Liens</h3>
-        <div class="field"><label>OBS (source navigateur)</label><div class="mono" id="urlObs"></div></div>
-        <div class="field"><label>Démo (aperçu)</label><div class="mono" id="urlDemo"></div></div>
+        <h3>Liens (clique pour copier)</h3>
+        <div class="field"><label>OBS (source navigateur)</label><div class="mono copy" id="urlObs" title="Cliquer pour copier"></div></div>
+        <div class="field"><label>Démo (aperçu)</label><div class="mono copy" id="urlDemo" title="Cliquer pour copier"></div></div>
       </div>
 
     </div>
@@ -272,8 +286,30 @@ async function post(url, body){
 }
 function copier(txt){
   if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt);
-  return Promise.reject();
+  /* repli (contexte non sécurisé) : sélection + execCommand */
+  return new Promise((resolve, reject) => {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      if (document.execCommand('copy')) resolve(); else reject(new Error('copy'));
+      ta.remove();
+    } catch(e){ reject(e); }
+  });
 }
+/* Liens copiables d'un simple clic (+ retour visuel « Copié ! ») */
+function rendCopiable(el, nom){
+  el.addEventListener('click', async () => {
+    try {
+      await copier(el.textContent);
+      el.classList.add('copied');
+      clearTimeout(el._h); el._h = setTimeout(() => el.classList.remove('copied'), 1400);
+      toast(nom + ' copié !');
+    } catch(e){ toast('Copie impossible — sélectionne le lien à la main.'); }
+  });
+}
+rendCopiable($('urlObs'), 'Lien OBS');
+rendCopiable($('urlDemo'), 'Lien démo');
 
 /* ---------- modal paramètres ---------- */
 $('btnParams').addEventListener('click', () => $('modalParams').classList.add('open'));
@@ -345,13 +381,44 @@ $('btnSauverGoal').addEventListener('click', async () => {
   if (r.ok) toast('Sub goal enregistré ✓');
 });
 
-/* ---------- apparence ---------- */
+/* ---------- ambiance générale (live preview + annulation) ---------- */
+const ambianceSauvee = { chatTitle: '', accent: '#9146FF' };
+let _prevT = null;
+function apercuAmbiance(){
+  /* aperçu instantané dans OBS, SANS sauvegarder (le serveur diffuse
+     sans persister quand preview:true) — anti-spam 120 ms */
+  clearTimeout(_prevT);
+  _prevT = setTimeout(() => {
+    post(API + '/api/config', {
+      chatTitle: $('chatTitle').value.trim(),
+      accent: $('accent').value,
+      preview: true
+    }).catch(() => {});
+  }, 120);
+}
+$('accent').addEventListener('input', apercuAmbiance);
+$('chatTitle').addEventListener('input', apercuAmbiance);
 $('btnSauverApparence').addEventListener('click', async () => {
   const r = await post(API + '/api/config', {
     chatTitle: $('chatTitle').value.trim(),
     accent: $('accent').value
   });
-  if (r.ok) toast('Apparence enregistrée ✓');
+  if (r.ok) {
+    ambianceSauvee.chatTitle = $('chatTitle').value.trim();
+    ambianceSauvee.accent = $('accent').value;
+    toast('Ambiance enregistrée ✓');
+  }
+});
+$('btnAnnulerApparence').addEventListener('click', async () => {
+  /* rétablit immédiatement l'ancienne ambiance (champs + overlay) */
+  $('chatTitle').value = ambianceSauvee.chatTitle;
+  $('accent').value = ambianceSauvee.accent;
+  await post(API + '/api/config', {
+    chatTitle: ambianceSauvee.chatTitle,
+    accent: ambianceSauvee.accent,
+    preview: true
+  }).catch(() => {});
+  toast('Modifications annulées');
 });
 
 /* ---------- débat ---------- */
@@ -376,16 +443,66 @@ document.querySelectorAll('[data-alert]').forEach(b => {
   });
 });
 
-/* ---------- mise à jour ---------- */
+/* ---------- version & mise à jour ---------- */
+function fmtDate(iso){
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); }
+  catch(e){ return '—'; }
+}
+let _verCache = null;
+async function refreshVersion(silent){
+  const info = $('versionInfo'), hist = $('updateHist'), btn = $('btnUpdate');
+  if (!silent) info.textContent = 'Vérification…';
+  try {
+    const v = await (await fetch(API + '/api/version', { cache: 'no-store' })).json();
+    _verCache = v;
+    let html = 'Version actuelle : <b>' + (v.current || '?') + '</b><br>' +
+      'Dernière mise à jour faite : <b>' + fmtDate(v.lastUpdate) + '</b><br>';
+    if (v.latest) {
+      html += 'Dernière version disponible : <b>' + v.latest + '</b> · ';
+      html += v.upToDate
+        ? '<span class="ok">À jour ✓</span>'
+        : '<span class="warn">Mise à jour disponible ⬇</span>';
+      btn.disabled = false;
+      btn.textContent = v.upToDate ? '✓ Déjà à jour' : '⬇ Mettre à jour (' + v.latest + ')';
+    } else {
+      html += '<span class="warn">' + (v.checkError || 'Version distante inconnue.') + '</span>';
+      btn.disabled = false;
+      btn.textContent = '⬇ Mettre à jour';
+    }
+    info.innerHTML = html;
+    hist.innerHTML = (v.history && v.history.length)
+      ? 'Historique :<br>' + v.history.slice(0, 5).map(h => '· <b>' + h.version + '</b> — ' + fmtDate(h.date)).join('<br>')
+      : '';
+    return v;
+  } catch(e){
+    info.innerHTML = '<span class="bad">Impossible de lire la version.</span>';
+    return null;
+  }
+}
+$('btnCheckUpdate').addEventListener('click', () => refreshVersion(false));
 $('btnUpdate').addEventListener('click', async () => {
   const btn = $('btnUpdate'), etat = $('updateEtat');
-  btn.disabled = true; btn.textContent = 'Mise à jour...';
+  /* 1) on vérifie d'abord : si déjà à jour, on ne retélécharge rien */
+  btn.disabled = true; btn.textContent = 'Vérification...';
+  etat.textContent = '';
+  const v = await refreshVersion(true);
+  if (v && v.upToDate) {
+    etat.innerHTML = '<span class="ok">✓ Déjà à jour (' + v.current + ') — rien à télécharger.</span>';
+    toast('Déjà à jour ✓');
+    btn.disabled = false; btn.textContent = '✓ Déjà à jour';
+    return;
+  }
+  /* 2) vraiment en retard (ou vérification impossible) → MAJ */
+  btn.textContent = 'Mise à jour...';
   etat.textContent = 'Téléchargement de la dernière version...';
   try {
     const r = await fetch(API + '/api/update', { method: 'POST' });
     const j = await r.json();
     if (j.ok) {
       etat.innerHTML = '<span class="ok">✓ À jour (' + (j.version || 'OK') + ').</span>';
+      toast('Mise à jour terminée ✓');
+      await refreshVersion(true);
       btn.textContent = '↻ Relancer le panneau';
       btn.disabled = false;
       btn.onclick = () => location.reload();   // ne relance QUE la fenêtre (jamais OBS ni le pont)
@@ -414,8 +531,11 @@ async function init(){
       $('goalManual').value = s.config.subGoalManual || 0;
       $('chatTitle').value = s.config.chatTitle || '';
       $('accent').value = s.config.accent || '#9146FF';
+      ambianceSauvee.chatTitle = $('chatTitle').value;
+      ambianceSauvee.accent = $('accent').value;
       $('rowGoalManual').style.display = s.config.subGoalAuto ? 'none' : 'block';
     }
+    refreshVersion(true);
   } catch(e){ $('statut').innerHTML = '<p class="bad">Impossible de joindre le pont.</p>'; }
 }
 init();

@@ -643,6 +643,26 @@ function render() {
   E.total.textContent = tot.toLocaleString('fr-FR') + (tot > 1 ? ' VOTES' : ' VOTE');
 }
 
+/* — Consigne de vote : affiche les mots à taper (« voiture » / « vélo »),
+     miroir de la détection fluide du pont (1er mot significatif).
+     Repli sur !vote A/B si les options sont indiscernables. — */
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function displayKeyword(opt) {
+  const words = String(opt || '').replace(/["'«»]/g, ' ').split(/\s+/)
+    .map(w => w.replace(/^[^A-Za-zÀ-ÖØ-öø-ÿ0-9]+|[^A-Za-zÀ-ÖØ-öø-ÿ0-9]+$/g, ''))
+    .filter(w => w.length >= 2);
+  return (words[0] || '').slice(0, 18);
+}
+function voteHint(a, b) {
+  const ka = displayKeyword(a), kb = displayKeyword(b);
+  if (ka && kb && ka.toLowerCase() !== kb.toLowerCase())
+    return 'TAPEZ <b>« ' + esc(ka) + ' »</b> OU <b>« ' + esc(kb) + ' »</b>';
+  return '<b>!vote A</b> · <b>!vote B</b>';
+}
+
 function beginExit() {
   if (exiting) return;
   exiting = true;
@@ -681,7 +701,7 @@ function setState(next) {
     ? 'SONDAGE TWITCH · EN COURS'
     : next.source === 'demo'
       ? 'MODE APERÇU'
-      : '<b>!vote A</b> · <b>!vote B</b>';
+      : voteHint(next.a, next.b);
 
   if (next.mode === 'live') {
     if (next.startsAt) debateTotal = Math.max(2000, next.endsAt - next.startsAt);
@@ -729,10 +749,15 @@ function apply(m) {
   if (m.chat) { pushChat(m); return; }      // message du vrai chat (via le pont)
   if (m.badgeMap) { badgeMap = m.badgeMap; return; }   // vrais badges Twitch (images)
   if (m.pin) { m.pin === 0 ? clearPin() : setPin(m); return; }   // message épinglé
-  if (m.goal) { setGoal(m); return; }                     // sub goal
+  /* sub goal et/ou config (titre + accent) — le pont les envoie parfois
+     ensemble : on applique les deux, sans retour prématuré */
+  if (m.goal || m.cfg) {
+    if (m.goal) setGoal(m);
+    if (m.cfg) applyConfig(m);
+    return;
+  }
   if (m.alert) { queueAlert(m); return; }                 // follow / sub / raid
   if (m.mode) setState(m);
-  if (m.cfg) { applyConfig(m); return; }                  // titre du chat + accent
 }
 
 /* — Applique le titre du chat + la couleur d'accent (depuis le panneau) — */
