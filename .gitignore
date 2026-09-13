@@ -3,3 +3,4 @@ node_modules/
 *.log
 secrets.json
 config-perso.json
+update-info.json

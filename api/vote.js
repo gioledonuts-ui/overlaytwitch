@@ -19,14 +19,13 @@ export default async function handler(req, res) {
     const u = String(user || 'anon').toLowerCase().slice(0, 64);
 
     s.votes = s.votes || {};
-    const prev = s.votes[u];
-    if (prev) {
-      if (prev === c) return res.status(200).send(JSON.stringify({ ok: true, state: s }));
-      s[prev === 'A' ? 'va' : 'vb'] = Math.max(0, (s[prev === 'A' ? 'va' : 'vb'] || 0) - 1);
-      delete s.votes[u];
-    }
+    /* Anti-doublon strict : 1 seul vote par utilisateur et par débat
+       (le premier vote compte, les suivants sont ignorés). */
+    if (s.votes[u]) return res.status(200).send(JSON.stringify({ ok: true, counted: false, state: s }));
+    if (Object.keys(s.votes).length >= 8000)   // cap mémoire : on ignore sans compter
+      return res.status(200).send(JSON.stringify({ ok: true, counted: false, state: s }));
     s[c === 'A' ? 'va' : 'vb'] = (s[c === 'A' ? 'va' : 'vb'] || 0) + 1;
-    if (Object.keys(s.votes).length < 8000) s.votes[u] = c;   // cap mémoire
+    s.votes[u] = c;
 
     const remaining = Math.max(15, (s.endsAt - Date.now()) / 1000 + 90);
     await setState(s, remaining);
