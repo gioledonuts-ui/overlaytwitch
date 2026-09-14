@@ -725,13 +725,42 @@ async function syncSubGoal() {
   }
 }
 
-/* ═══ FOLLOWS (EventSub WebSocket, temps réel) ═══════════════════
+/* ═══ FOLLOWS + SUBS + RAIDS (EventSub WebSocket, temps réel) ═══════════
    Twitch n'envoie PAS les follows via IRC : on utilise EventSub WebSocket
-   (channel.follow v2). Nécessite le scope moderator:read:followers. */
+   (channel.follow v2). On ajoute aussi sub, gift, raid pour garantir les alertes
+   même si tmi.js rate un event. */
 function connectFollows() {
   if (!CLIENT_ID || !POLL_OAUTH || !resolvedBroadcasterId) return;
   let ws = null;
   const token = POLL_OAUTH;
+  async function subscribeAll(sessionId) {
+    const types = [
+      { type: 'channel.follow', version: '2', condition: { broadcaster_user_id: resolvedBroadcasterId, moderator_user_id: resolvedBroadcasterId } },
+      { type: 'channel.subscribe', version: '1', condition: { broadcaster_user_id: resolvedBroadcasterId } },
+      { type: 'channel.subscription.gift', version: '1', condition: { broadcaster_user_id: resolvedBroadcasterId } },
+      { type: 'channel.subscription.message', version: '1', condition: { broadcaster_user_id: resolvedBroadcasterId } },
+      { type: 'channel.raid', version: '1', condition: { to_broadcaster_user_id: resolvedBroadcasterId } }
+    ];
+    for (const sub of types) {
+      try {
+        const r = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
+          method: 'POST',
+          headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: sub.type, version: sub.version,
+            condition: sub.condition,
+            transport: { method: 'websocket', session_id: sessionId }
+          })
+        });
+        if (r.ok) console.log(`[eventsub] ${sub.type} OK`);
+        else {
+          const txt = await r.text().catch(()=> '');
+          console.warn(`[eventsub] ${sub.type} fail ${r.status} ${txt.slice(0,120)}`);
+        }
+      } catch (e) { console.warn(`[eventsub] ${sub.type} error`, e.message); }
+    }
+    console.log('[eventsub] WebSocket connecté — alertes follow/sub/gift/raid actives');
+  }
   function ouvrir(url) {
     try { ws = new WebSocket(url || 'wss://eventsub.wss.twitch.tv:443'); }
     catch (e) { console.warn('[follows] WebSocket indisponible (Node trop ancien) :', e.message); return; }
@@ -741,23 +770,50 @@ function connectFollows() {
       const t = msg.metadata && msg.metadata.message_type;
       if (t === 'session_welcome') {
         const sessionId = msg.payload.session.id;
-        try {
-          await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
-            method: 'POST',
-            headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'channel.follow', version: '2',
-              condition: { broadcaster_user_id: resolvedBroadcasterId, moderator_user_id: resolvedBroadcasterId },
-              transport: { method: 'websocket', session_id: sessionId }
-            })
-          });
-          console.log('[follows] EventSub connecté — les alertes de follow sont actives');
-        } catch (e) { console.warn('[follows] abonnement EventSub refusé :', e.message); }
-      } else if (t === 'notification' && msg.metadata && msg.metadata.subscription_type === 'channel.follow') {
-        const evt = msg.payload.event;
-        const nom = evt.user_name || evt.user_login || 'un viewer';
-        broadcastAlert({ type: 'follow', user: nom });
-        console.log('[alerte] follow : ' + nom);
+        await subscribeAll(sessionId);
+      } else if (t === 'notification') {
+        const subType = msg.metadata && msg.metadata.subscription_type;
+        const evt = msg.payload && msg.payload.event;
+        if (!evt) return;
+        if (subType === 'channel.follow') {
+          const nom = evt.user_name || evt.user_login || 'un viewer';
+          broadcastAlert({ type: 'follow', user: nom });
+          console.log('[alerte] follow : ' + nom);
+        } else if (subType === 'channel.subscribe') {
+          const nom = evt.user_name || evt.user_login || 'viewer';
+          const isResub = (evt.cumulative_months || 0) > 1 || (evt.streak_months || 0) > 0;
+          if (isResub) {
+            broadcastAlert({ type: 'resub', user: nom, stints: (evt.streak_months||1)-1, total: evt.cumulative_months||1, message: evt.message && evt.message.text });
+            console.log('[alerte] resub EventSub : ' + nom);
+          } else {
+            broadcastAlert({ type: 'sub', user: nom, message: evt.message && evt.message.text });
+            console.log('[alerte] sub EventSub : ' + nom);
+          }
+        } else if (subType === 'channel.subscription.gift') {
+          const nom = evt.user_name || evt.user_login || 'viewer';
+          const isAnon = evt.is_anonymous;
+          if (isAnon) {
+            broadcastAlert({ type: 'anon', viewer: evt.total ? String(evt.total)+' subs' : undefined });
+            console.log('[alerte] gift anon EventSub');
+          } else {
+            const total = evt.total || 1;
+            if (total > 1) {
+              broadcastAlert({ type: 'community', user: nom, message: total + ' subs offerts' });
+              console.log('[alerte] community gift EventSub : ' + nom + ' x' + total);
+            } else {
+              broadcastAlert({ type: 'gift', user: nom, viewer: evt.recipient_user_name || 'un spectateur' });
+              console.log('[alerte] gift EventSub : ' + nom);
+            }
+          }
+        } else if (subType === 'channel.subscription.message') {
+          const nom = evt.user_name || evt.user_login || 'viewer';
+          broadcastAlert({ type: 'resub', user: nom, stints: (evt.streak_months||1)-1, total: evt.cumulative_months||1, message: evt.message && evt.message.text });
+          console.log('[alerte] resub message EventSub : ' + nom);
+        } else if (subType === 'channel.raid') {
+          const nom = evt.from_broadcaster_user_name || evt.from_broadcaster_user_login || 'raideur';
+          broadcastAlert({ type: 'raid', user: nom, viewers: evt.viewers || 0 });
+          console.log('[alerte] raid EventSub : ' + nom + ' (' + (evt.viewers||0) + ')');
+        }
       } else if (t === 'session_reconnect') {
         const u = msg.payload.session && msg.payload.session.reconnect_url;
         try { ws.close(); } catch (e) {}
@@ -877,10 +933,38 @@ const server = http.createServer((req, res) => {
 
     /* — Sons d'alerte custom — */
     if (u.pathname === '/api/sounds' && req.method === 'GET') {
-      fs.readdir(path.join(__dirname, 'sounds'), (e, files) => {
-        if (e) return send(200, 'application/json', JSON.stringify({ ok: true, files: [] }));
-        const list = files.filter(f => f.startsWith('alert-')).map(f => ({ file: f, type: f.replace(/^alert-/, '').replace(/\.[^.]+$/, '') }));
-        send(200, 'application/json', JSON.stringify({ ok: true, files: list }));
+      const soundsDir = path.join(__dirname, 'sounds');
+      try { if (!fs.existsSync(soundsDir)) fs.mkdirSync(soundsDir, { recursive: true }); } catch(e){}
+      fs.readdir(soundsDir, (e, files) => {
+        if (e) return send(200, 'application/json', JSON.stringify({ ok: true, files: [], all: [] }));
+        const known = ['follow','sub','resub','gift','raid','prime','anon','community','default'];
+        const list = [];
+        const all = files.map(f => f);
+        for (const f of files) {
+          const low = f.toLowerCase();
+          // supporte alert-xxx.mp3 et aussi xxx.mp3 direct
+          let type = null;
+          if (low.startsWith('alert-')) {
+            type = low.replace(/^alert-/, '').replace(/\.[^.]+$/, '');
+          } else {
+            // si fichier contient un type connu sans prefix alert-
+            for (const k of known) {
+              if (low.includes(k)) { type = k; break; }
+            }
+          }
+          if (!type) continue;
+          // normalise
+          type = type.replace(/[^a-z]/g,'');
+          if (!known.includes(type)) continue;
+          list.push({ file: f, type });
+        }
+        // dedup par type (garde premier)
+        const seen = new Set();
+        const dedup = [];
+        for (const it of list) {
+          if (!seen.has(it.type)) { seen.add(it.type); dedup.push(it); }
+        }
+        send(200, 'application/json', JSON.stringify({ ok: true, files: dedup, all }));
       });
       return;
     }

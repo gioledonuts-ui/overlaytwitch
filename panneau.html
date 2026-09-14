@@ -455,7 +455,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
       <div class="brand__txt">
         <div class="brand__name">7GIONNY</div>
         <div class="brand__sub">STUDIO</div>
-        <div id="verPill">V28</div>
+        <div id="verPill">V29</div>
       </div>
     </div>
     <nav class="nav">
@@ -1175,19 +1175,43 @@ function apercuVelocity(){
   clearTimeout(_velPrevT);
   _velPrevT=setTimeout(()=>{
     const f=getVelocityForm();
+    // preview pour tout sauf activation qui doit persister immediatement
     post(API+'/api/config',{...f,preview:true}).catch(()=>{});
     const et=$('velocityEtat');
     if(et)et.innerHTML='<span class="warn">Aperçu en direct dans OBS…</span>';
   },140);
 }
+function sauverVelocityImmediate() {
+  const f=getVelocityForm();
+  // sauvegarde immediate pour garantir que l'overlay s'affiche meme apres reload
+  post(API+'/api/config',f).then(r=>{
+    if(r.ok){
+      velocitySaved={...f};
+      const et=$('velocityEtat');
+      if(et) et.innerHTML='<span class="ok">Vélocité '+(f.velocityEnabled?'activée ✔':'désactivée')+' – visible dans OBS</span>';
+      toast(f.velocityEnabled?'Vélocité ON – overlay visible':'Vélocité OFF');
+    }
+  }).catch(()=>{});
+}
 ['velocityEquilibrium','velocityClimb','velocityDecay','velocityHold','velocityBarWidth','velocityBarHeight','velocityGoalThreshold','velocityGoalDuration','velocityFinHour','velocityFinMinute'].forEach(id=>{
   const el=$(id);
   if(el) el.addEventListener('input',apercuVelocity);
 });
-['velocityShowMetrics','velocityEnabled','velocityFinEnabled'].forEach(id=>{
+['velocityShowMetrics','velocityFinEnabled'].forEach(id=>{
   const el=$(id);
   if(el) el.addEventListener('change',apercuVelocity);
 });
+// velocityEnabled = sauvegarde immediate + preview
+const velEnabledEl=$('velocityEnabled');
+if(velEnabledEl){
+  velEnabledEl.addEventListener('change',()=>{
+    const f=getVelocityForm();
+    // preview instant
+    post(API+'/api/config',{...f,preview:true}).catch(()=>{});
+    // puis sauvegarde pour persistance
+    setTimeout(()=>sauverVelocityImmediate(), 200);
+  });
+}
 const btnSauverVelocity=$('btnSauverVelocity');
 if(btnSauverVelocity) btnSauverVelocity.addEventListener('click',async()=>{
   const f=getVelocityForm();
@@ -1322,21 +1346,37 @@ async function loadSounds(){
     const j=await r.json();
     const map={};
     if(j.files){ j.files.forEach(f=>{ map[f.type]=f; }); }
+    // aussi liste brute pour debug si besoin
+    const allFiles = j.all || [];
     document.querySelectorAll('.soundStatus').forEach(el=>{
       const type=el.dataset.status;
       const has=map[type];
       if(has){
-        el.textContent='Custom: '+has.file+' ('+type+')';
+        el.textContent='Custom: '+has.file+' ('+type+') ✔';
         el.style.color='var(--ok)';
         const delBtn=document.querySelector(`[data-del="${type}"]`);
         if(delBtn) delBtn.style.display='inline-flex';
       }else{
-        el.textContent=el.dataset.status==='resub'?'Aucun custom – utilise SUB':(el.dataset.status==='gift'?'Aucun custom – utilise SUB':'Aucun custom – son par defaut');
-        el.style.color='var(--muted)';
+        // si aucun custom pour ce type, mais au moins un fichier custom existe globalement, on le dit
+        if(allFiles.length>0){
+          // cherche fallback sub pour resub/gift
+          if((type==='resub' || type==='gift') && map['sub']){
+            el.textContent='Utilise SUB: '+map['sub'].file+' ✔ (fallback)';
+            el.style.color='var(--ok)';
+          }else{
+            el.textContent='Aucun custom '+type.toUpperCase()+' – son par defaut (fichiers custom: '+allFiles.filter(f=>f.startsWith('alert-')).length+')';
+            el.style.color='var(--muted)';
+          }
+        }else{
+          el.textContent=type==='resub'?'Aucun custom – utilise SUB':(type==='gift'?'Aucun custom – utilise SUB':'Aucun custom – son par defaut');
+          el.style.color='var(--muted)';
+        }
         const delBtn=document.querySelector(`[data-del="${type}"]`);
         if(delBtn) delBtn.style.display='none';
       }
     });
+    // debug console
+    console.log('[sons] custom detectes', j.files, 'all', allFiles);
   }catch(e){
     console.warn('loadSounds fail',e);
   }
@@ -1389,7 +1429,7 @@ document.querySelectorAll('[data-playsound]').forEach(btn=>{
       if(idx>=tryUrls.length){ toast('Aucun son '+type+' trouve – upload d\'abord'); if(tile){ const ap=tile.querySelector('.audioPreview'); if(ap) ap.remove(); } return; }
       const url=tryUrls[idx++];
       audio.src=url;
-      audio.volume=0.9;
+      audio.volume=0.75;
       audio.play().then(()=>{
         toast('Lecture '+type+' ▶ ('+url.split('/').pop().split('?')[0]+')');
       }).catch(()=>tryNext());
@@ -1429,13 +1469,14 @@ function playLocalAlertSound(type){
     API+'/sounds/alert-'+type+'.wav?v='+Date.now(),
     API+'/sounds/alert-'+type+'.ogg?v='+Date.now(),
     API+'/sounds/alert-'+type+'.m4a?v='+Date.now(),
+    API+'/sounds/'+type+'.mp3?v='+Date.now(),
     API+'/sounds/alert-sub.mp3?v='+Date.now()
   ];
   let i=0;
   function tryNext(){
     if(i>=urls.length) return;
     const a=new Audio(urls[i++]);
-    a.volume=0.9;
+    a.volume=0.75;
     a.play().then(()=>{}).catch(()=>tryNext());
     a.onerror=()=>tryNext();
   }

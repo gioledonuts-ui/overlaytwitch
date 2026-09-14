@@ -355,9 +355,10 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   border-radius:18px;
   box-shadow:0 28px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.05) inset,0 1px 0 rgba(255,255,255,.08) inset;
   opacity:0;visibility:hidden;pointer-events:none;z-index:6;
-  transition:opacity .5s var(--ease-out),visibility .5s;
+  transition:opacity .5s var(--ease-out);
 }
 #velocityWrap.is-on{opacity:1;visibility:visible;pointer-events:none}
+#velocityWrap.is-on{pointer-events:none}
 .velocity__trackWrap{
   position:relative;flex:1;display:flex;align-items:center;justify-content:center;
   width:100%;min-height:120px;
@@ -544,7 +545,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   <div id="alerts" aria-hidden="true"></div>
 
   <!-- ═══ VÉLOCITÉ CHAT V5 — % gros lisible + fin prévue + chrono auto ═══ -->
-  <div id="velocityWrap" aria-hidden="true">
+  <div id="velocityWrap" class="is-on" aria-hidden="true">
     <div class="velocity__trackWrap">
       <div class="velocity__track" id="velocityTrack">
         <div class="velocity__fill" id="velocityFill"></div>
@@ -1157,31 +1158,48 @@ for (const u of ['assets/alert-bg.png','assets/icon-follow.png','assets/icon-sub
      sounds/alert-gift.*    → GIFT specifique (si present, prioritaire)
      sounds/alert-resub.*   → RESUB specifique
      sounds/alert-raid.*    → RAID
-   Fichier absent = pas de son (rien ne casse). Volume réglable dans ALERT_SOUNDS.
+   Volume 0.75 pour éviter craquement / clipping. Single playback garanti.
    Le panneau upload directement ici via /api/sounds. */
-const ALERT_SOUNDS = { follow: 0.9, sub: 0.9, gift: 0.9, resub: 0.9, raid: 0.9, prime: 0.9, anon: 0.9, community: 0.9, default: 0.9 };
+const ALERT_SOUNDS = { follow: 0.75, sub: 0.75, gift: 0.75, resub: 0.75, raid: 0.75, prime: 0.75, anon: 0.75, community: 0.75, default: 0.75 };
 const alertAudio = {};
+let alertAudioReady = false;
 (function initAlertSounds() {
   const probe = url => new Promise(res => {
-    const a = new Audio(url); a.preload = 'auto';
-    a.addEventListener('canplaythrough', () => res(a), { once: true });
-    a.addEventListener('error', () => res(null), { once: true });
+    const a = new Audio();
+    a.preload = 'auto';
+    a.volume = 0.75;
+    a.src = url;
+    const ok = () => { a.removeEventListener('error', fail); res(a); };
+    const fail = () => { a.removeEventListener('canplaythrough', ok); res(null); };
+    a.addEventListener('canplaythrough', ok, { once: true });
+    a.addEventListener('error', fail, { once: true });
     setTimeout(() => res(null), 2500);
   });
-  (async () => {
+  async function loadAll() {
     for (const kind of ['follow','sub','gift','resub','raid','prime','anon','community','default']) {
       for (const ext of ['mp3','wav','ogg','m4a']) {
-        const a = await probe('sounds/alert-' + kind + '.' + ext + '?v=' + Date.now());
-        if (a) { a.volume = ALERT_SOUNDS[kind] || 0.9; alertAudio[kind] = a; break; }
+        // essaie alert-kind.ext et aussi kind.ext (sans prefix)
+        const urls = ['sounds/alert-' + kind + '.' + ext, 'sounds/' + kind + '.' + ext];
+        for (const u of urls) {
+          const a = await probe(u + '?v=' + Date.now());
+          if (a) { a.volume = ALERT_SOUNDS[kind] || 0.75; alertAudio[kind] = a; break; }
+        }
+        if (alertAudio[kind]) break;
       }
     }
-  })();
+    alertAudioReady = true;
+  }
+  loadAll();
   // re-probe toutes les 15s pour capter un upload custom sans reload OBS
   setInterval(async()=>{
-    for (const kind of ['follow','sub','gift','resub','raid','prime']) {
+    for (const kind of ['follow','sub','gift','resub','raid','prime','default']) {
       for (const ext of ['mp3','wav','ogg','m4a']) {
-        const a = await probe('sounds/alert-' + kind + '.' + ext + '?v=' + Date.now());
-        if (a) { a.volume = ALERT_SOUNDS[kind] || 0.9; alertAudio[kind] = a; break; }
+        const urls = ['sounds/alert-' + kind + '.' + ext, 'sounds/' + kind + '.' + ext];
+        for (const u of urls) {
+          const a = await probe(u + '?v=' + Date.now());
+          if (a) { a.volume = ALERT_SOUNDS[kind] || 0.75; alertAudio[kind] = a; break; }
+        }
+        if (alertAudio[kind]) break;
       }
     }
   }, 15000);
@@ -1251,80 +1269,84 @@ function showAlert(a) {
     const c=audio();
     if(c && c.state==='suspended'){ c.resume().catch(()=>{}); }
   }catch(e){}
-  // son : d'abord type exact (gift/resub...), puis kind (sub/follow/raid), puis fallback default
-  const tryPlayHtml = (au)=>{
-    if(!au) return false;
-    try{ au.currentTime = 0; }catch(e){}
-    try{ au.muted=false; au.volume=0.9; }catch(e){}
-    const pr = au.play();
-    if(pr && pr.then){
-      pr.then(()=>{}).catch(()=>{
-        // si bloque, tente en muted (autoplay autorise) puis unmute
-        try{
-          au.muted=true;
-          const pr2=au.play();
-          if(pr2 && pr2.then){
-            pr2.then(()=>{
-              setTimeout(()=>{ try{ au.muted=false; }catch(e){} }, 120);
-            }).catch(()=>{});
-          }
-        }catch(e){}
-      });
+  // son : single playback, volume 0.75 pour éviter craquement
+  // on essaie un seul fichier, pas de double lecture
+  let played = false;
+  const playSingle = async () => {
+    if (MUTE) return true;
+    const tryUrls = [];
+    // type exact d'abord (gift/resub...)
+    for (const ext of ['mp3','wav','ogg','m4a']) {
+      tryUrls.push('sounds/alert-' + a.alert + '.' + ext);
+      tryUrls.push('sounds/' + a.alert + '.' + ext);
     }
-    return true;
-  };
-  // essaie HTML Audio d'abord
-  let played=false;
-  const auExact = alertAudio[a.alert];
-  const auKind = alertAudio[t.kind];
-  const auDef = alertAudio['default'] || alertAudio['sub'];
-  if(auExact) played=tryPlayHtml(auExact);
-  if(!played && auKind) played=tryPlayHtml(auKind);
-  if(!played && auDef) played=tryPlayHtml(auDef);
-  // si toujours pas joue (ex: OBS bloque), fallback WebAudio via fetch du fichier custom
-  if(!played){
-    (async()=>{
-      const c=audio();
-      if(!c) return;
-      // construit liste d'URLs a essayer
-      const urls=[
-        'sounds/alert-'+a.alert+'.mp3',
-        'sounds/alert-'+a.alert+'.wav',
-        'sounds/alert-'+a.alert+'.ogg',
-        'sounds/alert-'+a.alert+'.m4a',
-        'sounds/alert-'+t.kind+'.mp3',
-        'sounds/alert-'+t.kind+'.wav',
-        'sounds/alert-'+t.kind+'.ogg',
-        'sounds/alert-default.mp3'
-      ];
-      for(const u of urls){
-        try{
-          const r=await fetch(u+'?v='+Date.now(),{cache:'no-store'});
-          if(!r.ok) continue;
-          const ab=await r.arrayBuffer();
-          const buf=await c.decodeAudioData(ab);
-          const src=c.createBufferSource(); src.buffer=buf;
-          const g=c.createGain(); g.gain.value=0.9;
-          src.connect(g).connect(c.destination);
-          src.start();
-          break;
-        }catch(e){ continue; }
+    for (const ext of ['mp3','wav','ogg','m4a']) {
+      tryUrls.push('sounds/alert-' + t.kind + '.' + ext);
+      tryUrls.push('sounds/' + t.kind + '.' + ext);
+    }
+    tryUrls.push('sounds/alert-default.mp3', 'sounds/alert-sub.mp3');
+    // d'abord via HTML Audio preloaded si dispo
+    const auExact = alertAudio[a.alert];
+    const auKind = alertAudio[t.kind];
+    const auDef = alertAudio['default'] || alertAudio['sub'];
+    const candidates = [auExact, auKind, auDef].filter(Boolean);
+    for (const au of candidates) {
+      try {
+        au.currentTime = 0;
+        au.muted = false;
+        au.volume = 0.75;
+        await au.play();
+        played = true;
+        return true;
+      } catch(e) {
+        // si bloque autoplay, tente muted puis unmute
+        try {
+          au.muted = true;
+          await au.play();
+          setTimeout(()=>{ try{ au.muted=false; au.volume=0.75; }catch(e){} }, 150);
+          played = true;
+          return true;
+        } catch(e2) { continue; }
       }
-    })();
-  }
-  // dernier recours beep si vraiment rien
-  if(!played){
-    setTimeout(()=>{
-      try{
-        const c=audio();
-        if(c){
-          const o=c.createOscillator(); o.type='sine'; o.frequency.value=880;
-          const g=c.createGain(); g.gain.setValueAtTime(.0001,c.currentTime); g.gain.exponentialRampToValueAtTime(.4,c.currentTime+.02); g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+.6);
-          o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime+.6);
+    }
+    // sinon fetch + WebAudio decode (single)
+    const c = audio();
+    if (!c) return false;
+    for (const u of tryUrls) {
+      try {
+        const r = await fetch(u + '?v=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) continue;
+        const ab = await r.arrayBuffer();
+        const buf = await c.decodeAudioData(ab.slice(0));
+        const src = c.createBufferSource();
+        src.buffer = buf;
+        const g = c.createGain();
+        g.gain.value = 0.75;
+        src.connect(g).connect(c.destination);
+        src.start();
+        played = true;
+        return true;
+      } catch(e) { continue; }
+    }
+    return false;
+  };
+  playSingle().then(ok => {
+    if (!ok && !MUTE) {
+      // dernier recours beep court
+      try {
+        const c = audio();
+        if (c) {
+          const o = c.createOscillator(); o.type='sine'; o.frequency.value=880;
+          const g = c.createGain();
+          g.gain.setValueAtTime(.0001,c.currentTime);
+          g.gain.exponentialRampToValueAtTime(.32,c.currentTime+.02);
+          g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+.55);
+          o.connect(g).connect(c.destination);
+          o.start(); o.stop(c.currentTime+.6);
         }
-      }catch(e){}
-    }, 300);
-  }
+      } catch(e){}
+    }
+  });
   setTimeout(() => { d.classList.add('out'); setTimeout(() => d.remove(), 320); }, t.hold);
 }
 function queueAlert(a) {
@@ -1398,8 +1420,14 @@ function setGoal(g) {
     wrap.style.setProperty('--vel-w', cfg.barWidth + 'px');
     wrap.style.setProperty('--vel-h', cfg.barHeight + 'px');
     wrap.classList.toggle('no-metrics', !cfg.showMetrics);
-    if (!cfg.velocityEnabled) wrap.classList.remove('is-on');
-    else wrap.classList.add('is-on');
+    // toggle visible : is-on = visible
+    if (cfg.velocityEnabled === false) {
+      wrap.classList.remove('is-on');
+      wrap.setAttribute('aria-hidden','true');
+    } else {
+      wrap.classList.add('is-on');
+      wrap.setAttribute('aria-hidden','false');
+    }
 
     // objectif simple : seuil → +durée
     if (goalEl) {
@@ -1418,8 +1446,10 @@ function setGoal(g) {
       }
     }
 
-    // chrono caché par défaut
-    if (chronoEl) chronoEl.classList.remove('is-on');
+    // chrono caché par défaut (sera affiché quand >= seuil)
+    if (chronoEl && !wrap.classList.contains('is-goal')) {
+      chronoEl.classList.remove('is-on');
+    }
   }
 
   function pushTimestamp() { mpmScore += 1; }
@@ -1462,37 +1492,44 @@ function setGoal(g) {
   window.velocityReset = () => { resetVelocity(true); };
   window.velocityValidate = () => { resetVelocity(false); };
 
+  function toNum(v, def) {
+    if (v === undefined || v === null || v === '') return def;
+    const n = Number(v);
+    return isFinite(n) ? n : def;
+  }
   window.velocityApplyConfig = (c) => {
     const src = c.config || c;
-    if (src.equilibriumMPM !== undefined) cfg.equilibriumMPM = Math.max(1, +src.equilibriumMPM || 20);
-    if (src.climbSensitivity !== undefined) cfg.climbSensitivity = Math.max(0.05, +src.climbSensitivity || 0.65);
-    if (src.decayRate !== undefined) cfg.decayRate = Math.max(0.02, +src.decayRate || 0.14);
-    if (src.barWidth !== undefined) cfg.barWidth = Math.max(12, Math.min(40, Math.round(+src.barWidth || 30)));
-    if (src.barHeight !== undefined) cfg.barHeight = Math.max(280, Math.min(900, Math.round(+src.barHeight || 700)));
+    if (src.equilibriumMPM !== undefined) cfg.equilibriumMPM = Math.max(1, Math.round(toNum(src.equilibriumMPM, 20)));
+    if (src.climbSensitivity !== undefined) cfg.climbSensitivity = Math.max(0.05, toNum(src.climbSensitivity, 0.65));
+    if (src.decayRate !== undefined) cfg.decayRate = Math.max(0.02, toNum(src.decayRate, 0.14));
+    if (src.barWidth !== undefined) cfg.barWidth = Math.max(12, Math.min(40, Math.round(toNum(src.barWidth, 30))));
+    if (src.barHeight !== undefined) cfg.barHeight = Math.max(280, Math.min(900, Math.round(toNum(src.barHeight, 700))));
     if (src.showMetrics !== undefined) cfg.showMetrics = !!src.showMetrics;
     if (src.velocityEnabled !== undefined) cfg.velocityEnabled = !!src.velocityEnabled;
-    if (src.goalThreshold !== undefined) cfg.goalThreshold = Math.max(10, Math.min(99, Math.round(+src.goalThreshold || 90)));
-    if (src.velocityGoalThreshold !== undefined) cfg.goalThreshold = Math.round(src.velocityGoalThreshold);
-    if (src.goalDurationMinutes !== undefined) cfg.goalDurationMinutes = Math.max(1, Math.min(120, Math.round(+src.goalDurationMinutes || 15)));
-    if (src.velocityGoalDurationMinutes !== undefined) cfg.goalDurationMinutes = Math.round(src.velocityGoalDurationMinutes);
-    if (src.goalDuration !== undefined) cfg.goalDurationMinutes = Math.round(src.goalDuration);
-    if (src.velocityGoalDuration !== undefined) cfg.goalDurationMinutes = Math.round(src.velocityGoalDuration);
-    if (src.holdDurationSeconds !== undefined) cfg.holdDurationSeconds = Math.max(5, Math.min(600, Math.round(+src.holdDurationSeconds || 120)));
-    if (src.velocityHold !== undefined) cfg.holdDurationSeconds = Math.round(src.velocityHold);
-    if (src.velocityHoldDurationSeconds !== undefined) cfg.holdDurationSeconds = Math.round(src.velocityHoldDurationSeconds);
-    if (src.finHour !== undefined) cfg.finHour = Math.max(0, Math.min(23, Math.round(+src.finHour || 21)));
-    if (src.velocityFinHour !== undefined) cfg.finHour = Math.round(src.velocityFinHour);
-    if (src.finMinute !== undefined) cfg.finMinute = Math.max(0, Math.min(59, Math.round(+src.finMinute || 30)));
-    if (src.velocityFinMinute !== undefined) cfg.finMinute = Math.round(src.velocityFinMinute);
+    if (src.goalThreshold !== undefined) cfg.goalThreshold = Math.max(10, Math.min(99, Math.round(toNum(src.goalThreshold, 90))));
+    if (src.velocityGoalThreshold !== undefined) cfg.goalThreshold = Math.max(10, Math.min(99, Math.round(toNum(src.velocityGoalThreshold, 90))));
+    if (src.goalDurationMinutes !== undefined) cfg.goalDurationMinutes = Math.max(1, Math.min(120, Math.round(toNum(src.goalDurationMinutes, 15))));
+    if (src.velocityGoalDurationMinutes !== undefined) cfg.goalDurationMinutes = Math.max(1, Math.min(120, Math.round(toNum(src.velocityGoalDurationMinutes, 15))));
+    if (src.goalDuration !== undefined) cfg.goalDurationMinutes = Math.max(1, Math.min(120, Math.round(toNum(src.goalDuration, 15))));
+    if (src.velocityGoalDuration !== undefined) cfg.goalDurationMinutes = Math.max(1, Math.min(120, Math.round(toNum(src.velocityGoalDuration, 15))));
+    if (src.holdDurationSeconds !== undefined) cfg.holdDurationSeconds = Math.max(5, Math.min(600, Math.round(toNum(src.holdDurationSeconds, 120))));
+    if (src.velocityHold !== undefined) cfg.holdDurationSeconds = Math.max(5, Math.min(600, Math.round(toNum(src.velocityHold, 120))));
+    if (src.velocityHoldDurationSeconds !== undefined) cfg.holdDurationSeconds = Math.max(5, Math.min(600, Math.round(toNum(src.velocityHoldDurationSeconds, 120))));
+    if (src.finHour !== undefined) cfg.finHour = Math.max(0, Math.min(23, Math.round(toNum(src.finHour, 21))));
+    if (src.velocityFinHour !== undefined) cfg.finHour = Math.max(0, Math.min(23, Math.round(toNum(src.velocityFinHour, 21))));
+    if (src.finMinute !== undefined) cfg.finMinute = Math.max(0, Math.min(59, Math.round(toNum(src.finMinute, 30))));
+    if (src.velocityFinMinute !== undefined) cfg.finMinute = Math.max(0, Math.min(59, Math.round(toNum(src.velocityFinMinute, 30))));
     if (src.finEnabled !== undefined) cfg.finEnabled = !!src.finEnabled;
     if (src.velocityFinEnabled !== undefined) cfg.finEnabled = !!src.velocityFinEnabled;
     // compat anciennes
-    if (src.velocityEquilibrium !== undefined) cfg.equilibriumMPM = src.velocityEquilibrium;
-    if (src.velocityClimb !== undefined) cfg.climbSensitivity = src.velocityClimb;
-    if (src.velocityDecay !== undefined) cfg.decayRate = src.velocityDecay;
-    if (src.velocityBarWidth !== undefined) cfg.barWidth = src.velocityBarWidth;
-    if (src.velocityBarHeight !== undefined) cfg.barHeight = src.velocityBarHeight;
-    if (src.velocityShowMetrics !== undefined) cfg.showMetrics = src.velocityShowMetrics;
+    if (src.velocityEquilibrium !== undefined) cfg.equilibriumMPM = Math.max(1, Math.round(toNum(src.velocityEquilibrium, 20)));
+    if (src.velocityClimb !== undefined) cfg.climbSensitivity = Math.max(0.05, toNum(src.velocityClimb, 0.65));
+    if (src.velocityDecay !== undefined) cfg.decayRate = Math.max(0.02, toNum(src.velocityDecay, 0.14));
+    if (src.velocityBarWidth !== undefined) cfg.barWidth = Math.max(12, Math.min(40, Math.round(toNum(src.velocityBarWidth, 30))));
+    if (src.velocityBarHeight !== undefined) cfg.barHeight = Math.max(280, Math.min(900, Math.round(toNum(src.velocityBarHeight, 700))));
+    if (src.velocityShowMetrics !== undefined) cfg.showMetrics = !!src.velocityShowMetrics;
+    // debug
+    try { console.log('[velocite] config appliquee', cfg); } catch(e){}
     applyVisualConfig();
   };
 
