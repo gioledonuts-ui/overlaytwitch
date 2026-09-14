@@ -14,6 +14,7 @@
 @font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/inter-600.woff2') format('woff2')}
 @font-face{font-family:'Inter';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/inter-700.woff2') format('woff2')}
 @font-face{font-family:'Inter';font-style:normal;font-weight:800;font-display:swap;src:url('fonts/inter-800.woff2') format('woff2')}
+@font-face{font-family:'Outfit';font-style:normal;font-weight:100 900;font-display:swap;src:url('fonts/outfit-var.woff2') format('woff2')}
 @font-face{font-family:'Bebas Neue';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/bebas-400.woff2') format('woff2')}
 
 :root{
@@ -42,12 +43,12 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   background-image:linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px);
   background-size:80px 80px}
 
-/* ═══ CARTE DU DÉBAT — lower third ═══
-   880 × 208 px · centré · bottom 96 px (compact, face du streamer au centre) */
+/* ═══ CARTE DU DÉBAT — top center, hauteur dynamique selon nb réponses ═══
+   880px large, top 96px, hauteur auto (2 réponses = compact, 4 = plus haut) */
 #card{
-  position:absolute;left:50%;bottom:96px;
-  width:880px;height:248px;
-  transform:translate(-50%,46px);
+  position:absolute;left:50%;top:96px;bottom:auto;
+  width:880px;height:auto;min-height:180px;
+  transform:translate(-50%,-28px);
   opacity:0;visibility:hidden;
   background:linear-gradient(180deg,rgba(18,18,21,.97) 0%,rgba(10,10,10,.96) 100%);
   -webkit-backdrop-filter:blur(18px) saturate(1.3);
@@ -57,23 +58,24 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   box-shadow:0 30px 70px rgba(0,0,0,.55),0 4px 18px rgba(0,0,0,.42),
     inset 0 1px 0 rgba(255,255,255,.05);
   transition:opacity .65s var(--ease-out),transform .65s var(--ease-out);
+  z-index:8;
 }
 
 #card.is-live{opacity:1;transform:translate(-50%,0);visibility:visible}
-#card.is-exit{opacity:0;transform:translate(-50%,26px);
+#card.is-exit{opacity:0;transform:translate(-50%,-18px);
   transition:opacity .42s var(--ease-in),transform .42s var(--ease-in)}
 #card.is-hidden{visibility:hidden}
 #card.is-hidden.is-exit{transition:none}
 
-.pad{position:absolute;inset:18px 24px;display:flex;flex-direction:column}
+.pad{position:relative;padding:18px 24px;display:flex;flex-direction:column;gap:10px}
 
 /* — En-tête : monogramme 7G (gauche) · chip centrée · timer à droite — */
 .head{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
-.head .mark7g{justify-self:start}
+.head .mark7g{justify-self:start;width:36px;height:36px;border-radius:8px}
 .head #timer{justify-self:end}
 .chip{display:inline-flex;align-items:center;gap:9px;padding:6px 14px;border-radius:4px;
   border:1px solid rgba(145,70,255,.42);font-family:'Bebas Neue',sans-serif;font-weight:400;
-  font-size:13px;letter-spacing:.18em;color:#E7E9EE;
+  font-size:14px;letter-spacing:.18em;color:#E7E9EE;
   transition:border-color .3s,color .3s}
 .chip .dot{width:6px;height:6px;border-radius:50%;background:var(--violet);
   box-shadow:0 0 8px rgba(145,70,255,.9);animation:pulse 1.6s ease-in-out infinite}
@@ -81,7 +83,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .chip.is-result .dot{animation:none;box-shadow:0 0 12px rgba(145,70,255,1)}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.78)}}
 
-#timer{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.08em;color:var(--gris);
+#timer{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.08em;color:var(--gris);
   font-variant-numeric:tabular-nums;transition:color .3s,text-shadow .3s}
 /* les deux-points pulsent : on sent le temps passer */
 #timer #tColon{animation:colon 1s steps(1) infinite}
@@ -89,31 +91,37 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 #timer.is-low{color:var(--violet);text-shadow:0 0 14px rgba(145,70,255,.55)}
 #timer.is-off{visibility:hidden}
 
-/* — Question (hauteur de ligne aérée : aucun rognage des lettres) — */
-#question{margin-top:12px;padding:0 0 8px;font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:46px;line-height:1.18;
+/* — Question (plus lisible, 3 lignes max, 36px pour éviter la coupe) — */
+#question{margin-top:10px;padding:0 0 6px;font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:36px;line-height:1.2;
   letter-spacing:.02em;color:var(--blanc);text-align:center;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-  text-shadow:0 2px 12px rgba(0,0,0,.5)}
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+  text-shadow:0 2px 12px rgba(0,0,0,.5);min-height:44px}
 
-/* — Options : label · barre · pourcentage — */
-.opts{margin-top:13px;display:flex;flex-direction:column;gap:9px}
-.opt{display:grid;grid-template-columns:172px 1fr 60px;align-items:center;gap:14px}
-/* badge A/B : ancre de lecture (et de la commande chat) */
-.lbl{display:flex;align-items:center;gap:8px;min-width:0;font-size:13px;font-weight:700;line-height:1.15;color:var(--blanc);text-align:left;transition:opacity .45s}
-.ab{flex:none;width:17px;height:17px;border-radius:3px;display:flex;align-items:center;justify-content:center;
+/* — Options : label · barre · pourcentage — supporte 2 à 4 choix */
+.opts{margin-top:10px;display:flex;flex-direction:column;gap:7px}
+.opt{display:grid;grid-template-columns:200px 1fr 76px;align-items:center;gap:14px}
+.opt[hidden]{display:none !important}
+/* badge A/B/C/D : ancre de lecture */
+.lbl{display:flex;align-items:center;gap:8px;min-width:0;font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;line-height:1.15;color:var(--blanc);text-align:left;transition:opacity .45s}
+.ab{flex:none;width:20px;height:20px;border-radius:3px;display:flex;align-items:center;justify-content:center;
   font-size:10px;font-weight:800;border:1px solid rgba(145,70,255,.55);color:var(--violet)}
 .ab--b{border-color:rgba(255,255,255,.45);color:#fff}
+.ab--c{border-color:rgba(124,199,255,.55);color:#7CC7FF}
+.ab--d{border-color:rgba(255,209,102,.55);color:#FFD166}
 .lbl__row{display:flex;align-items:center;gap:8px;min-width:0}
 .lbl__t{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* badge GAGNANT — apparaît sur la ligne victorieuse */
-.tag{flex:none;font-size:8px;font-weight:800;letter-spacing:.22em;color:var(--violet);
-  border:1px solid rgba(145,70,255,.55);border-radius:3px;padding:2px 6px;
-  opacity:0;transform:scale(.9);transition:opacity .3s var(--ease-out),transform .3s var(--ease-out)}
+.tag{flex:none;font-family:'Outfit',sans-serif;font-size:10px;font-weight:800;letter-spacing:.18em;color:#fff;
+  background:var(--violet);border:1px solid var(--violet);border-radius:4px;padding:3px 8px;
+  opacity:0;transform:scale(.9);transition:opacity .3s var(--ease-out),transform .3s var(--ease-out);
+  box-shadow:0 0 10px rgba(145,70,255,.5)}
 .opt.is-winner .tag{opacity:1;transform:scale(1)}
-#optB.is-winner .tag{color:#fff;border-color:rgba(255,255,255,.6)}
-.bar{position:relative;height:9px;border-radius:4.5px;overflow:hidden;
+#optB.is-winner .tag{background:#fff;color:#000;border-color:#fff;box-shadow:0 0 12px rgba(255,255,255,.6)}
+#optC.is-winner .tag{background:#7CC7FF;color:#000;border-color:#7CC7FF}
+#optD.is-winner .tag{background:#FFD166;color:#000;border-color:#FFD166}
+.bar{position:relative;height:12px;border-radius:6px;overflow:hidden;
   background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.09);transition:opacity .45s}
-.fill{position:absolute;top:0;bottom:0;left:0;width:0%;border-radius:4px;
+.fill{position:absolute;top:0;bottom:0;left:0;width:0%;border-radius:6px;
   transition:width .7s var(--ease-out),filter .25s var(--ease-out),box-shadow .25s var(--ease-out)}
 .fill--a{background:linear-gradient(90deg,var(--violet-deep),var(--violet));
   box-shadow:0 0 10px rgba(145,70,255,.30)}
@@ -122,6 +130,10 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   background:rgba(255,255,255,.85);opacity:.55}
 .fill--b{background:linear-gradient(90deg,#D9DBE0,#FFFFFF);
   box-shadow:0 0 6px rgba(255,255,255,.10)}
+.fill--c{background:linear-gradient(90deg,#2A8FCE,#7CC7FF);
+  box-shadow:0 0 10px rgba(124,199,255,.30)}
+.fill--d{background:linear-gradient(90deg,#C99400,#FFD166);
+  box-shadow:0 0 10px rgba(255,209,102,.30)}
 .fill.is-flash{filter:brightness(1.45)}
 /* — CONTRASTE AVANCE / RECU : à chaque vote, la barre qui gagne s'illumine,
       celle qui perd s'éteint. Le sens du match se lit d'un coup d'œil. — */
@@ -129,7 +141,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .opt.is-up .fill--a{box-shadow:0 0 22px rgba(145,70,255,.85)}
 .opt.is-up .fill--b{box-shadow:0 0 22px rgba(255,255,255,.8)}
 .opt.is-down .fill{filter:brightness(.5) saturate(.55)}
-.pct{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.06em;color:var(--gris-fonce);
+.pct{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.06em;color:var(--gris-fonce);
   text-align:right;font-variant-numeric:tabular-nums;
   transition:color .35s,text-shadow .35s,transform .3s var(--ease-out);opacity:1}
 .pct.is-lead{color:var(--blanc)}
@@ -138,7 +150,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 
 /* — Pied : commande centrée · total des votes à droite (sous les %) — */
 .foot{margin-top:auto;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;
-  font-size:10px;font-weight:600;letter-spacing:.18em;color:var(--gris-fonce)}
+  font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;letter-spacing:.12em;color:var(--gris-fonce)}
 .hint{grid-column:2;justify-self:center;white-space:nowrap}
 .hint b{color:var(--gris);font-weight:700}
 #total{grid-column:3;justify-self:end;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -155,8 +167,8 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 #card.is-critical .timebar__fill{animation:tbPulse .55s ease-in-out infinite}
 @keyframes tbPulse{0%,100%{opacity:1}50%{opacity:.4}}
 
-/* ═══ CHAT TWITCH — 430 × 596 px · DROITE · bottom 160 · ~50 % transparent ═══ */
-.chat{position:absolute;right:48px;bottom:160px;width:430px;height:596px;
+/* ═══ CHAT TWITCH — 460 × 640 px · DROITE · bottom 160 · ~50 % transparent ═══ */
+.chat{position:absolute;right:48px;bottom:160px;width:460px;height:640px;
   display:flex;flex-direction:column;
   background:rgba(10,10,12,.88);
   -webkit-backdrop-filter:blur(12px) saturate(1.2);
@@ -166,27 +178,28 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   opacity:1;visibility:visible;transform:none;
   transition:opacity .5s var(--ease-out),transform .5s var(--ease-out)}
 .chat.is-on{opacity:1;visibility:visible;transform:none}
-.chat__head{display:flex;align-items:center;gap:9px;padding:13px 18px 11px;
-  font-family:'Bebas Neue',sans-serif;font-size:15px;font-weight:400;letter-spacing:.22em;color:#E7E9EE;
+.chat__head{display:flex;align-items:center;gap:9px;padding:14px 20px 12px;
+  font-family:'Bebas Neue',sans-serif;font-size:22px;font-weight:400;letter-spacing:.22em;color:#E7E9EE;
   border-bottom:1px solid rgba(255,255,255,.06)}
 .chat__head .dot{width:6px;height:6px;border-radius:50%;background:var(--violet);
   box-shadow:0 0 8px rgba(145,70,255,.9);animation:pulse 1.6s ease-in-out infinite}
 /* — Monogramme 7G : signature discrète, présente sur les 3 zones — */
 .mark7g{display:inline-flex;align-items:center;justify-content:center;
-  width:20px;height:20px;border-radius:5px;flex:none;overflow:hidden;
-  box-shadow:0 0 0 1px rgba(145,70,255,.35),0 1px 6px rgba(0,0,0,.5)}
+  width:28px;height:28px;border-radius:6px;flex:none;overflow:hidden;
+  background:#000;
+  box-shadow:0 0 0 1px rgba(145,70,255,.45),0 2px 10px rgba(0,0,0,.6)}
 .mark7g img{width:100%;height:100%;object-fit:cover;display:block}
-.chat__head .mark7g{margin-left:auto}
+.chat__head .mark7g{margin-left:auto;width:36px;height:36px;border-radius:8px}
 /* badges Twitch : image officielle, chip texte en repli si hors-ligne */
 .cbadges{display:inline-flex;gap:3px;flex:none;align-items:center;margin-top:2px}
-.cbadge{width:18px;height:18px;border-radius:4px}
+.cbadge{width:20px;height:20px;border-radius:4px}
 .cchip{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:16px;padding:0 5px;
   border-radius:4px;font-size:8px;font-weight:800;letter-spacing:.08em;
   background:rgba(145,70,255,.18);color:var(--violet);border:1px solid rgba(145,70,255,.5)}
 .cchip--mod{background:rgba(255,255,255,.10);color:#fff;border-color:rgba(255,255,255,.45)}
 .cchip--me{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.55)}
 /* emotes / GIFs inline */
-.cemote{height:22px;width:auto;vertical-align:-6px;margin:0 2px;border-radius:3px}
+.cemote{height:26px;width:auto;vertical-align:-6px;margin:0 2px;border-radius:3px}
 /* message MIS EN AVANT (highlight Twitch) : encart violet */
 .cmsg.is-hl{background:rgba(145,70,255,.13);border:1px solid rgba(145,70,255,.45);
   border-radius:8px;padding:5px 8px;margin-left:-8px}
@@ -195,37 +208,37 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.09)}
 .chat__pin.is-on{display:block;animation:cin .35s var(--ease-out)}
 .chat__pin .cmsg{animation:none}
-.chat__pin .cn{font-size:17px}
-.chat__pin .ctext{font-size:15px}
+.chat__pin .cn{font-size:24px}
+.chat__pin .ctext{font-size:22px}
 .chat__pin .cflag{flex:none}
 /* liste : les messages remplissent TOUT le panneau ; fondu progressif en HAUT
    (là où ils disparaissent), rendu pro pas « IA » */
-.chat__list{flex:1;overflow:hidden;padding:12px 18px;
-  display:flex;flex-direction:column;justify-content:flex-end;gap:11px;
+.chat__list{flex:1;overflow:hidden;padding:14px 20px;
+  display:flex;flex-direction:column;justify-content:flex-end;gap:12px;
   -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 64px);
   mask-image:linear-gradient(180deg,transparent 0,#000 64px)}
-/* — Typographie chat : pseudo en BEBAS (mis en avant), texte en Inter 500 lisible — */
-.cmsg{display:flex;gap:8px;font-size:15px;line-height:1.45;animation:cin .35s var(--ease-out);
+/* — Typographie chat : pseudo en Outfit 800 24px (max 180), texte en Inter 700 22px lisible — */
+.cmsg{display:flex;gap:10px;font-size:20px;line-height:1.45;animation:cin .35s var(--ease-out);
   font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji','Inter',system-ui,sans-serif}
 @keyframes cin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.cmsg .cn{flex:none;max-width:148px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:16px;letter-spacing:.06em;color:var(--blanc)}
+.cmsg .cn{flex:none;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-family:'Outfit',sans-serif;font-weight:800;font-size:24px;letter-spacing:.02em;color:var(--blanc)}
 .cmsg .cn--mod{color:var(--violet)}
 .cmsg .cn--me{color:var(--blanc)}
 .cbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.creply{font-size:11px;line-height:1.3;color:var(--gris);font-weight:600}
+.creply{font-size:14px;line-height:1.3;color:var(--gris);font-weight:600}
 .creply b{color:var(--violet);font-weight:700}
-.cmsg .ctext{font-weight:500;color:rgba(255,255,255,.95);word-break:break-word}
+.cmsg .ctext{font-family:'Inter',system-ui,sans-serif;font-size:22px;font-weight:700;color:rgba(255,255,255,.95);word-break:break-word;line-height:1.5}
 /* — SUB GOAL (rallonge sous le chat, séparateur pro) — */
 .chat__goal{border-top:1px solid rgba(255,255,255,.09);padding:12px 18px 15px}
 .goal__top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
-.goal__label{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:.22em;color:var(--violet);
+.goal__label{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;letter-spacing:.08em;color:var(--violet);
   transition:color .4s}
-.goal__count{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:.1em;color:var(--blanc);
+.goal__count{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;letter-spacing:.04em;color:var(--blanc);
   font-variant-numeric:tabular-nums}
-.goal__bar{height:8px;border-radius:4px;background:rgba(255,255,255,.07);
+.goal__bar{height:10px;border-radius:5px;background:rgba(255,255,255,.07);
   border:1px solid rgba(255,255,255,.08);overflow:hidden}
-.goal__fill{height:100%;width:0%;border-radius:4px;
+.goal__fill{height:100%;width:0%;border-radius:5px;
   background:linear-gradient(90deg,var(--violet-deep),var(--violet));
   box-shadow:0 0 10px rgba(145,70,255,.4);transition:width .8s var(--ease-out)}
 .chat__goal.is-done .goal__label{color:var(--blanc)}
@@ -238,11 +251,23 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
    Séparation de couleurs : PSEUDOS = bleu clair #7CC7FF (celui qui donne ET celui qui
    reçoit, même couleur — s'accorde avec le violet du fond) · LE RESTE = blanc / gris clair.
    Icoônes/labels : PNG transparents (plus de blend, plus de rectangle noir, pas de flou). */
-#alerts{position:absolute;top:80px;left:50%;transform:translateX(-50%);
-  display:flex;flex-direction:column;align-items:center;gap:14px}
+/* Alertes : top left par défaut pour éviter surcharge avec sondage top center
+   + adaptatif : quand sondage live, reste à gauche, sinon centre */
+#alerts{
+  position:absolute;top:28px;left:28px;
+  display:flex;flex-direction:column;align-items:flex-start;gap:14px;
+  z-index:20;opacity:1;visibility:visible;
+  transition:left .45s var(--ease-out),transform .45s var(--ease-out),align-items .3s;
+}
+#card.is-live ~ #alerts{
+  left:28px;top:28px;transform:none;align-items:flex-start;
+}
+#card:not(.is-live) ~ #alerts{
+  left:50%;top:80px;transform:translateX(-50%);align-items:center;
+}
 /* Composition CENTRÉE : icône / label à filets / pseudo / détail —
    hiérarchie typographique : label espacé violet, pseudo bleu énorme, détail italique */
-.alert{position:relative;display:flex;flex-direction:column;align-items:center;
+.alert{position:relative;display:flex;flex-direction:column;align-items:center;z-index:21;
   gap:10px;overflow:hidden;min-width:560px;padding:34px 70px;border-radius:18px;
   background:rgba(10,10,12,.9);
   border:1px solid rgba(255,255,255,.14);
@@ -279,7 +304,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   max-width:540px;text-align:center;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 /* monogramme 7G : coin haut-droit, discret */
-.alert .mark7g{position:absolute;top:14px;right:16px;opacity:.7;z-index:2}
+.alert .mark7g{position:absolute;top:14px;right:16px;opacity:.85;z-index:2;width:32px;height:32px;border-radius:8px}
 /* FOLLOW : le plus simple */
 .alert--follow{min-width:540px}
 .alert--follow .alert__user{font-size:52px}
@@ -301,13 +326,153 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .alert--raid .alert__user{font-size:62px}
 
 /* ═══ ÉTAT RÉSULTAT (5 s de sentence) ═══ */
-.opt.is-loser .lbl,.opt.is-loser .bar,.opt.is-loser .pct{opacity:.3}
-.opt.is-winner .lbl{color:#fff}
-.opt.is-winner .pct{color:var(--blanc);text-shadow:0 0 16px rgba(145,70,255,.55)}
+.opt.is-loser .lbl,.opt.is-loser .bar,.opt.is-loser .pct{opacity:.35}
+.opt.is-winner{filter:brightness(1.15)}
+.opt.is-winner .lbl{color:#fff;text-shadow:0 0 8px rgba(145,70,255,.6)}
+.opt.is-winner .pct{color:var(--blanc);text-shadow:0 0 18px rgba(145,70,255,.8);transform:scale(1.15)}
+.opt.is-winner .bar{border-color:rgba(145,70,255,.5)}
 .opt.is-winner .fill--a{animation:glowA 1.5s ease-in-out infinite}
 .opt.is-winner .fill--b{animation:glowB 1.5s ease-in-out infinite}
 @keyframes glowA{0%,100%{box-shadow:0 0 12px rgba(145,70,255,.35)}50%{box-shadow:0 0 28px rgba(145,70,255,.85)}}
 @keyframes glowB{0%,100%{box-shadow:0 0 10px rgba(255,255,255,.22)}50%{box-shadow:0 0 26px rgba(255,255,255,.7)}}
+
+/* ═══ VÉLOCITÉ CHAT V5 — % gros + fin prévue + chrono auto +15min ═══
+   - Plus long : 180x700, bottom 160 même que chat droit (centré)
+   - % 52px Bebas très lisible, barre 30px, pas de croix, pas de titre FAITES GRIMPER, pas de hint
+   - Structure simple : barre thermique + % + objectif (90% → +15 MIN) + fin prévue blanc ombré + chrono verrou
+   - Quand fin désactivée, barre s'allonge et remplit l'espace libre
+   - Logique : seuil % + durée ajout + chrono verrou (ex 2min au dessus seuil → +15 à fin prévue) */
+#velocityWrap{
+  --vel-w:30px; --vel-h:700px;
+  position:absolute;left:28px;bottom:160px;
+  width:180px;height:var(--vel-h);
+  display:flex;flex-direction:column;align-items:center;gap:14px;
+  padding:16px 16px 14px;
+  background:rgba(10,10,12,.94);
+  -webkit-backdrop-filter:blur(18px) saturate(1.35);
+  backdrop-filter:blur(18px) saturate(1.35);
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:18px;
+  box-shadow:0 28px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.05) inset,0 1px 0 rgba(255,255,255,.08) inset;
+  opacity:0;visibility:hidden;pointer-events:none;z-index:6;
+  transition:opacity .5s var(--ease-out),visibility .5s;
+}
+#velocityWrap.is-on{opacity:1;visibility:visible;pointer-events:none}
+.velocity__trackWrap{
+  position:relative;flex:1;display:flex;align-items:center;justify-content:center;
+  width:100%;min-height:120px;
+}
+.velocity__track{
+  position:relative;width:var(--vel-w);height:100%;
+  border-radius:999px;
+  background:rgba(255,255,255,.11);
+  border:1px solid rgba(255,255,255,.20);
+  overflow:hidden;
+  box-shadow:inset 0 1px 5px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.07);
+}
+.velocity__track::before{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(255,255,255,.09),transparent 18%,transparent 82%,rgba(0,0,0,.24));
+  pointer-events:none;z-index:1;
+}
+.velocity__ticks{
+  position:absolute;right:-12px;top:0;bottom:0;width:10px;pointer-events:none;z-index:4;
+}
+.velocity__ticks i{
+  position:absolute;left:0;width:7px;height:1.5px;background:rgba(255,255,255,.20);border-radius:1px;
+}
+.velocity__ticks i:nth-child(1){top:5%}
+.velocity__ticks i:nth-child(2){top:25%}
+.velocity__ticks i:nth-child(3){top:50%}
+.velocity__ticks i:nth-child(4){top:75%}
+.velocity__ticks i:nth-child(5){top:95%}
+.velocity__fill{
+  position:absolute;left:0;right:0;bottom:0;height:0%;
+  border-radius:999px;
+  background:linear-gradient(180deg,
+    #FFFFFF 0%,
+    #FFD6D6 2.5%,
+    #FF3B3B 5%,
+    #FF5A2E 9%,
+    #FF8A2E 14%,
+    #FFB547 20%,
+    #6BB8FF 38%,
+    #3A9AE8 66%,
+    #2A8FCE 100%);
+  box-shadow:0 0 20px rgba(255,90,40,.34),inset 0 1px 0 rgba(255,255,255,.78);
+  will-change:height;
+  transition:filter .25s var(--ease-out),box-shadow .25s;
+  z-index:2;
+}
+.velocity__glow{
+  position:absolute;left:50%;bottom:0;
+  width:78px;height:78px;transform:translate(-50%,50%);
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.98) 0%,rgba(255,80,60,.58) 22%,rgba(255,160,60,.30) 46%,transparent 72%);
+  opacity:0;filter:blur(.6px);
+  transition:opacity .35s var(--ease-out),bottom .12s linear;
+  pointer-events:none;z-index:3;
+}
+.velocity__metrics{
+  width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:14px 12px 12px;
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:14px;
+}
+.velocity__pct{
+  font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:.02em;line-height:.85;
+  color:var(--blanc);text-shadow:0 2px 22px rgba(0,0,0,.95);
+  font-variant-numeric:tabular-nums;
+  transition:transform .25s var(--ease-out),color .25s;
+}
+.velocity__pct.is-pop{transform:scale(1.15)}
+.velocity__goal{
+  font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;letter-spacing:.08em;line-height:1.25;
+  color:rgba(255,255,255,.80);text-align:center;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;padding:7px 10px;width:100%;
+}
+.velocity__chrono{
+  font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;letter-spacing:.10em;line-height:1;
+  color:#000;text-align:center;
+  background:linear-gradient(90deg,#FF8A2E,#FFB547);
+  border:1px solid rgba(255,180,71,.9);border-radius:7px;
+  padding:6px 8px;width:100%;
+  display:none;
+  box-shadow:0 0 16px rgba(255,180,71,.45);
+}
+.velocity__chrono.is-on{display:block;animation:chronoPulse .9s ease-in-out infinite}
+@keyframes chronoPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.velocity__fin{
+  width:100%;text-align:center;
+  font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;letter-spacing:.06em;line-height:1.2;
+  color:#FFFFFF;
+  text-shadow:0 1px 10px rgba(0,0,0,.98),0 0 20px rgba(0,0,0,.75);
+  background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;padding:8px 10px;
+}
+#velocityWrap.is-hot .velocity__fill{
+  filter:brightness(1.22) saturate(1.24);
+  box-shadow:0 0 32px rgba(255,60,40,.68),0 0 60px rgba(255,150,60,.38),inset 0 1px 0 rgba(255,255,255,.9);
+}
+#velocityWrap.is-hot .velocity__glow{opacity:1}
+#velocityWrap.is-goal{
+  border-color:rgba(255,180,71,.44);
+  box-shadow:0 28px 80px rgba(0,0,0,.68),0 0 38px rgba(255,180,71,.26),inset 0 1px 0 rgba(255,255,255,.10);
+}
+#velocityWrap.is-goal .velocity__goal{
+  background:linear-gradient(90deg,#FF8A2E,#FFB547);
+  color:#000;border-color:rgba(255,180,71,.95);
+  transform:scale(1.05);
+  box-shadow:0 0 20px rgba(255,180,71,.55);
+}
+#velocityWrap.is-goal .velocity__pct{color:#FFB547}
+#velocityWrap.is-overdrive{animation:velPulse .52s var(--ease-out) 3}
+@keyframes velPulse{0%,100%{transform:scale(1)}40%{transform:scale(1.07);filter:brightness(1.32)}70%{transform:scale(.98)}}
+#velocityWrap.no-metrics .velocity__metrics{display:none}
+.velocity__mpm{display:none}
+
 
 /* — Stagger des entrées (65 ms entre blocs) — */
 .head,#question,.opts,.foot{opacity:0;transform:translateY(10px);
@@ -326,7 +491,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   <div id="card" aria-hidden="true">
     <div class="pad">
       <div class="head">
-        <span class="mark7g"><img src="assets/logo-7g.png" alt="7G"></span>
+        <span class="mark7g"><img src="assets/logo-7g.png?v=29" alt="7G"></span>
         <div class="chip" id="chip"><span class="dot"></span><span id="chipTxt">DÉBAT EN DIRECT</span></div>
         <div id="timer"><span id="tMin">--</span><span id="tColon">:</span><span id="tSec">--</span></div>
       </div>
@@ -344,11 +509,21 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
           <div class="bar"><div class="fill fill--b" id="fillB"></div></div>
           <div class="pct" id="pctB">—</div>
         </div>
+        <div class="opt" id="optC" data-choice="C" hidden>
+          <div class="lbl"><span class="ab ab--c">C</span><div class="lbl__row"><span class="lbl__t" id="lblC">—</span><span class="tag">GAGNANT</span></div></div>
+          <div class="bar"><div class="fill fill--c" id="fillC"></div></div>
+          <div class="pct" id="pctC">—</div>
+        </div>
+        <div class="opt" id="optD" data-choice="D" hidden>
+          <div class="lbl"><span class="ab ab--d">D</span><div class="lbl__row"><span class="lbl__t" id="lblD">—</span><span class="tag">GAGNANT</span></div></div>
+          <div class="bar"><div class="fill fill--d" id="fillD"></div></div>
+          <div class="pct" id="pctD">—</div>
+        </div>
       </div>
 
       <div class="foot">
         <span id="total">0 VOTES</span>
-        <span class="hint" id="hint"><b>!vote A</b> · <b>!vote B</b></span>
+        <span class="hint" id="hint">A / B DANS LE CHAT</span>
       </div>
     </div>
     <div class="timebar" aria-hidden="true"><div class="timebar__fill" id="timeFill"></div></div>
@@ -356,7 +531,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 
   <!-- ═══ CHAT TWITCH — panneau gauche (fictif en démo, réel via le pont) ═══ -->
   <div class="chat" id="chat" aria-hidden="true">
-    <div class="chat__head"><span class="dot"></span><span id="chatTitle">CHAT DE 7GIONNY</span><span class="mark7g"><img src="assets/logo-7g.png" alt="7G"></span></div>
+    <div class="chat__head"><span class="dot"></span><span id="chatTitle">CHAT DE 7GIONNY</span><span class="mark7g"><img src="assets/logo-7g.png?v=29" alt="7G"></span></div>
     <div class="chat__pin" id="chatPin"></div>
     <div class="chat__list" id="chatList"></div>
     <div class="chat__goal" id="chatGoal">
@@ -367,6 +542,24 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 
   <!-- ═══ ALERTES — haut centre : follow / sub / gift / raid ═══ -->
   <div id="alerts" aria-hidden="true"></div>
+
+  <!-- ═══ VÉLOCITÉ CHAT V5 — % gros lisible + fin prévue + chrono auto ═══ -->
+  <div id="velocityWrap" aria-hidden="true">
+    <div class="velocity__trackWrap">
+      <div class="velocity__track" id="velocityTrack">
+        <div class="velocity__fill" id="velocityFill"></div>
+        <div class="velocity__glow" id="velocityGlow"></div>
+      </div>
+      <div class="velocity__ticks"><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="velocity__metrics" id="velocityMetrics">
+      <span class="velocity__pct" id="velocityPct">0%</span>
+      <span class="velocity__mpm" id="velocityMpm">0 MPM</span>
+      <span class="velocity__goal" id="velocityGoal">90% → +15 MIN</span>
+      <span class="velocity__chrono" id="velocityChrono">02:00</span>
+      <span class="velocity__fin" id="velocityFin">FIN PRÉVUE : 21H30</span>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -384,10 +577,12 @@ const $ = id => document.getElementById(id);
 const scene = $('scene'), card = $('card'), bgSim = $('bgSim');
 const E = {
   chip: $('chip'), chipTxt: $('chipTxt'), timer: $('timer'), question: $('question'),
-  lblA: $('lblA'), lblB: $('lblB'), fillA: $('fillA'), fillB: $('fillB'),
-  pctA: $('pctA'), pctB: $('pctB'), total: $('total'), hint: $('hint'),
+  lblA: $('lblA'), lblB: $('lblB'), lblC: $('lblC'), lblD: $('lblD'),
+  fillA: $('fillA'), fillB: $('fillB'), fillC: $('fillC'), fillD: $('fillD'),
+  pctA: $('pctA'), pctB: $('pctB'), pctC: $('pctC'), pctD: $('pctD'),
+  total: $('total'), hint: $('hint'),
   tMin: $('tMin'), tSec: $('tSec'), timeFill: $('timeFill'),
-  optA: $('optA'), optB: $('optB')
+  optA: $('optA'), optB: $('optB'), optC: $('optC'), optD: $('optD')
 };
 
 /* ── Paramètres d'URL ─────────────────────────────────────────── */
@@ -503,21 +698,37 @@ const SOUNDS = {
 };
 for (const k in SOUNDS) { SOUNDS[k].el.preload = 'auto'; SOUNDS[k].el.volume = SOUNDS[k].vol; }
 let htmlFails = 0, useSynth = false, unlocked = false;
-function unlockAudio() {                 // débloque l'audio au premier geste (navigateur)
+function unlockAudio() {
+  // debloque l'audio au premier geste (navigateur) + pour OBS
+  try{
+    const c=audio();
+    if(c && c.state==='suspended') c.resume().catch(()=>{});
+  }catch(e){}
   if (unlocked) return;
   unlocked = true;
   for (const k in SOUNDS) {
     const el = SOUNDS[k].el;
-    el.muted = true;
-    el.play().then(() => { el.pause(); el.currentTime = 0; }).catch(() => {});
-    el.muted = false;
+    try{
+      el.muted = true;
+      const p=el.play();
+      if(p && p.then) p.then(() => { el.pause(); el.currentTime = 0; el.muted=false; }).catch(() => { el.muted=false; });
+      else el.muted=false;
+    }catch(e){ try{ el.muted=false; }catch(e2){} }
+  }
+  // aussi debloque les alertes
+  for(const k in alertAudio){
+    try{
+      const a=alertAudio[k];
+      a.muted=true;
+      const p=a.play();
+      if(p && p.then) p.then(()=>{ a.pause(); a.currentTime=0; a.muted=false; }).catch(()=>{ a.muted=false; });
+      else a.muted=false;
+    }catch(e){}
   }
 }
 addEventListener('pointerdown', unlockAudio);
-/* — Sons : TOUT est actif (impact à l'apparition, click au changement de
-     leader, validation à la clôture + tic-tac en continu).
-     Pour couper un son précis, mets son flag à false. — */
-const SFX = { impact: true, click: true, victory: true };
+/* — Sons sondage : SUPPRIMÉS sur demande (zéro son pour débat) — */
+const SFX = { impact: false, click: false, victory: false };
 function playSound(name) {
   if (MUTE || !SFX[name]) return;
   const s = SOUNDS[name];
@@ -541,6 +752,7 @@ function sfxClockSoft() {                    // repli synthé du tic-tac
 }
 let clockTimer = null, clockStartT = null;
 function startClock() {
+  return; // sondage sans son sur demande
   if (MUTE || clockTimer) return;
   const el = SOUNDS.clock.el;
   el.loop = true; el.currentTime = 0; el.playbackRate = 1;
@@ -580,12 +792,13 @@ function setTimer(ms) {
 }
 
 /* — Retour visuel avance / recul (flash 550 ms par option) — */
-let lastPA = null, lastPB = null;
-const pulseT = { A: null, B: null };
+let lastP = { A: null, B: null, C: null, D: null };
+const pulseT = { A: null, B: null, C: null, D: null };
 function pulse(c, dir) {
-  const opt = c === 'A' ? E.optA : E.optB;
+  const opt = E['opt'+c];
+  if (!opt) return;
   opt.classList.remove('is-up', 'is-down');
-  void opt.offsetWidth;                          // force reflow → relance le flash
+  void opt.offsetWidth;
   opt.classList.add(dir);
   clearTimeout(pulseT[c]);
   pulseT[c] = setTimeout(() => opt.classList.remove('is-up', 'is-down'), 550);
@@ -594,33 +807,47 @@ function pulse(c, dir) {
 function render() {
   if (!cur) return;
   const now = Date.now();
-  const va = cur.va || 0, vb = cur.vb || 0, tot = va + vb;
-  const pA = tot ? Math.round(va / tot * 100) : 0;
-  const pB = tot ? 100 - pA : 0;
+  const va = cur.va || 0, vb = cur.vb || 0, vc = cur.vc || 0, vd = cur.vd || 0;
+  const tot = va + vb + vc + vd;
+  const pct = (v) => tot ? Math.round(v / tot * 100) : 0;
+  const pA = pct(va), pB = pct(vb), pC = pct(vc), pD = pct(vd);
+  let adjB = pB;
+  if (tot && !cur.c && !cur.d) adjB = 100 - pA;
   E.fillA.style.width = pA + '%';
-  E.fillB.style.width = pB + '%';
+  E.fillB.style.width = adjB + '%';
+  if (E.fillC) E.fillC.style.width = pC + '%';
+  if (E.fillD) E.fillD.style.width = pD + '%';
   E.pctA.textContent = tot ? pA + '%' : '—';
-  E.pctB.textContent = tot ? pB + '%' : '—';
-  /* — CONTRASTE AVANCE / RECU : à chaque vote, la barre qui gagne s'illumine,
-        celle qui perd s'éteint — */
+  E.pctB.textContent = tot ? adjB + '%' : '—';
+  if (E.pctC) E.pctC.textContent = cur.c ? (tot ? pC + '%' : '—') : '—';
+  if (E.pctD) E.pctD.textContent = cur.d ? (tot ? pD + '%' : '—') : '—';
+
   if (mode === 'live' && tot > 0) {
-    if (lastPA !== null) {
-      if (pA !== lastPA) pulse('A', pA > lastPA ? 'up' : 'down');
-      if (pB !== lastPB) pulse('B', pB > lastPB ? 'up' : 'down');
+    if (lastP.A !== null) {
+      if (pA !== lastP.A) pulse('A', pA > lastP.A ? 'up' : 'down');
+      if (adjB !== lastP.B) pulse('B', adjB > lastP.B ? 'up' : 'down');
+      if (cur.c && pC !== lastP.C) pulse('C', pC > lastP.C ? 'up' : 'down');
+      if (cur.d && pD !== lastP.D) pulse('D', pD > lastP.D ? 'up' : 'down');
     }
-    lastPA = pA; lastPB = pB;
+    lastP.A = pA; lastP.B = adjB; lastP.C = pC; lastP.D = pD;
   }
-  const lead = tot ? (va > vb ? 'A' : vb > va ? 'B' : null) : null;
-  E.pctA.classList.toggle('is-lead', lead === 'A');
-  E.pctB.classList.toggle('is-lead', lead === 'B');
+  const scores = [{k:'A',v:va},{k:'B',v:vb}];
+  if (cur.c) scores.push({k:'C',v:vc});
+  if (cur.d) scores.push({k:'D',v:vd});
+  scores.sort((a,b)=>b.v-a.v);
+  const lead = tot ? (scores[0].v > (scores[1]?.v||-1) ? scores[0].k : null) : null;
+  ['A','B','C','D'].forEach(k=>{
+    const el = E['pct'+k];
+    if (el) el.classList.toggle('is-lead', lead === k);
+  });
   if (mode === 'live' && lead && lead !== lastLeader && now - tickLock > 350) {
     playSound('click');
-    const f = lead === 'A' ? E.fillA : E.fillB;
-    f.classList.add('is-flash');
-    setTimeout(() => f.classList.remove('is-flash'), 130);
+    const f = E['fill'+lead];
+    if (f) { f.classList.add('is-flash'); setTimeout(()=>f.classList.remove('is-flash'),130); }
     tickLock = now;
   }
   if (mode === 'live') lastLeader = lead;
+
   const rem = (cur.endsAt || 0) - now;
   setTimer(rem);
   const low = mode === 'live' && rem <= 15000;
@@ -631,7 +858,6 @@ function render() {
   } else if (mode === 'ended') {
     E.timeFill.style.width = '0%';
   }
-  /* tic-tac : plus présent en fin, et S'ACCÉLÈRE dans les 5 dernières secondes */
   if (!MUTE) {
     const cl = SOUNDS.clock.el;
     cl.volume = low ? 0.3 : 0.22;
@@ -643,9 +869,7 @@ function render() {
   E.total.textContent = tot.toLocaleString('fr-FR') + (tot > 1 ? ' VOTES' : ' VOTE');
 }
 
-/* — Consigne de vote : affiche les mots à taper (« voiture » / « vélo »),
-     miroir de la détection fluide du pont (1er mot significatif).
-     Repli sur !vote A/B si les options sont indiscernables. — */
+/* — Consigne de vote : mots-clés fluides, plus de !vote A/B — */
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -656,11 +880,17 @@ function displayKeyword(opt) {
     .filter(w => w.length >= 2);
   return (words[0] || '').slice(0, 18);
 }
-function voteHint(a, b) {
-  const ka = displayKeyword(a), kb = displayKeyword(b);
-  if (ka && kb && ka.toLowerCase() !== kb.toLowerCase())
-    return 'TAPEZ <b>« ' + esc(ka) + ' »</b> OU <b>« ' + esc(kb) + ' »</b>';
-  return '<b>!vote A</b> · <b>!vote B</b>';
+function voteHint(a,b,c,d) {
+  const opts = [a,b,c,d].filter(Boolean);
+  const keys = opts.map(displayKeyword).filter(Boolean);
+  const uniq = [...new Set(keys.map(k=>k.toLowerCase()))];
+  if (keys.length >=2 && uniq.length >=2 && keys.length <=4) {
+    const quoted = keys.map(k=>'« '+esc(k)+' »').join(' / ');
+    return 'TAPEZ '+quoted+' DANS LE CHAT';
+  }
+  if (c && d) return 'A / B / C / D DANS LE CHAT';
+  if (c) return 'A / B / C DANS LE CHAT';
+  return 'A / B DANS LE CHAT';
 }
 
 function beginExit() {
@@ -695,42 +925,57 @@ function setState(next) {
   E.question.textContent = next.question;
   E.lblA.textContent = next.a;
   E.lblB.textContent = next.b;
+  if (E.lblC) E.lblC.textContent = next.c || '—';
+  if (E.lblD) E.lblD.textContent = next.d || '—';
+  if (E.optC) E.optC.hidden = !next.c;
+  if (E.optD) E.optD.hidden = !next.d;
   E.timer.classList.remove('is-off');
   setTimer((next.endsAt || 0) - Date.now());
   E.hint.innerHTML = next.source === 'twitch'
     ? 'SONDAGE TWITCH · EN COURS'
     : next.source === 'demo'
       ? 'MODE APERÇU'
-      : voteHint(next.a, next.b);
+      : voteHint(next.a, next.b, next.c, next.d);
 
   if (next.mode === 'live') {
     if (next.startsAt) debateTotal = Math.max(2000, next.endsAt - next.startsAt);
     else if (prev === 'idle') debateTotal = Math.max(2000, next.endsAt - Date.now());
     if (prev === 'idle') {
-      lastPA = 0; lastPB = 0;                        // référence pour le 1er vote
+      lastP.A = 0; lastP.B = 0; lastP.C = 0; lastP.D = 0;
       playSound('impact');
       clearTimeout(clockStartT);
-      clockStartT = setTimeout(startClock, 250);    // tic-tac dès le début du débat
+      clockStartT = setTimeout(startClock, 250);
     }
     E.chip.classList.remove('is-result');
     E.chipTxt.textContent = 'DÉBAT EN DIRECT';
-    E.optA.classList.remove('is-winner', 'is-loser');
-    E.optB.classList.remove('is-winner', 'is-loser');
+    ['A','B','C','D'].forEach(k=>{
+      const o=E['opt'+k];
+      if(o) o.classList.remove('is-winner','is-loser');
+    });
     card.classList.add('is-live');
     render();
   }
   else if (next.mode === 'ended') {
-    /* ── Sentence : 5 s ── */
     E.chip.classList.add('is-result');
     E.chipTxt.textContent = 'RÉSULTAT';
     E.timer.classList.add('is-off');
-    lastPA = lastPB = null;                          // plus de pulse pendant la sentence
+    lastP.A = lastP.B = lastP.C = lastP.D = null;
     clearTimeout(clockStartT); stopClock();
     E.timeFill.style.width = '0%';
-    const va = next.va || 0, vb = next.vb || 0;
-    const w = next.winner === 'A' || next.winner === 'B' ? next.winner : (va >= vb ? 'A' : 'B');
-    (w === 'A' ? E.optA : E.optB).classList.add('is-winner');
-    (w === 'A' ? E.optB : E.optA).classList.add('is-loser');
+    const va = next.va || 0, vb = next.vb || 0, vc = next.vc || 0, vd = next.vd || 0;
+    const scores = [{k:'A',v:va},{k:'B',v:vb}];
+    if (next.c) scores.push({k:'C',v:vc});
+    if (next.d) scores.push({k:'D',v:vd});
+    scores.sort((a,b)=>b.v-a.v);
+    const w = next.winner || (scores[0]?.k || 'A');
+    const winOpt = E['opt'+w];
+    if (winOpt) winOpt.classList.add('is-winner');
+    ['A','B','C','D'].forEach(k=>{
+      if(k!==w){
+        const o=E['opt'+k];
+        if(o && !o.hidden) o.classList.add('is-loser');
+      }
+    });
     card.classList.add('is-live');
     render();
     playSound('victory');
@@ -749,23 +994,28 @@ function apply(m) {
   if (m.chat) { pushChat(m); return; }      // message du vrai chat (via le pont)
   if (m.badgeMap) { badgeMap = m.badgeMap; return; }   // vrais badges Twitch (images)
   if (m.pin) { m.pin === 0 ? clearPin() : setPin(m); return; }   // message épinglé
-  /* sub goal et/ou config (titre + accent) — le pont les envoie parfois
+  if (m.velocityReset) { if (window.velocityReset) window.velocityReset(); return; }
+  if (m.velocityValidate) { if (window.velocityValidate) window.velocityValidate(); return; }
+  /* sub goal et/ou config (titre + accent + velocity) — le pont les envoie parfois
      ensemble : on applique les deux, sans retour prématuré */
-  if (m.goal || m.cfg) {
+  if (m.goal || m.cfg || m.velocity) {
     if (m.goal) setGoal(m);
-    if (m.cfg) applyConfig(m);
+    if (m.cfg || m.velocity) applyConfig(m);
     return;
   }
   if (m.alert) { queueAlert(m); return; }                 // follow / sub / raid
   if (m.mode) setState(m);
 }
 
-/* — Applique le titre du chat + la couleur d'accent (depuis le panneau) — */
+/* — Applique le titre du chat + la couleur d'accent + velocity config — */
 function applyConfig(c) {
   if (c.chatTitle) { const t = document.getElementById('chatTitle'); if (t) t.textContent = c.chatTitle; }
   if (c.accent) {
     document.documentElement.style.setProperty('--violet', c.accent);
     document.documentElement.style.setProperty('--violet-deep', c.accent);
+  }
+  if (c.velocity || c.equilibriumMPM !== undefined || c.velocityEnabled !== undefined) {
+    if (window.velocityApplyConfig) window.velocityApplyConfig(c);
   }
 }
 
@@ -776,7 +1026,7 @@ function applyConfig(c) {
 const chatPanel = $('chat'), chatList = $('chatList');
 const chatPin = $('chatPin'), goalWrap = $('chatGoal');
 const goalLabel = $('goalLabel'), goalCount = $('goalCount'), goalFill = $('goalFill');
-const MAX_CHAT = 14;
+const MAX_CHAT = 10;
 let badgeMap = null;   // reçu du pont : { set_id: { version: url_4x } } (vrais badges)
 /* couleurs vives et stables par pseudo (identité du spectateur) */
 const CHAT_COLORS = ['#FFD166','#FF7B9C','#6BE585','#5EC8F2','#FF9F45','#C79BFF','#4EE3C4','#FF6B6B'];
@@ -892,6 +1142,7 @@ function pushChat(m) {
   chatList.appendChild(buildMsgRow(m));
   while (chatList.children.length > MAX_CHAT) chatList.removeChild(chatList.firstChild);
   chatPanel.classList.add('is-on');
+  try { if (window.__velocityPush) window.__velocityPush(); } catch(e) {}
 }
 /* ═══ ALERTES (haut centre) : file d'attente + variantes Twitch ═══ */
 /* Préchargement des assets d'alertes à l'ouverture : au premier follow/sub/raid,
@@ -900,28 +1151,40 @@ for (const u of ['assets/alert-bg.png','assets/icon-follow.png','assets/icon-sub
   const im = new Image(); im.src = u;
 }
 /* — SONS D'ALERTES PERSONNALISABLES —
-   Dépose tes fichiers dans sounds/ (.wav, .mp3 ou .ogg) :
-     sounds/alert-follow.*  → joué à chaque NOUVEAU FOLLOW
-     sounds/alert-sub.*     → joué à chaque NOUVEAU SUB (toutes variantes)
-     sounds/alert-raid.*    → joué à chaque RAID
-   Fichier absent = pas de son (rien ne casse). Volume réglable dans ALERT_SOUNDS. */
-const ALERT_SOUNDS = { follow: 0.9, sub: 0.9, raid: 0.9 };
+   Dépose tes fichiers dans sounds/ (.wav, .mp3, .ogg, .m4a) :
+     sounds/alert-follow.*  → FOLLOW
+     sounds/alert-sub.*     → SUB / RESUB / GIFT / PRIME (fallback)
+     sounds/alert-gift.*    → GIFT specifique (si present, prioritaire)
+     sounds/alert-resub.*   → RESUB specifique
+     sounds/alert-raid.*    → RAID
+   Fichier absent = pas de son (rien ne casse). Volume réglable dans ALERT_SOUNDS.
+   Le panneau upload directement ici via /api/sounds. */
+const ALERT_SOUNDS = { follow: 0.9, sub: 0.9, gift: 0.9, resub: 0.9, raid: 0.9, prime: 0.9, anon: 0.9, community: 0.9, default: 0.9 };
 const alertAudio = {};
 (function initAlertSounds() {
   const probe = url => new Promise(res => {
     const a = new Audio(url); a.preload = 'auto';
     a.addEventListener('canplaythrough', () => res(a), { once: true });
     a.addEventListener('error', () => res(null), { once: true });
-    setTimeout(() => res(null), 4000);
+    setTimeout(() => res(null), 2500);
   });
   (async () => {
-    for (const kind of ['follow', 'sub', 'raid']) {
-      for (const ext of ['wav', 'mp3', 'ogg']) {
-        const a = await probe('sounds/alert-' + kind + '.' + ext);
-        if (a) { a.volume = ALERT_SOUNDS[kind]; alertAudio[kind] = a; break; }
+    for (const kind of ['follow','sub','gift','resub','raid','prime','anon','community','default']) {
+      for (const ext of ['mp3','wav','ogg','m4a']) {
+        const a = await probe('sounds/alert-' + kind + '.' + ext + '?v=' + Date.now());
+        if (a) { a.volume = ALERT_SOUNDS[kind] || 0.9; alertAudio[kind] = a; break; }
       }
     }
   })();
+  // re-probe toutes les 15s pour capter un upload custom sans reload OBS
+  setInterval(async()=>{
+    for (const kind of ['follow','sub','gift','resub','raid','prime']) {
+      for (const ext of ['mp3','wav','ogg','m4a']) {
+        const a = await probe('sounds/alert-' + kind + '.' + ext + '?v=' + Date.now());
+        if (a) { a.volume = ALERT_SOUNDS[kind] || 0.9; alertAudio[kind] = a; break; }
+      }
+    }
+  }, 15000);
 })();
 const alertsEl = $('alerts');
 const alertQueue = [];
@@ -956,7 +1219,7 @@ function showAlert(a) {
   const bg = document.createElement('div'); bg.className = 'alert__bg';
   d.appendChild(bg);
   const mk = document.createElement('span'); mk.className = 'mark7g';
-  const mki = document.createElement('img'); mki.src = 'assets/logo-7g.png'; mki.alt = '7G';
+  const mki = document.createElement('img'); mki.src = 'assets/logo-7g.png?v=29'; mki.alt = '7G';
   mk.appendChild(mki);
   d.appendChild(mk);
   const ic = document.createElement('img');
@@ -982,8 +1245,86 @@ function showAlert(a) {
   d.append(ic, bd);
   alertsEl.appendChild(d);
   while (alertsEl.children.length > 1) alertsEl.removeChild(alertsEl.firstChild);
-  const au = alertAudio[t.kind];
-  if (au) { au.currentTime = 0; const p = au.play(); if (p && p.catch) p.catch(() => {}); }
+  // debloque l'audio pour OBS (pas de clic utilisateur) – tente resume AudioContext
+  try{ 
+    unlockAudio(); 
+    const c=audio();
+    if(c && c.state==='suspended'){ c.resume().catch(()=>{}); }
+  }catch(e){}
+  // son : d'abord type exact (gift/resub...), puis kind (sub/follow/raid), puis fallback default
+  const tryPlayHtml = (au)=>{
+    if(!au) return false;
+    try{ au.currentTime = 0; }catch(e){}
+    try{ au.muted=false; au.volume=0.9; }catch(e){}
+    const pr = au.play();
+    if(pr && pr.then){
+      pr.then(()=>{}).catch(()=>{
+        // si bloque, tente en muted (autoplay autorise) puis unmute
+        try{
+          au.muted=true;
+          const pr2=au.play();
+          if(pr2 && pr2.then){
+            pr2.then(()=>{
+              setTimeout(()=>{ try{ au.muted=false; }catch(e){} }, 120);
+            }).catch(()=>{});
+          }
+        }catch(e){}
+      });
+    }
+    return true;
+  };
+  // essaie HTML Audio d'abord
+  let played=false;
+  const auExact = alertAudio[a.alert];
+  const auKind = alertAudio[t.kind];
+  const auDef = alertAudio['default'] || alertAudio['sub'];
+  if(auExact) played=tryPlayHtml(auExact);
+  if(!played && auKind) played=tryPlayHtml(auKind);
+  if(!played && auDef) played=tryPlayHtml(auDef);
+  // si toujours pas joue (ex: OBS bloque), fallback WebAudio via fetch du fichier custom
+  if(!played){
+    (async()=>{
+      const c=audio();
+      if(!c) return;
+      // construit liste d'URLs a essayer
+      const urls=[
+        'sounds/alert-'+a.alert+'.mp3',
+        'sounds/alert-'+a.alert+'.wav',
+        'sounds/alert-'+a.alert+'.ogg',
+        'sounds/alert-'+a.alert+'.m4a',
+        'sounds/alert-'+t.kind+'.mp3',
+        'sounds/alert-'+t.kind+'.wav',
+        'sounds/alert-'+t.kind+'.ogg',
+        'sounds/alert-default.mp3'
+      ];
+      for(const u of urls){
+        try{
+          const r=await fetch(u+'?v='+Date.now(),{cache:'no-store'});
+          if(!r.ok) continue;
+          const ab=await r.arrayBuffer();
+          const buf=await c.decodeAudioData(ab);
+          const src=c.createBufferSource(); src.buffer=buf;
+          const g=c.createGain(); g.gain.value=0.9;
+          src.connect(g).connect(c.destination);
+          src.start();
+          break;
+        }catch(e){ continue; }
+      }
+    })();
+  }
+  // dernier recours beep si vraiment rien
+  if(!played){
+    setTimeout(()=>{
+      try{
+        const c=audio();
+        if(c){
+          const o=c.createOscillator(); o.type='sine'; o.frequency.value=880;
+          const g=c.createGain(); g.gain.setValueAtTime(.0001,c.currentTime); g.gain.exponentialRampToValueAtTime(.4,c.currentTime+.02); g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+.6);
+          o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime+.6);
+        }
+      }catch(e){}
+    }, 300);
+  }
   setTimeout(() => { d.classList.add('out'); setTimeout(() => d.remove(), 320); }, t.hold);
 }
 function queueAlert(a) {
@@ -1010,6 +1351,235 @@ function setGoal(g) {
   goalFill.style.width = Math.min(100, (cur / tgt) * 100).toFixed(1) + '%';
   goalWrap.classList.toggle('is-done', cur >= tgt);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   VÉLOCITÉ CHAT V5 — % gros + fin prévue fonctionnelle + chrono auto +15min
+   - Plus long (700px), pas de croix, pas de FAITES GRIMPER, pas de hint
+   - Simple : barre + % + info (90% → +15 MIN) + chrono verrou + fin prévue blanc ombré
+   - Quand fin désactivée, barre s'allonge (flex)
+   - Logique : seuil % + durée ajout (min) + chrono verrou (sec au dessus seuil → +durée à fin)
+   - Leaky bucket sans rebond, rouge 5 derniers %
+   ═══════════════════════════════════════════════════════════════ */
+(() => {
+  const wrap = document.getElementById('velocityWrap');
+  const fill = document.getElementById('velocityFill');
+  const glow = document.getElementById('velocityGlow');
+  const mpmEl = document.getElementById('velocityMpm');
+  const pctEl = document.getElementById('velocityPct');
+  const goalEl = document.getElementById('velocityGoal');
+  const chronoEl = document.getElementById('velocityChrono');
+  const finEl = document.getElementById('velocityFin');
+  if (!wrap || !fill) return;
+
+  let cfg = {
+    equilibriumMPM: 20,
+    climbSensitivity: 0.65,
+    decayRate: 0.14,
+    barWidth: 30,
+    barHeight: 700,
+    showMetrics: true,
+    velocityEnabled: true,
+    goalThreshold: 90,
+    goalDurationMinutes: 15,
+    holdDurationSeconds: 120,
+    finHour: 21,
+    finMinute: 30,
+    finEnabled: true
+  };
+
+  let velocity = 0;
+  let displayed = 0;
+  let mpmScore = 0;
+  let lastFrame = performance.now();
+  let aboveStart = 0; // quand on a passé le seuil
+  let isOverdrive = false;
+
+  function applyVisualConfig() {
+    wrap.style.setProperty('--vel-w', cfg.barWidth + 'px');
+    wrap.style.setProperty('--vel-h', cfg.barHeight + 'px');
+    wrap.classList.toggle('no-metrics', !cfg.showMetrics);
+    if (!cfg.velocityEnabled) wrap.classList.remove('is-on');
+    else wrap.classList.add('is-on');
+
+    // objectif simple : seuil → +durée
+    if (goalEl) {
+      goalEl.textContent = cfg.goalThreshold + '% → +' + cfg.goalDurationMinutes + ' MIN';
+    }
+
+    // fin prévue fonctionnelle
+    if (finEl) {
+      if (cfg.finEnabled) {
+        const hh = String(cfg.finHour).padStart(2,'0');
+        const mm = String(cfg.finMinute).padStart(2,'0');
+        finEl.textContent = 'FIN PRÉVUE : ' + hh + 'H' + mm;
+        finEl.style.display = '';
+      } else {
+        finEl.style.display = 'none';
+      }
+    }
+
+    // chrono caché par défaut
+    if (chronoEl) chronoEl.classList.remove('is-on');
+  }
+
+  function pushTimestamp() { mpmScore += 1; }
+  window.__velocityPush = pushTimestamp;
+
+  function resetVelocity(full) {
+    if (full) mpmScore = 0;
+    velocity = 0; displayed = 0; aboveStart = 0; isOverdrive = false;
+    wrap.classList.remove('is-overdrive','is-hot','is-goal');
+    if (fill) fill.style.height = '0%';
+    if (glow) { glow.style.bottom='0%'; glow.style.opacity='0'; }
+    if (pctEl) pctEl.textContent='0%';
+    if (mpmEl) mpmEl.textContent='0 MPM';
+    if (chronoEl) chronoEl.classList.remove('is-on');
+  }
+
+  function addMinutesToFin(mins) {
+    let total = cfg.finHour*60 + cfg.finMinute + mins;
+    total = ((total % 1440) + 1440) % 1440;
+    cfg.finHour = Math.floor(total/60);
+    cfg.finMinute = total % 60;
+    if (finEl && cfg.finEnabled) {
+      const hh = String(cfg.finHour).padStart(2,'0');
+      const mm = String(cfg.finMinute).padStart(2,'0');
+      finEl.textContent = 'FIN PRÉVUE : ' + hh + 'H' + mm;
+    }
+    // persist
+    fetch('api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({velocityFinHour:cfg.finHour, velocityFinMinute:cfg.finMinute})}).catch(()=>{});
+  }
+
+  function triggerGoal() {
+    // +durée à fin prévue
+    addMinutesToFin(cfg.goalDurationMinutes);
+    // nouveau tour sans toucher MPM
+    resetVelocity(false);
+    wrap.classList.add('is-overdrive');
+    setTimeout(()=>wrap.classList.remove('is-overdrive'), 800);
+  }
+
+  window.velocityReset = () => { resetVelocity(true); };
+  window.velocityValidate = () => { resetVelocity(false); };
+
+  window.velocityApplyConfig = (c) => {
+    const src = c.config || c;
+    if (src.equilibriumMPM !== undefined) cfg.equilibriumMPM = Math.max(1, +src.equilibriumMPM || 20);
+    if (src.climbSensitivity !== undefined) cfg.climbSensitivity = Math.max(0.05, +src.climbSensitivity || 0.65);
+    if (src.decayRate !== undefined) cfg.decayRate = Math.max(0.02, +src.decayRate || 0.14);
+    if (src.barWidth !== undefined) cfg.barWidth = Math.max(12, Math.min(40, Math.round(+src.barWidth || 30)));
+    if (src.barHeight !== undefined) cfg.barHeight = Math.max(280, Math.min(900, Math.round(+src.barHeight || 700)));
+    if (src.showMetrics !== undefined) cfg.showMetrics = !!src.showMetrics;
+    if (src.velocityEnabled !== undefined) cfg.velocityEnabled = !!src.velocityEnabled;
+    if (src.goalThreshold !== undefined) cfg.goalThreshold = Math.max(10, Math.min(99, Math.round(+src.goalThreshold || 90)));
+    if (src.velocityGoalThreshold !== undefined) cfg.goalThreshold = Math.round(src.velocityGoalThreshold);
+    if (src.goalDurationMinutes !== undefined) cfg.goalDurationMinutes = Math.max(1, Math.min(120, Math.round(+src.goalDurationMinutes || 15)));
+    if (src.velocityGoalDurationMinutes !== undefined) cfg.goalDurationMinutes = Math.round(src.velocityGoalDurationMinutes);
+    if (src.goalDuration !== undefined) cfg.goalDurationMinutes = Math.round(src.goalDuration);
+    if (src.velocityGoalDuration !== undefined) cfg.goalDurationMinutes = Math.round(src.velocityGoalDuration);
+    if (src.holdDurationSeconds !== undefined) cfg.holdDurationSeconds = Math.max(5, Math.min(600, Math.round(+src.holdDurationSeconds || 120)));
+    if (src.velocityHold !== undefined) cfg.holdDurationSeconds = Math.round(src.velocityHold);
+    if (src.velocityHoldDurationSeconds !== undefined) cfg.holdDurationSeconds = Math.round(src.velocityHoldDurationSeconds);
+    if (src.finHour !== undefined) cfg.finHour = Math.max(0, Math.min(23, Math.round(+src.finHour || 21)));
+    if (src.velocityFinHour !== undefined) cfg.finHour = Math.round(src.velocityFinHour);
+    if (src.finMinute !== undefined) cfg.finMinute = Math.max(0, Math.min(59, Math.round(+src.finMinute || 30)));
+    if (src.velocityFinMinute !== undefined) cfg.finMinute = Math.round(src.velocityFinMinute);
+    if (src.finEnabled !== undefined) cfg.finEnabled = !!src.finEnabled;
+    if (src.velocityFinEnabled !== undefined) cfg.finEnabled = !!src.velocityFinEnabled;
+    // compat anciennes
+    if (src.velocityEquilibrium !== undefined) cfg.equilibriumMPM = src.velocityEquilibrium;
+    if (src.velocityClimb !== undefined) cfg.climbSensitivity = src.velocityClimb;
+    if (src.velocityDecay !== undefined) cfg.decayRate = src.velocityDecay;
+    if (src.velocityBarWidth !== undefined) cfg.barWidth = src.velocityBarWidth;
+    if (src.velocityBarHeight !== undefined) cfg.barHeight = src.velocityBarHeight;
+    if (src.velocityShowMetrics !== undefined) cfg.showMetrics = src.velocityShowMetrics;
+    applyVisualConfig();
+  };
+
+  fetch('api/config').then(r=>r.json()).then(d=>{ if(d && d.config) window.velocityApplyConfig(d.config); }).catch(()=>{});
+  applyVisualConfig();
+
+  function computeTarget(mpm) {
+    const eq = cfg.equilibriumMPM;
+    if (mpm <= 0) return 0;
+    if (mpm <= eq) return (mpm/eq)*50;
+    const over = (mpm - eq)/eq;
+    const curved = Math.pow(over, 0.66);
+    return 50 + 50*Math.min(1, curved*0.86);
+  }
+
+  function frame(now) {
+    const dt = Math.min(0.12, (now - lastFrame)/1000);
+    lastFrame = now;
+    if (!cfg.velocityEnabled) { requestAnimationFrame(frame); return; }
+
+    const tau = 42;
+    mpmScore *= Math.exp(-dt / tau);
+    if (mpmScore < 0.001) mpmScore = 0;
+
+    const target = computeTarget(mpmScore);
+
+    if (target > velocity) velocity += (target - velocity) * cfg.climbSensitivity * dt * 1.15;
+    else velocity += (target - velocity) * cfg.decayRate * dt * 0.38;
+    velocity = Math.max(0, Math.min(100, velocity));
+
+    const lerp = 0.075 + Math.min(0.10, Math.abs(velocity-displayed)*0.0035);
+    displayed += (velocity-displayed)*lerp;
+    displayed = Math.max(0, Math.min(100, displayed));
+
+    let vis = displayed;
+    if (mpmScore > 0.6 && vis < 10) vis = 10;
+    if (mpmScore > 1.5 && vis < 16) vis = 16;
+
+    fill.style.height = vis.toFixed(2)+'%';
+    if (glow) {
+      glow.style.bottom = vis.toFixed(2)+'%';
+      glow.style.opacity = vis>6 ? String(Math.min(1, vis/42)) : '0';
+    }
+
+    if (pctEl) {
+      const pct = Math.round(displayed);
+      const prev = pctEl.textContent;
+      pctEl.textContent = pct+'%';
+      if (prev !== pct+'%' && pct>0) {
+        pctEl.classList.remove('is-pop');
+        void pctEl.offsetWidth;
+        pctEl.classList.add('is-pop');
+        setTimeout(()=>pctEl.classList.remove('is-pop'), 260);
+      }
+    }
+    if (mpmEl) mpmEl.textContent = Math.round(mpmScore)+' MPM';
+
+    // chrono verrou au dessus du seuil
+    const th = cfg.goalThreshold;
+    if (displayed >= th) {
+      if (!aboveStart) aboveStart = now;
+      const elapsed = (now - aboveStart)/1000;
+      const remain = Math.max(0, cfg.holdDurationSeconds - elapsed);
+      if (chronoEl) {
+        const mm = String(Math.floor(remain/60)).padStart(2,'0');
+        const ss = String(Math.floor(remain%60)).padStart(2,'0');
+        chronoEl.textContent = mm + ':' + ss;
+        chronoEl.classList.add('is-on');
+      }
+      wrap.classList.add('is-goal','is-hot');
+      if (elapsed >= cfg.holdDurationSeconds && !isOverdrive) {
+        isOverdrive = true;
+        triggerGoal();
+        setTimeout(()=>{ isOverdrive=false; }, 1000);
+      }
+    } else {
+      aboveStart = 0;
+      if (chronoEl) chronoEl.classList.remove('is-on');
+      wrap.classList.remove('is-goal');
+      wrap.classList.toggle('is-hot', displayed>=78);
+    }
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
 
 /* — Chat fictif (démo) : badges, highlight, réponses, emotes, GIFs — en boucle — */
 const FAKE_CHAT = [
@@ -1116,25 +1686,35 @@ let demoIdx = 0, demoVotes = null, demoTimer = null, demoEndTimer = null;
 
 function demoStart() {
   const d = DEMO_DEBATES[demoIdx % DEMO_DEBATES.length]; demoIdx++;
-  demoVotes = { A: 0, B: 0, bias: Math.random() < .5 ? 1.07 : .93 };
+  demoVotes = { A: 0, B: 0, C: 0, D: 0, bias: Math.random() < .5 ? 1.07 : .93 };
   const d0 = Date.now();
-  setState({ mode: 'live', question: d.q, a: d.a, b: d.b, va: 0, vb: 0,
+  const hasCD = !!(d.c || d.d);
+  setState({ mode: 'live', question: d.q, a: d.a, b: d.b, c: d.c, d: d.d, va: 0, vb: 0, vc: 0, vd: 0,
              startsAt: d0, endsAt: d0 + d.t * 1000, source: 'demo' });
   demoTimer = setInterval(() => {
     if (!demoVotes || !cur) return;
     let n = Math.random() < .6 ? 1 + (Math.random() * 3 | 0) : 0;
-    while (n--) (Math.random() < demoVotes.bias ? demoVotes.A++ : demoVotes.B++);
-    setState({ mode: 'live', question: cur.question, a: cur.a, b: cur.b,
-               startsAt: cur.startsAt, va: demoVotes.A, vb: demoVotes.B, endsAt: cur.endsAt, source: 'demo' });
+    while (n--) {
+      const r=Math.random();
+      if (hasCD) {
+        if (r<0.3) demoVotes.A++; else if (r<0.6) demoVotes.B++; else if (r<0.8) demoVotes.C++; else demoVotes.D++;
+      } else {
+        (Math.random() < demoVotes.bias ? demoVotes.A++ : demoVotes.B++);
+      }
+    }
+    setState({ mode: 'live', question: cur.question, a: cur.a, b: cur.b, c: cur.c, d: cur.d,
+               startsAt: cur.startsAt, va: demoVotes.A, vb: demoVotes.B, vc: demoVotes.C, vd: demoVotes.D, endsAt: cur.endsAt, source: 'demo' });
   }, 520);
   demoEndTimer = setTimeout(demoEnd, d.t * 1000);
 }
 function demoEnd() {
   if (!cur) return;
   clearInterval(demoTimer);
-  const w = demoVotes.A >= demoVotes.B ? 'A' : 'B';
-  setState({ mode: 'ended', question: cur.question, a: cur.a, b: cur.b,
-             startsAt: cur.startsAt, va: demoVotes.A, vb: demoVotes.B, endsAt: Date.now(), winner: w, source: 'demo' });
+  const scores=[{k:'A',v:demoVotes.A},{k:'B',v:demoVotes.B},{k:'C',v:demoVotes.C},{k:'D',v:demoVotes.D}].filter(s=>cur[s.k.toLowerCase()]||s.k==='A'||s.k==='B');
+  scores.sort((a,b)=>b.v-a.v);
+  const w = scores[0]?.k || 'A';
+  setState({ mode: 'ended', question: cur.question, a: cur.a, b: cur.b, c: cur.c, d: cur.d,
+             startsAt: cur.startsAt, va: demoVotes.A, vb: demoVotes.B, vc: demoVotes.C, vd: demoVotes.D, endsAt: Date.now(), winner: w, source: 'demo' });
   demoVotes = null;
   if (LOOP) setTimeout(demoStart, 9000);
 }
@@ -1144,12 +1724,14 @@ function clickVote(choice) {
   if (mode !== 'live') return;
   if (DEMO && demoVotes) {
     demoVotes[choice]++;
-    setState({ mode: 'live', question: cur.question, a: cur.a, b: cur.b,
-               startsAt: cur.startsAt, va: demoVotes.A, vb: demoVotes.B, endsAt: cur.endsAt, source: 'demo' });
+    setState({ mode: 'live', question: cur.question, a: cur.a, b: cur.b, c: cur.c, d: cur.d,
+               startsAt: cur.startsAt, va: demoVotes.A, vb: demoVotes.B, vc: demoVotes.C, vd: demoVotes.D, endsAt: cur.endsAt, source: 'demo' });
   } else vote(choice);
 }
 E.optA.addEventListener('click', () => clickVote('A'));
 E.optB.addEventListener('click', () => clickVote('B'));
+if (E.optC) E.optC.addEventListener('click', () => clickVote('C'));
+if (E.optD) E.optD.addEventListener('click', () => clickVote('D'));
 
 /* ── Boucle d'affichage (timer) + démarrage ──────────────────── */
 setInterval(() => { if (mode !== 'idle') render(); }, 250);
