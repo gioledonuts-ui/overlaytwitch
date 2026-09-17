@@ -84,6 +84,13 @@ const DEFAULT_CONFIG = {
   subGoalHistory: [], // [{label,target,completedAt,currentAtCompletion}]
   chatTitle: 'CHAT DE 7GIONNY',
   accent: '#9146FF',
+  // alertes V33 : position & taille reglables depuis panneau, sauvegarde comme sons
+  alertPosX: 58, // % left (0-100)
+  alertPosY: 140, // px top
+  alertPosYLive: 360, // px top quand sondage live (sous sondage)
+  alertWidth: 380, // px largeur alerte normale
+  alertPhotoWidth: 340, // px largeur alerte photo (4:5)
+  alertScale: 100, // % echelle globale (100 = normal)
   // velocite V5 : seuil % + duree ajout + chrono verrou + fin prevue
   velocityEquilibrium: 20,
   velocityClimb: 0.65,
@@ -972,17 +979,18 @@ function connectFollows() {
         } else if (subType === 'channel.subscription.gift') {
           const nom = evt.user_name || evt.user_login || 'viewer';
           const isAnon = evt.is_anonymous;
+          const total = evt.total || 1;
           if (isAnon) {
-            broadcastAlert({ type: 'anon', viewer: evt.total ? String(evt.total)+' subs' : undefined });
-            console.log('[alerte] gift anon EventSub');
+            // anonyme : on garde total pour afficher "a offert X subs"
+            broadcastAlert({ type: 'anon', viewer: total>1 ? String(total)+' subs' : (evt.recipient_user_name || 'un spectateur'), total: total });
+            console.log('[alerte] gift anon EventSub x'+total);
           } else {
-            const total = evt.total || 1;
             if (total > 1) {
-              broadcastAlert({ type: 'community', user: nom, message: total + ' subs offerts' });
+              broadcastAlert({ type: 'community', user: nom, total: total, viewers: total });
               console.log('[alerte] community gift EventSub : ' + nom + ' x' + total);
             } else {
               broadcastAlert({ type: 'gift', user: nom, viewer: evt.recipient_user_name || 'un spectateur' });
-              console.log('[alerte] gift EventSub : ' + nom);
+              console.log('[alerte] gift EventSub : ' + nom + ' → ' + (evt.recipient_user_name||'?'));
             }
           }
         } else if (subType === 'channel.subscription.message') {
@@ -1457,6 +1465,13 @@ const server = http.createServer((req, res) => {
               cfg: 1,
               chatTitle: p.chatTitle !== undefined ? String(p.chatTitle).slice(0, 40) : appConfig.chatTitle,
               accent: p.accent !== undefined ? String(p.accent).slice(0, 16) : appConfig.accent,
+              alert: 1,
+              alertPosX: p.alertPosX !== undefined ? Math.max(0, Math.min(100, +p.alertPosX)) : appConfig.alertPosX,
+              alertPosY: p.alertPosY !== undefined ? Math.max(0, Math.min(900, Math.round(+p.alertPosY))) : appConfig.alertPosY,
+              alertPosYLive: p.alertPosYLive !== undefined ? Math.max(0, Math.min(900, Math.round(+p.alertPosYLive))) : appConfig.alertPosYLive,
+              alertWidth: p.alertWidth !== undefined ? Math.max(200, Math.min(800, Math.round(+p.alertWidth))) : appConfig.alertWidth,
+              alertPhotoWidth: p.alertPhotoWidth !== undefined ? Math.max(180, Math.min(600, Math.round(+p.alertPhotoWidth))) : appConfig.alertPhotoWidth,
+              alertScale: p.alertScale !== undefined ? Math.max(50, Math.min(150, Math.round(+p.alertScale))) : appConfig.alertScale,
               velocity: 1,
               equilibriumMPM: p.equilibriumMPM !== undefined ? Math.max(1, Math.round(+p.equilibriumMPM)) : appConfig.velocityEquilibrium,
               climbSensitivity: p.climbSensitivity !== undefined ? +p.climbSensitivity : appConfig.velocityClimb,
@@ -1527,6 +1542,12 @@ const server = http.createServer((req, res) => {
           if (p.finMinute !== undefined) appConfig.velocityFinMinute = Math.max(0, Math.min(59, Math.round(+p.finMinute || 30)));
           if (p.velocityFinEnabled !== undefined) appConfig.velocityFinEnabled = !!p.velocityFinEnabled;
           if (p.finEnabled !== undefined) appConfig.velocityFinEnabled = !!p.finEnabled;
+          if (p.alertPosX !== undefined) appConfig.alertPosX = Math.max(0, Math.min(100, +p.alertPosX));
+          if (p.alertPosY !== undefined) appConfig.alertPosY = Math.max(0, Math.min(900, Math.round(+p.alertPosY)));
+          if (p.alertPosYLive !== undefined) appConfig.alertPosYLive = Math.max(0, Math.min(900, Math.round(+p.alertPosYLive)));
+          if (p.alertWidth !== undefined) appConfig.alertWidth = Math.max(200, Math.min(800, Math.round(+p.alertWidth)));
+          if (p.alertPhotoWidth !== undefined) appConfig.alertPhotoWidth = Math.max(180, Math.min(600, Math.round(+p.alertPhotoWidth)));
+          if (p.alertScale !== undefined) appConfig.alertScale = Math.max(50, Math.min(150, Math.round(+p.alertScale)));
           saveConfig();
 
           // met à jour le sub goal V32 avec queue + gestion auto/manuel
@@ -1556,10 +1577,17 @@ const server = http.createServer((req, res) => {
             try { await syncSubGoal(); } catch(e){}
           }
 
-          // diffuse au widget : sub goal + titre du chat + accent + velocite V5
+          // diffuse au widget : sub goal + titre du chat + accent + velocite V5 + alertes position
           const payload = 'data: ' + JSON.stringify({
             goal: 1, ...goalState,
             cfg: 1, chatTitle: appConfig.chatTitle, accent: appConfig.accent,
+            alert: 1,
+            alertPosX: appConfig.alertPosX,
+            alertPosY: appConfig.alertPosY,
+            alertPosYLive: appConfig.alertPosYLive,
+            alertWidth: appConfig.alertWidth,
+            alertPhotoWidth: appConfig.alertPhotoWidth,
+            alertScale: appConfig.alertScale,
             velocity: 1,
             equilibriumMPM: appConfig.velocityEquilibrium,
             climbSensitivity: appConfig.velocityClimb,

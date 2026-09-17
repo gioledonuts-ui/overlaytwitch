@@ -759,6 +759,50 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
             </div>
             <div class="note" style="margin-top:8px">Fichiers: <span class="mono" style="display:inline;padding:2px 6px">assets/IMG_0607.jpg</span> + <span class="mono" style="display:inline;padding:2px 6px">assets/alert-photo.jpg</span>. Si présent, alertes passent en mode photo avec texte blanc contour noir épais. Supprime pour revenir au fond par défaut.</div>
           </div>
+
+          <div class="card" style="margin-top:12px;background:#10101a;border-color:var(--line2)">
+            <h2>📍 POSITION & TAILLE ALERTES (TOUS AU MÊME ENDROIT)</h2>
+            <p class="sub">Règle en une touche – animation simple qui descend d'en haut. Sauvegardé comme le son. Tous les types (follow/sub/gift/raid) utilisent le même emplacement. Photo 4:5 petite pour ne pas cacher le streamer.</p>
+            <div class="row grow" style="gap:12px">
+              <div class="field" style="flex:1;margin-top:0">
+                <label>Position X (% gauche → droite)</label>
+                <input id="alertPosX" type="range" min="0" max="100" step="1" style="width:100%">
+                <div class="note" style="font-size:10px"><span id="alertPosXVal">58%</span> – 0% gauche, 100% droite (58% = un peu à droite du milieu, avant chat)</div>
+              </div>
+              <div class="field" style="flex:1;margin-top:0">
+                <label>Échelle globale (%)</label>
+                <input id="alertScale" type="range" min="50" max="150" step="5" style="width:100%">
+                <div class="note" style="font-size:10px"><span id="alertScaleVal">100%</span> – 100% normal, 70% petit</div>
+              </div>
+            </div>
+            <div class="row grow" style="gap:12px;margin-top:8px">
+              <div class="field" style="flex:1;margin-top:0">
+                <label>Position Y haut (px) – sans sondage</label>
+                <input id="alertPosY" type="number" min="0" max="800" step="10" style="width:100%">
+              </div>
+              <div class="field" style="flex:1;margin-top:0">
+                <label>Position Y quand sondage live (px) – sous sondage</label>
+                <input id="alertPosYLive" type="number" min="0" max="800" step="10" style="width:100%">
+              </div>
+            </div>
+            <div class="row grow" style="gap:12px;margin-top:8px">
+              <div class="field" style="flex:1;margin-top:0">
+                <label>Largeur alerte normale (px)</label>
+                <input id="alertWidth" type="number" min="200" max="800" step="10" style="width:100%">
+              </div>
+              <div class="field" style="flex:1;margin-top:0">
+                <label>Largeur alerte photo 4:5 (px) – petite</label>
+                <input id="alertPhotoWidth" type="number" min="180" max="600" step="10" style="width:100%">
+              </div>
+            </div>
+            <div class="row" style="margin-top:12px;gap:8px">
+              <button class="btn primary" id="btnSaveAlertPos">ENREGISTRER POSITION & TAILLE</button>
+              <button class="btn ghost small" id="btnPreviewAlert">APERÇU ALERTE</button>
+              <button class="btn ghost small" id="btnResetAlertPos">RÉINITIALISER</button>
+            </div>
+            <div class="note" style="margin-top:8px">Animation: descente simple d'en haut (slide -120px → 0, 0.55s). Taille photo conseillée 280-340px pour ne pas cacher le streamer. Sauvegardé dans config-perso.json comme les sons.</div>
+          </div>
+
           <p class="note" style="margin-top:12px">Fichiers sons stockés dans <span class="mono" style="display:inline;padding:2px 6px">sounds/alert-{type}.mp3</span>. Upload = remplacement instantané, re-détecté par OBS toutes les 15s.</p>
           <div class="card" style="margin-top:12px;background:#0f0f1a;border-color:var(--line2)">
             <h2 style="font-size:11px">🔊 SON DANS OBS – REGLAGE OBLIGATOIRE</h2>
@@ -1403,6 +1447,7 @@ if(btnPreviewVelocity) btnPreviewVelocity.addEventListener('click',()=>{
   apercuVelocity();
   toast('Aperçu vélocité envoyé à OBS');
 });
+
 const btnResetVelocity=$('btnResetVelocity');
 if(btnResetVelocity) btnResetVelocity.addEventListener('click',async()=>{
   try{
@@ -1411,6 +1456,74 @@ if(btnResetVelocity) btnResetVelocity.addEventListener('click',async()=>{
     if(j.ok){ toast('Vélocité reset complet'); const et=$('velocityEtat'); if(et) et.innerHTML='<span class="ok">Reset complet – MPM + % à 0 dans OBS</span>'; }
   }catch(e){ toast('Erreur reset'); }
 });
+
+/* ═══ ALERTES POSITION & TAILLE V34 – réglage en une touche, sauvegarde comme son ═══ */
+const alertDef = { alertPosX:58, alertPosY:140, alertPosYLive:360, alertWidth:380, alertPhotoWidth:340, alertScale:100 };
+let alertSaved = { ...alertDef };
+function setAlertForm(c){
+  const s=c||{};
+  const posX=s.alertPosX!=null?s.alertPosX:alertDef.alertPosX;
+  const posY=s.alertPosY!=null?s.alertPosY:alertDef.alertPosY;
+  const posYLive=s.alertPosYLive!=null?s.alertPosYLive:alertDef.alertPosYLive;
+  const w=s.alertWidth!=null?s.alertWidth:alertDef.alertWidth;
+  const photoW=s.alertPhotoWidth!=null?s.alertPhotoWidth:alertDef.alertPhotoWidth;
+  const scale=s.alertScale!=null?s.alertScale:alertDef.alertScale;
+  if($('alertPosX')) $('alertPosX').value=posX;
+  if($('alertPosY')) $('alertPosY').value=posY;
+  if($('alertPosYLive')) $('alertPosYLive').value=posYLive;
+  if($('alertWidth')) $('alertWidth').value=w;
+  if($('alertPhotoWidth')) $('alertPhotoWidth').value=photoW;
+  if($('alertScale')) $('alertScale').value=scale;
+  if($('alertPosXVal')) $('alertPosXVal').textContent=posX+'%';
+  if($('alertScaleVal')) $('alertScaleVal').textContent=scale+'%';
+  alertSaved={ alertPosX:posX, alertPosY:posY, alertPosYLive:posYLive, alertWidth:w, alertPhotoWidth:photoW, alertScale:scale };
+}
+function getAlertForm(){
+  return {
+    alertPosX: Math.max(0, Math.min(100, +($('alertPosX')?$('alertPosX').value:alertDef.alertPosX))),
+    alertPosY: Math.max(0, Math.min(900, Math.round(+($('alertPosY')?$('alertPosY').value:alertDef.alertPosY)))),
+    alertPosYLive: Math.max(0, Math.min(900, Math.round(+($('alertPosYLive')?$('alertPosYLive').value:alertDef.alertPosYLive)))),
+    alertWidth: Math.max(200, Math.min(800, Math.round(+($('alertWidth')?$('alertWidth').value:alertDef.alertWidth)))),
+    alertPhotoWidth: Math.max(180, Math.min(600, Math.round(+($('alertPhotoWidth')?$('alertPhotoWidth').value:alertDef.alertPhotoWidth)))),
+    alertScale: Math.max(50, Math.min(150, Math.round(+($('alertScale')?$('alertScale').value:alertDef.alertScale))))
+  };
+}
+function previewAlertPos(){
+  const f=getAlertForm();
+  if($('alertPosXVal')) $('alertPosXVal').textContent=f.alertPosX+'%';
+  if($('alertScaleVal')) $('alertScaleVal').textContent=f.alertScale+'%';
+  post(API+'/api/config',{...f, preview:true}).catch(()=>{});
+}
+['alertPosX','alertScale'].forEach(id=>{
+  const el=$(id);
+  if(el) el.addEventListener('input', previewAlertPos);
+});
+['alertPosY','alertPosYLive','alertWidth','alertPhotoWidth'].forEach(id=>{
+  const el=$(id);
+  if(el) el.addEventListener('input', ()=>{ clearTimeout(window._alertPrevT); window._alertPrevT=setTimeout(previewAlertPos, 200); });
+});
+const btnSaveAlertPos=$('btnSaveAlertPos');
+if(btnSaveAlertPos) btnSaveAlertPos.addEventListener('click', async()=>{
+  const f=getAlertForm();
+  const r=await post(API+'/api/config', f);
+  if(r.ok){ alertSaved={...f}; toast('Position & taille alertes enregistrées ✔ – tous au même endroit'); }
+});
+const btnPreviewAlert=$('btnPreviewAlert');
+if(btnPreviewAlert) btnPreviewAlert.addEventListener('click', async()=>{
+  previewAlertPos();
+  // déclenche une alerte test pour voir en direct
+  const data={type:'sub', user:'KEVIN', viewer:'TEST'};
+  await fetch(API+'/api/alert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).catch(()=>{});
+  toast('Aperçu alerte envoyé – regarde OBS');
+});
+const btnResetAlertPos=$('btnResetAlertPos');
+if(btnResetAlertPos) btnResetAlertPos.addEventListener('click', async()=>{
+  setAlertForm(alertDef);
+  previewAlertPos();
+  toast('Position alertes réinitialisée – aperçu envoyé');
+});
+
+
 
 const btnVelocityValidate=$('btnVelocityValidate');
 if(btnVelocityValidate) btnVelocityValidate.addEventListener('click',async()=>{
@@ -1846,6 +1959,7 @@ async function init(){
       document.querySelectorAll('.swatch').forEach(sw=>sw.classList.toggle('active',sw.dataset.color.toLowerCase()===acc.toLowerCase()));
       updateGoalAutoUI();
       setVelocityForm(s.config);
+      setAlertForm(s.config);
       const et=$('velocityEtat');
       if(et) et.innerHTML='<span class=\"note\">Config chargée – équilibre '+esc(velocitySaved.equilibriumMPM+' MPM')+'</span>';
     }

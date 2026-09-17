@@ -327,7 +327,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   background:rgba(10,10,12,.9);
   border:1px solid rgba(255,255,255,.14);
   box-shadow:0 28px 70px rgba(0,0,0,.55);
-  animation:alertIn .9s var(--ease-out)}
+  animation:alertIn .55s var(--ease-out)}
 /* image de fond en calque séparé : elle FADE-IN sur ~1,2 s → plus de « pop » noir
    au premier chargement (et les assets sont préchargés à l'ouverture de la page) */
 .alert__bg{position:absolute;inset:0;z-index:0;pointer-events:none;
@@ -383,8 +383,9 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .alert--photo .alert__msg{font-size:12px;max-width:300px}
 @keyframes bgFade{to{opacity:1}}
 .alert.out{animation:alertOut .35s var(--ease-in) forwards}
-@keyframes alertIn{from{opacity:0;transform:translateY(-34px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
-@keyframes alertOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-22px)}}
+/* V34 : animation super simple – descend d'en haut */
+@keyframes alertIn{from{opacity:0;transform:translateY(-120px)}to{opacity:1;transform:translateY(0)}}
+@keyframes alertOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-80px)}}
 .alert > .alert__icon,.alert > .alert__body{position:relative;z-index:1}
 .alert__icon{width:100px;height:100px;object-fit:contain}
 /* label : Bebas violet très espacé + filet de chaque côté (touch TV) */
@@ -1005,6 +1006,17 @@ function voteHint(a,b,c,d) {
   return 'A / B DANS LE CHAT';
 }
 
+function updateAlertPosForSondage(){
+  try{
+    const alertsEl = document.getElementById('alerts');
+    const cfg = window._alertCfg;
+    if (!alertsEl || !cfg) return;
+    const isLive = card && card.classList.contains('is-live');
+    const top = isLive ? (cfg.posYLive!=null?cfg.posYLive:360) : (cfg.posY!=null?cfg.posY:140);
+    alertsEl.style.top = top + 'px';
+    alertsEl.style.left = (cfg.posX!=null?cfg.posX:58) + '%';
+  }catch(e){}
+}
 function beginExit() {
   if (exiting) return;
   exiting = true;
@@ -1014,6 +1026,7 @@ function beginExit() {
     card.classList.add('is-hidden');
     mode = 'idle'; cur = null; lastLeader = null; exiting = false;
     E.timer.classList.add('is-off');
+    updateAlertPosForSondage();
   }, 460);
 }
 
@@ -1065,6 +1078,7 @@ function setState(next) {
       if(o) o.classList.remove('is-winner','is-loser');
     });
     card.classList.add('is-live');
+    updateAlertPosForSondage();
     render();
   }
   else if (next.mode === 'ended') {
@@ -1140,15 +1154,53 @@ function applyConfig(c) {
   if (c.chatTitle) { const t = document.getElementById('chatTitle'); if (t) t.textContent = c.chatTitle; }
   if (c.accent) {
     const accent = c.accent;
-    const deep = darkenHex(accent, 0.35); // 35% plus foncé pour gradient
+    const deep = darkenHex(accent, 0.35);
     const rgb = hexToRgb(accent);
     document.documentElement.style.setProperty('--violet', accent);
     document.documentElement.style.setProperty('--violet-deep', deep);
     if (rgb) {
       document.documentElement.style.setProperty('--violet-rgb', rgb.r+','+rgb.g+','+rgb.b);
-      // compat light variant (ex: #C79BFF était violet clair) → on génère un clair à partir de accent
       const light = 'color-mix(in srgb, '+accent+' 60%, white)';
       document.documentElement.style.setProperty('--violet-light', light);
+    }
+  }
+  // alertes position/taille V34 – tous au même endroit, sauvegarde comme son
+  if (c.alert || c.alertPosX !== undefined) {
+    const alertsEl = document.getElementById('alerts');
+    if (alertsEl) {
+      const posX = c.alertPosX != null ? c.alertPosX : (window._alertCfg ? window._alertCfg.posX : 58);
+      const posY = c.alertPosY != null ? c.alertPosY : (window._alertCfg ? window._alertCfg.posY : 140);
+      const posYLive = c.alertPosYLive != null ? c.alertPosYLive : (window._alertCfg ? window._alertCfg.posYLive : 360);
+      const w = c.alertWidth != null ? c.alertWidth : (window._alertCfg ? window._alertCfg.width : 380);
+      const photoW = c.alertPhotoWidth != null ? c.alertPhotoWidth : (window._alertCfg ? window._alertCfg.photoWidth : 340);
+      const scale = c.alertScale != null ? c.alertScale : (window._alertCfg ? window._alertCfg.scale : 100);
+      window._alertCfg = { posX, posY, posYLive, width: w, photoWidth: photoW, scale };
+      // applique au container
+      alertsEl.style.left = posX + '%';
+      // si live, on utilisera posYLive via CSS override, mais on stocke en data attr
+      alertsEl.dataset.posY = posY;
+      alertsEl.dataset.posYLive = posYLive;
+      // on met à jour CSS custom properties pour les règles :has
+      document.documentElement.style.setProperty('--alert-x', posX + '%');
+      document.documentElement.style.setProperty('--alert-y', posY + 'px');
+      document.documentElement.style.setProperty('--alert-y-live', posYLive + 'px');
+      document.documentElement.style.setProperty('--alert-w', w + 'px');
+      document.documentElement.style.setProperty('--alert-photo-w', photoW + 'px');
+      document.documentElement.style.setProperty('--alert-scale', (scale/100).toString());
+      // applique directement top si pas de sondage live (logique simple)
+      const card = document.getElementById('card');
+      const isLive = card && card.classList.contains('is-live');
+      alertsEl.style.top = (isLive ? posYLive : posY) + 'px';
+      // taille via style sur les alertes existantes
+      document.querySelectorAll('.alert').forEach(el=>{
+        if (el.classList.contains('alert--photo')) {
+          el.style.width = photoW + 'px';
+        } else {
+          el.style.width = w + 'px';
+        }
+        el.style.transform = 'scale('+(scale/100)+')';
+        el.style.transformOrigin = 'top center';
+      });
     }
   }
   if (c.velocity || c.equilibriumMPM !== undefined || c.velocityEnabled !== undefined) {
@@ -1362,21 +1414,34 @@ function alertText(a) {
   const SUB_ICON = 'assets/icon-sub.png';
   switch (a.alert) {
     case 'follow':    return { kind: 'follow', icon: 'assets/icon-follow.png', labelTxt: 'NOUVEAU FOLLOW', user: a.user, subText: 'Bienvenue dans le chat !', hold: 5200 };
-    /* LOGIQUE MOIS : 1er mois → juste « 1 mois ». Revenant → « X mois consécutif — Y mois total »
-       + SLOT message personnalisé du sub (a.message) */
     case 'sub':       return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subText: '1 mois', subMsg: a.message || undefined, hold: 6500 };
     case 'resub':     {
-      const streak = (a.stints || 0) + 1;          // mois consécutif (R-number)
-      const total = a.total || streak;             // mois total (données connues)
+      const streak = (a.stints || 0) + 1;
+      const total = a.total || streak;
       return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user,
         subText: streak >= 2 ? streak + ' mois consécutif — ' + total + ' mois total' : total + ' mois',
         subMsg: a.message || undefined, hold: 6500 };
     }
     case 'gift':      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subPre: 'a offert un abonnement à ', subHl: a.viewer || 'un spectateur', subMsg: a.message || undefined, hold: 6500 };
-    case 'anon':      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: 'UN ANONYME', subPre: 'a offert un abonnement à ', subHl: a.viewer || 'un spectateur', subMsg: a.message || undefined, hold: 6500 };
-    case 'community': return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subText: 'a offert des abonnements à tout le chat', subMsg: a.message || undefined, hold: 6500 };
+    case 'anon':      {
+      // anonyme : si viewer contient "subs" (ex: "5 subs") on affiche en subText, sinon subPre
+      const v = a.viewer || '';
+      if (String(v).toLowerCase().includes('sub')) {
+        return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: 'UN ANONYME', subText: 'a offert ' + v, subMsg: a.message || undefined, hold: 6500 };
+      }
+      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: 'UN ANONYME', subPre: 'a offert un abonnement à ', subHl: v || 'un spectateur', subMsg: a.message || undefined, hold: 6500 };
+    }
+    case 'community': {
+      const tot = a.total || a.viewers || 0;
+      const txt = tot ? 'a offert ' + tot + ' abonnements à tout le chat' : 'a offert des abonnements à tout le chat';
+      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subText: txt, subMsg: a.message || undefined, hold: 6500 };
+    }
     case 'prime':     return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subText: 'a offert un abonnement Prime', subMsg: a.message || undefined, hold: 6500 };
-    case 'raid':      return { kind: 'raid', icon: 'assets/icon-raid.png', labelTxt: 'RAID', user: a.user, subText: 'arrive avec ' + (a.viewers || '?') + ' spectateurs', subMsg: a.message || undefined, hold: 6000 };
+    case 'raid':      {
+      const viewers = a.viewers != null ? a.viewers : '?';
+      const who = a.user || 'UN STREAMER';
+      return { kind: 'raid', icon: 'assets/icon-raid.png', labelTxt: 'RAID', user: who, subText: 'arrive avec ' + viewers + ' spectateurs', subMsg: a.message || undefined, hold: 6500 };
+    }
   }
   return null;
 }
@@ -1384,37 +1449,37 @@ function showAlert(a) {
   const t = alertText(a);
   if (!t) return;
   const d = document.createElement('div');
-  // si photo custom dispo (IMG_0607.jpg ou alert-photo.jpg), on utilise variante photo avec texte blanc contour noir epais
-  // on re-probe rapidement pour capter upload panneau instantanément
   refreshPhotoFlag();
   const ts = Date.now();
   const isPhoto = usePhotoAlert;
   const photoClass = isPhoto ? ' alert--photo' : '';
   d.className = 'alert alert--' + t.kind + photoClass;
+  // applique taille depuis config panneau (tous au même endroit)
+  const cfg = window._alertCfg || { width: 380, photoWidth: 340, scale: 100 };
+  if (isPhoto) {
+    d.style.width = (cfg.photoWidth||340) + 'px';
+  } else {
+    d.style.width = (cfg.width||380) + 'px';
+  }
+  d.style.transform = 'scale('+( (cfg.scale||100)/100 )+')';
+  d.style.transformOrigin = 'top center';
   const bg = document.createElement('div'); bg.className = 'alert__bg';
-  // cache bust : force reload de la photo custom si elle vient d'être uploadée via panneau
   bg.style.backgroundImage = `url('assets/IMG_0607.jpg?v=${ts}'), url('assets/alert-photo.jpg?v=${ts}'), url('assets/alert-bg.png?v=${ts}')`;
   if (isPhoto) {
-    // V32 : image entière visible, ratio 4:5 par défaut, contain, pas de crop
     bg.style.backgroundSize = 'contain';
     bg.style.backgroundPosition = 'center center';
     bg.style.backgroundRepeat = 'no-repeat';
     bg.style.backgroundColor = '#000';
-    // detecte ratio réel de l'image uploadée pour adapter aspect-ratio de l'alerte
     const probeImg = new Image();
     probeImg.onload = () => {
       try {
         const w = probeImg.naturalWidth, h = probeImg.naturalHeight;
         if (w && h) {
-          // ratio réel, mais on borne entre 3:4 et 5:4 pour rester lisible
-          const ratio = w / h;
-          // applique aspect-ratio dynamique
           d.style.aspectRatio = w + ' / ' + h;
-          console.log('[alert] ratio photo detecte', w+'x'+h+' → '+ratio.toFixed(2));
+          console.log('[alert] ratio photo detecte', w+'x'+h);
         }
       } catch(e){}
     };
-    // essaie IMG_0607 puis alert-photo
     probeImg.src = 'assets/IMG_0607.jpg?v=' + ts;
     probeImg.onerror = () => {
       const fallback = new Image();
