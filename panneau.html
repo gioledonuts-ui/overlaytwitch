@@ -3,545 +3,1753 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>7GIONNY — Panneau de contrôle</title>
-<link rel="icon" type="image/x-icon" href="assets/logo-7g.ico">
+<title>Studio — Panneau</title>
+<link rel="icon" type="image/x-icon" href="assets/logo-7g.ico?v=29">
 <style>
-  :root{
-    --violet:#9146FF; --violet-2:#772ce8; --blanc:#fff;
-    --bg:#0c0914; --surface:rgba(255,255,255,.035); --surface-2:rgba(255,255,255,.06);
-    --ligne:rgba(255,255,255,.09); --ligne-2:rgba(255,255,255,.14);
-    --ok:#38e08f; --warn:#ffd166; --bad:#ff6b81; --dim:#9AA0A6;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%}
-  body{
-    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:var(--blanc);
-    background:radial-gradient(1200px 700px at 50% -20%, #231a3d 0%, #0c0914 58%);
-    -webkit-font-smoothing:antialiased;min-height:100vh;
-  }
-  .app{max-width:600px;margin:0 auto;padding:22px 18px 90px;display:flex;flex-direction:column;gap:16px}
-
-  /* ---------- header ---------- */
-  header{display:flex;align-items:center;gap:14px;padding:4px 2px 8px}
-  header .brand{display:flex;align-items:center;gap:13px;flex:1;min-width:0}
-  header img{width:46px;height:46px;border-radius:12px;box-shadow:0 4px 20px rgba(145,70,255,.45)}
-  header h1{font-size:22px;font-weight:800;letter-spacing:.2px;line-height:1.1}
-  header h1 span{color:var(--violet)}
-  header p{font-size:12px;opacity:.55;margin-top:2px}
-  .gear{
-    width:40px;height:40px;border-radius:12px;background:var(--surface);border:1px solid var(--ligne);
-    color:var(--blanc);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;
-    transition:background .2s,border-color .2s;
-  }
-  .gear:hover{background:var(--surface-2);border-color:var(--violet)}
-
-  /* ---------- statut ---------- */
-  .status{display:flex;gap:8px;flex-wrap:wrap}
-  .stat{display:inline-flex;align-items:center;gap:8px;background:var(--surface);
-    border:1px solid var(--ligne);border-radius:99px;padding:7px 13px;font-size:12.5px;font-weight:600}
-  .stat .t{opacity:.55;font-weight:500}
-  .dot{width:8px;height:8px;border-radius:50%;flex:none}
-  .dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
-  .dot.off{background:var(--bad);box-shadow:0 0 8px var(--bad)}
-  .dot.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
-
-  /* ---------- cartes ---------- */
-  .card{background:var(--surface);border:1px solid var(--ligne);border-radius:16px;padding:20px 20px 22px}
-  .card h2{font-size:15px;font-weight:700;display:flex;align-items:center;gap:9px;margin-bottom:3px}
-  .card h2 .ico{font-size:17px}
-  .card p.sub{font-size:12.5px;opacity:.55;margin-bottom:15px;line-height:1.45}
-  .field{margin-top:11px}
-  .field label{display:block;font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;opacity:.5;margin-bottom:6px}
-  .row{display:flex;gap:9px;align-items:center;margin-top:11px;flex-wrap:wrap}
-  .row.grow{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-  input,select{
-    background:#171226;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:11px;
-    padding:11px 13px;font-size:14px;font-family:inherit;outline:none;width:100%;min-width:0;
-  }
-  input:focus,select:focus{border-color:var(--violet)}
-  input[type=color]{padding:3px;height:42px;cursor:pointer;width:100%}
-  .btn{
-    background:var(--surface-2);color:#fff;border:1px solid var(--ligne-2);border-radius:11px;
-    padding:11px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
-    transition:border-color .15s,background .15s;
-  }
-  .btn:hover{border-color:var(--violet)}
-  .btn.primary{background:linear-gradient(90deg,#772ce8,#a970ff);border:none}
-  .btn.primary:hover{filter:brightness(1.08)}
-  .btn.small{padding:8px 13px;font-size:13px}
-  .btn.ghost{background:transparent}
-  .btn:disabled{opacity:.45;cursor:not-allowed}
-  .chips{display:flex;gap:8px;flex-wrap:wrap}
-  .chipbtn{background:rgba(145,70,255,.12);border:1px solid rgba(145,70,255,.4);color:#fff;
-    padding:9px 15px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s}
-  .chipbtn:hover{background:rgba(145,70,255,.28)}
-
-  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
-  .note{font-size:12.5px;opacity:.7;line-height:1.5}
-  .mono{font-family:Consolas,monospace;font-size:11.5px;background:#171226;border:1px solid rgba(255,255,255,.12);
-    border-radius:9px;padding:9px 11px;word-break:break-all}
-  /* liens copiables d'un clic */
-  .mono.copy{cursor:pointer;transition:border-color .15s,background .15s;position:relative}
-  .mono.copy:hover{border-color:var(--violet);background:#1d1530}
-  .mono.copy::after{content:'⧉ copier';position:absolute;top:6px;right:9px;font-size:10px;font-weight:700;
-    letter-spacing:.06em;color:var(--violet);opacity:0;transition:opacity .15s;font-family:inherit}
-  .mono.copy:hover::after{opacity:.9}
-  .mono.copy.copied{border-color:var(--ok);background:rgba(56,224,143,.08)}
-  .mono.copy.copied::after{content:'✓ copié !';color:var(--ok);opacity:1}
-  .hist{margin-top:10px;font-size:12px;opacity:.65;line-height:1.7}
-  .hist b{opacity:1;color:#fff}
-
-  /* ---------- toast ---------- */
-  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#171226;
-    border:1px solid var(--violet);border-radius:12px;padding:12px 20px;font-size:14px;font-weight:600;
-    box-shadow:0 8px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .3s;z-index:99;max-width:90%;text-align:center}
-  .toast.show{opacity:1}
-
-  /* ---------- modal paramètres ---------- */
-  .modal{position:fixed;inset:0;background:rgba(6,4,10,.66);backdrop-filter:blur(6px);
-    display:none;align-items:flex-start;justify-content:center;z-index:50;padding:24px 14px;overflow-y:auto}
-  .modal.open{display:flex}
-  .modal__box{width:100%;max-width:540px;background:#151021;border:1px solid var(--ligne-2);
-    border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden;animation:pop .22s var(--ease)}
-  :root{--ease:cubic-bezier(.2,.8,.2,1)}
-  @keyframes pop{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
-  .modal__head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;
-    border-bottom:1px solid var(--ligne)}
-  .modal__head h2{font-size:16px;font-weight:700;display:flex;align-items:center;gap:9px}
-  .modal__close{background:transparent;border:none;color:var(--dim);font-size:20px;cursor:pointer;line-height:1;padding:4px}
-  .modal__close:hover{color:#fff}
-  .modal__body{padding:20px;display:flex;flex-direction:column;gap:22px}
-  .modal__section h3{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.5;margin-bottom:12px}
+@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/inter-400.woff2') format('woff2')}
+@font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/inter-600.woff2') format('woff2')}
+@font-face{font-family:'Inter';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/inter-700.woff2') format('woff2')}
+@font-face{font-family:'Inter';font-style:normal;font-weight:800;font-display:swap;src:url('fonts/inter-800.woff2') format('woff2')}
+@font-face{font-family:'Outfit';font-style:normal;font-weight:100 900;font-display:swap;src:url('fonts/outfit-var.woff2') format('woff2')}
+:root{
+  --bg:#08080d;
+  --bg2:#10101a;
+  --bg3:#15151f;
+  --surface:#15151f;
+  --surface2:#1c1c2a;
+  --surface3:#242434;
+  --line:#1e1e2e;
+  --line2:#2a2a3e;
+  --text:#f2f2f5;
+  --muted:#7a7a96;
+  --ok:#2ee89e;
+  --warn:#ffcc4d;
+  --bad:#ff5c6a;
+  --acc:#9146FF;
+  --acc2:#a970ff;
+  --acc-glow:rgba(145,70,255,.18);
+  --acc-soft:rgba(145,70,255,.09);
+  --r:6px;
+  --r2:4px;
+}
+/* disable selection for UI, allow for content */
+*{box-sizing:border-box;margin:0;padding:0}
+html{overflow:hidden;height:100%;scrollbar-width:thin;scrollbar-color:#2a2a3e #08080d}
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  height:100%;
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+  user-select:none;
+  -webkit-user-select:none;
+}
+input,textarea,.mono,.note,.hist,#versionInfo,#liveQ,.sub,p,span.badge{user-select:text;-webkit-user-select:text}
+/* custom scrollbar - dark, no white */
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#2a2a3e;border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#3a3a4e}
+.app{
+  width:1080px;
+  max-width:100vw;
+  height:100vh;
+  margin:0 auto;
+  display:flex;
+  background:var(--bg);
+  border-left:1px solid var(--line);
+  border-right:1px solid var(--line);
+  overflow:hidden;
+  position:relative;
+}
+/* subtle artistic grid */
+.app::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.015) 1px, transparent 1px);
+  background-size:32px 32px;
+  opacity:.4;
+  z-index:0;
+}
+.sidebar, .main{position:relative;z-index:1}
+/* sidebar - square pro, no rounded IA */
+.sidebar{
+  width:220px;
+  flex:none;
+  background:var(--bg2);
+  border-right:1px solid var(--line);
+  display:flex;
+  flex-direction:column;
+  padding:16px 12px 12px;
+  overflow-y:auto;
+  overflow-x:hidden;
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:6px 6px 14px;
+  border-bottom:1px solid var(--line);
+  margin-bottom:14px;
+}
+.brand img{width:44px;height:44px;border-radius:6px;background:#000;padding:4px;flex:none;object-fit:contain}
+.brand__txt{flex:1;min-width:0}
+.brand__name{
+  font-family:'Outfit',sans-serif;
+  font-weight:800;
+  font-size:14px;
+  letter-spacing:.08em;
+  line-height:1;
+  text-transform:uppercase;
+}
+.brand__sub{
+  font-family:'Outfit',sans-serif;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-top:3px;
+}
+/* versionInfo fixed height to avoid jump */
+#versionInfo{min-height:84px;transition:opacity .15s}
+#verPill{
+  display:inline-flex;
+  margin-top:8px;
+  font-family:'Outfit',sans-serif;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.06em;
+  padding:3px 8px;
+  border-radius:4px;
+  background:var(--acc-soft);
+  border:1px solid var(--line2);
+  color:var(--acc);
+}
+.nav{display:flex;flex-direction:column;gap:3px}
+.navbtn{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  text-align:left;
+  padding:10px 10px;
+  border-radius:4px;
+  border:1px solid transparent;
+  border-left:2px solid transparent;
+  background:transparent;
+  color:var(--muted);
+  font-family:'Outfit',sans-serif;
+  font-size:12px;
+  font-weight:600;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  cursor:pointer;
+  transition:all .15s;
+}
+.navbtn:hover{background:var(--surface2);color:var(--text);border-color:var(--line)}
+.navbtn.active{background:var(--surface2);border-color:var(--line2);border-left-color:var(--acc);color:var(--text)}
+.navbtn .ico{width:22px;flex:none;text-align:center;font-size:10px;opacity:.7;letter-spacing:.04em}
+.sideFoot{
+  margin-top:auto;
+  padding:12px 4px 4px;
+  border-top:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:10px;
+  color:var(--muted);
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+#dotPont{width:7px;height:7px;border-radius:50%;flex:none;background:var(--ok)}
+#dotPont.off{background:var(--bad)}
+#dotPont.warn{background:var(--warn)}
+/* main */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.topbar{
+  height:52px;
+  min-height:52px;
+  max-height:52px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:0 16px 0 20px;
+  border-bottom:1px solid var(--line);
+  background:var(--bg2);
+  flex:none;
+  position:relative;
+}
+.topbar__title{
+  font-family:'Outfit',sans-serif;
+  font-weight:700;
+  font-size:12px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--muted);
+  flex:0 0 160px;
+  white-space:nowrap;
+}
+#statut{
+  display:flex;
+  gap:6px;
+  align-items:center;
+  flex:1;
+  min-width:0;
+  overflow:hidden;
+}
+.stat{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:4px 8px;
+  font-size:10px;
+  font-weight:600;
+  white-space:nowrap;
+  flex:none;
+}
+.stat .t{color:var(--muted);font-size:9px;letter-spacing:.06em;text-transform:uppercase}
+.dot{width:5px;height:5px;border-radius:50%;flex:none}
+.dot.on{background:var(--ok)}
+.dot.off{background:var(--bad)}
+.dot.warn{background:var(--warn)}
+/* gear supprime – logo brand fait office de reglages */
+.brand{cursor:pointer;transition:background .15s,border-color .15s}
+.brand:hover{background:var(--surface2);border-radius:6px}
+.brand:active{transform:scale(.98)}
+.content{
+  flex:1;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:18px 20px 40px;
+  width:100%;
+}
+.tab{display:none}
+.tab.active{display:block;animation:fade .16s ease}
+@keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+.card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:6px;
+  padding:16px;
+  margin-bottom:12px;
+  position:relative;
+}
+.card::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;
+  height:1px;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent);
+  pointer-events:none;
+}
+.card h2{
+  font-family:'Outfit',sans-serif;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.10em;
+  text-transform:uppercase;
+  margin-bottom:6px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.card p.sub{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:12px}
+.field{margin-top:12px}
+.field label{
+  display:block;
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:5px;
+}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.row.grow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input,select{
+  background:#0c0c14;
+  color:var(--text);
+  border:1px solid var(--line2);
+  border-radius:4px;
+  padding:9px 10px;
+  font-size:12px;
+  font-family:inherit;
+  outline:none;
+  width:100%;
+  min-width:0;
+}
+input:focus,select:focus{border-color:var(--acc);background:#12121e}
+input[type=color]{padding:2px;height:34px;cursor:pointer}
+.btn{
+  background:var(--surface2);
+  color:var(--text);
+  border:1px solid var(--line2);
+  border-radius:4px;
+  padding:9px 12px;
+  font-family:'Outfit',sans-serif;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  white-space:nowrap;
+  transition:all .14s;
+}
+.btn:hover{background:var(--surface3);border-color:var(--line2)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.primary:hover{background:var(--acc);border-color:var(--acc);filter:brightness(1.18)}
+.btn.small{padding:6px 10px;font-size:10px}
+.btn.ghost{background:transparent}
+.btn.loading{opacity:.8;pointer-events:none;position:relative;padding-right:28px}
+.btn.loading::after{
+  content:'';
+  position:absolute;
+  right:8px;top:50%;
+  transform:translateY(-50%);
+  width:12px;height:12px;
+  border:2px solid rgba(255,255,255,.25);
+  border-top-color:#fff;
+  border-radius:50%;
+  animation:spin .6s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chipbtn{
+  background:var(--surface2);
+  border:1px solid var(--line2);
+  color:var(--muted);
+  padding:5px 10px;
+  border-radius:4px;
+  font-family:'Outfit',sans-serif;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  cursor:pointer;
+  transition:all .12s;
+}
+.chipbtn:hover{border-color:var(--acc);color:var(--text);background:var(--surface3)}
+.chipbtn.active{border-color:var(--acc);color:#fff;background:var(--acc-soft)}
+/* live */
+#liveCard{border-color:var(--line2);background:var(--bg3)}
+.liveHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.liveState{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:'Outfit',sans-serif;font-weight:700;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  padding:4px 8px;border-radius:4px;background:var(--surface2);border:1px solid var(--line);
+}
+#liveTime{font-family:'Outfit',sans-serif;font-weight:700;font-size:14px}
+#liveQ{font-family:'Outfit',sans-serif;font-weight:600;font-size:14px;line-height:1.35;margin-bottom:12px}
+.liveBars{display:flex;flex-direction:column;gap:8px}
+.liveOpt{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
+.liveOpt__label{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.liveOpt__pct{font-family:'Outfit',sans-serif;font-weight:700;font-size:11px}
+.liveBar{height:6px;border-radius:3px;background:var(--surface2);border:1px solid var(--line);overflow:hidden;grid-column:1/-1}
+.liveFill{height:100%;width:0%;background:var(--acc);transition:width .4s ease}
+.liveFill.b{background:#d8d8e0}
+.liveFoot{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:10px;letter-spacing:.04em;text-transform:uppercase}
+#liveMot{color:var(--acc);font-weight:700}
+/* switch - no overlap */
+.switchRow{display:flex;align-items:center;gap:14px;margin-top:8px;flex-wrap:wrap}
+.switch{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  cursor:pointer;
+  flex:none;
+}
+.switch input{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+.switch__track{
+  width:48px;height:26px;
+  border-radius:13px;
+  background:#252536;
+  border:1px solid #32324a;
+  position:relative;
+  transition:background .18s,border-color .18s;
+  display:block;
+  flex:none;
+}
+.switch__thumb{
+  position:absolute;
+  top:2px;left:2px;
+  width:20px;height:20px;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.4);
+  transition:transform .18s cubic-bezier(.2,.8,.2,1);
+}
+.switch input:checked + .switch__track{background:var(--acc);border-color:var(--acc)}
+.switch input:checked + .switch__track .switch__thumb{transform:translateX(22px)}
+.switch__label{font-size:12px;font-weight:600;white-space:nowrap}
+.switch__hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4;width:100%}
+/* swatches */
+#swatches{display:flex;gap:7px;flex-wrap:wrap}
+.swatch{width:30px;height:30px;border-radius:4px;cursor:pointer;border:2px solid transparent;flex:none;transition:transform .12s,border-color .12s}
+.swatch:hover{transform:translateY(-1px)}
+.swatch.active{border-color:#fff}
+/* alerts */
+.alertGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.alertTile{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:11px;cursor:pointer;transition:border-color .12s,background .12s}
+.alertTile:hover{border-color:var(--line2);background:var(--surface2)}
+.alertTile h3{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.alertTile p{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4}
+.alertTile .chipbtn{margin-top:8px}
+/* mono */
+.mono{font-family:Consolas,monospace;font-size:10px;background:#0c0c14;border:1px solid var(--line2);border-radius:4px;padding:8px 9px;word-break:break-all;cursor:pointer;position:relative;transition:all .12s}
+.mono:hover{border-color:var(--acc);background:#12121e}
+.mono.copied{border-color:var(--ok)}
+.mono::after{content:'copier';position:absolute;top:3px;right:5px;font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);opacity:0;transition:opacity .12s;font-family:'Outfit',sans-serif}
+.mono:hover::after{opacity:1}
+.mono.copied::after{content:'copie';color:var(--ok);opacity:1}
+.hist{margin-top:8px;font-size:10px;color:var(--muted);line-height:1.5}
+.hist b{color:var(--text)}
+.ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+.note{font-size:11px;color:var(--muted);line-height:1.5}
+#toast{
+  position:fixed;left:50%;bottom:14px;transform:translateX(-50%);
+  background:#1e1e2e;border:1px solid var(--line2);border-radius:4px;
+  padding:8px 12px;font-size:11px;font-weight:600;letter-spacing:.04em;
+  box-shadow:0 8px 20px rgba(0,0,0,.4);
+  opacity:0;pointer-events:none;transition:opacity .18s;z-index:99;
+  display:flex;gap:8px;align-items:center;max-width:90%;
+}
+#toast.show{opacity:1}
+@media (max-width:1100px){
+  .app{width:100%;border-left:none;border-right:none}
+  .sidebar{width:200px}
+}
+@media (max-width:760px){
+  .app{flex-direction:column;height:auto;min-height:100vh;overflow:auto}
+  body{overflow:auto}
+  .sidebar{width:100%;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px}
+  .brand{border-bottom:none;margin-bottom:0;padding-bottom:0;flex:1}
+  .nav{flex-direction:row;flex-wrap:wrap;gap:4px;width:100%}
+  .navbtn{flex:1 1 90px;justify-content:center;min-width:80px}
+  .sideFoot{display:none}
+  .topbar{height:auto;min-height:48px;max-height:none;padding:8px 12px;flex-wrap:wrap}
+  .topbar__title{flex:1 1 100%}
+  .content{overflow:visible;padding:12px}
+  .row.grow{grid-template-columns:1fr}
+  .alertGrid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
 <div class="app">
-
-  <header>
-    <div class="brand">
-      <img src="assets/logo-7g.png" alt="7G">
-      <div>
-        <h1>7GIONNY</h1>
-        <p>Panneau de contrôle</p>
+  <aside class="sidebar">
+    <div class="brand" id="btnReglagesBrand" title="Paramètres – cliquer pour ouvrir les réglages" style="cursor:pointer">
+      <img src="assets/logo-7g.png?v=29" alt="7G">
+      <div class="brand__txt">
+        <div class="brand__name">7GIONNY</div>
+        <div class="brand__sub">STUDIO</div>
+        <div id="verPill">V30</div>
       </div>
     </div>
-    <button class="gear" id="btnParams" title="Paramètres">⚙️</button>
-  </header>
-
-  <!-- ÉTAT -->
-  <section class="status" id="statut"></section>
-
-  <!-- DÉBAT -->
-  <section class="card">
-    <h2><span class="ico">🎙️</span>Lancer un débat</h2>
-    <p class="sub">Même effet que la commande !debate, mais en cliquant ici.</p>
-    <div class="field">
-      <label>Question</label>
-      <input id="debQuestion" type="text" placeholder="Le format court a-t-il tué la culture ?">
+    <nav class="nav">
+      <button class="navbtn active" data-tab="debat"><span class="ico">01</span>DEBAT</button>
+      <button class="navbtn" data-tab="objectif"><span class="ico">02</span>OBJECTIF</button>
+      <button class="navbtn" data-tab="ambiance"><span class="ico">03</span>AMBIANCE</button>
+      <button class="navbtn" data-tab="alertes"><span class="ico">04</span>ALERTES</button>
+      <button class="navbtn" data-tab="velocite"><span class="ico">05</span>VÉLOCITÉ</button>
+    </nav>
+    <div class="sideFoot">
+      <span id="dotPont" class="off"></span>
+      <span id="pontTxt">hors ligne</span>
+      <span style="margin-left:auto;opacity:.5">1080 FIXE</span>
     </div>
-    <div class="row grow">
-      <div class="field" style="margin-top:0">
-        <label>Choix A</label>
-        <input id="debA" type="text" placeholder="Oui">
-      </div>
-      <div class="field" style="margin-top:0">
-        <label>Choix B</label>
-        <input id="debB" type="text" placeholder="Non">
-      </div>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar__title">PANNEAU DE CONTROLE</div>
+      <div id="statut"></div>
     </div>
-    <div class="field">
-      <label>Durée (secondes)</label>
-      <input id="debDur" type="number" value="120" min="15" max="600">
-    </div>
-    <div class="row">
-      <button class="btn primary" id="btnDebat">Lancer le débat</button>
-      <button class="btn" id="btnFinDebat">Terminer</button>
-    </div>
-  </section>
-
-  <!-- SUB GOAL -->
-  <section class="card">
-    <h2><span class="ico">🎯</span>Sub goal</h2>
-    <p class="sub">Le compteur affiché sous le chat. En auto, il suit ton vrai nombre d'abonnés.</p>
-    <div class="field">
-      <label>Nom</label>
-      <input id="goalLabel" type="text" placeholder="ex. SUB GOAL">
-    </div>
-    <div class="field">
-      <label>Objectif</label>
-      <input id="goalTarget" type="number" min="1">
-    </div>
-    <div class="field">
-      <label>Compteur</label>
-      <select id="goalAuto">
-        <option value="1">Automatique (vrai nombre de subs)</option>
-        <option value="0">Manuel (je le règle moi-même)</option>
-      </select>
-    </div>
-    <div class="field" id="rowGoalManual" style="display:none">
-      <label>Valeur manuelle</label>
-      <input id="goalManual" type="number" min="0">
-    </div>
-    <div class="row">
-      <button class="btn primary" id="btnSauverGoal">Enregistrer</button>
-    </div>
-  </section>
-
-  <!-- AMBIANCE GÉNÉRALE -->
-  <section class="card">
-    <h2><span class="ico">🎨</span>Ambiance générale</h2>
-    <p class="sub">L'aperçu est <b>instantané dans OBS</b> pendant que tu règles. Enregistre pour garder, ou annule pour revenir en arrière.</p>
-    <div class="field">
-      <label>Titre du chat</label>
-      <input id="chatTitle" type="text" placeholder="CHAT DE 7GIONNY">
-    </div>
-    <div class="field">
-      <label>Couleur d'ambiance</label>
-      <input id="accent" type="color">
-    </div>
-    <div class="row">
-      <button class="btn primary" id="btnSauverApparence">Enregistrer</button>
-      <button class="btn ghost" id="btnAnnulerApparence">Annuler</button>
-    </div>
-  </section>
-
-  <!-- ALERTES -->
-  <section class="card">
-    <h2><span class="ico">🔔</span>Tester une alerte</h2>
-    <p class="sub">Déclenche une animation d'alerte dans OBS pour vérifier le rendu.</p>
-    <div class="chips">
-      <button class="chipbtn" data-alert='{"type":"follow","user":"ViewerExemple"}'>Follow</button>
-      <button class="chipbtn" data-alert='{"type":"sub","user":"amelie"}'>Sub</button>
-      <button class="chipbtn" data-alert='{"type":"resub","user":"Louna","stints":2,"total":12,"message":"Toujours là !"}'>Resub</button>
-      <button class="chipbtn" data-alert='{"type":"gift","user":"kevin","viewer":"maeva"}'>Sub offert</button>
-      <button class="chipbtn" data-alert='{"type":"raid","user":"UNAUTRECREATOR","viewers":1240}'>Raid</button>
-    </div>
-  </section>
-
-</div>
-
-<!-- MODAL PARAMÈTRES -->
-<div class="modal" id="modalParams">
-  <div class="modal__box">
-    <div class="modal__head">
-      <h2>⚙️ Paramètres</h2>
-      <button class="modal__close" id="btnCloseParams">✕</button>
-    </div>
-    <div class="modal__body">
-
-      <div class="modal__section">
-        <h3>Connexion Twitch</h3>
-        <div id="tokenEtat" class="note"></div>
-        <div class="row">
-          <button class="btn small" id="btnLienToken">Copier le lien de génération</button>
+    <div class="content">
+      <section class="tab active" id="tab-debat">
+        <div class="card" id="liveCard">
+          <div class="liveHead">
+            <div class="liveState" id="liveState"><span class="dot off"></span><span>ATTENTE</span></div>
+            <div id="liveTime">--:--</div>
+          </div>
+          <div id="liveQ">Aucun debat en cours</div>
+          <div class="liveBars">
+            <div class="liveOpt">
+              <span class="liveOpt__label" id="liveLabelA">Option A</span>
+              <span class="liveOpt__pct" id="livePctA">-</span>
+              <div class="liveBar"><div class="liveFill" id="liveFillA"></div></div>
+            </div>
+            <div class="liveOpt">
+              <span class="liveOpt__label" id="liveLabelB">Option B</span>
+              <span class="liveOpt__pct" id="livePctB">-</span>
+              <div class="liveBar"><div class="liveFill b" id="liveFillB"></div></div>
+            </div>
+            <div class="liveOpt" id="liveOptC" style="display:none">
+              <span class="liveOpt__label" id="liveLabelC">Option C</span>
+              <span class="liveOpt__pct" id="livePctC">-</span>
+              <div class="liveBar"><div class="liveFill" id="liveFillC" style="background:#7CC7FF"></div></div>
+            </div>
+            <div class="liveOpt" id="liveOptD" style="display:none">
+              <span class="liveOpt__label" id="liveLabelD">Option D</span>
+              <span class="liveOpt__pct" id="livePctD">-</span>
+              <div class="liveBar"><div class="liveFill" id="liveFillD" style="background:#FFD166"></div></div>
+            </div>
+          </div>
+          <div class="liveFoot">
+            <span>TAPEZ <b id="liveMot">-</b></span>
+            <span id="liveTotal">0 votes</span>
+          </div>
         </div>
-        <div class="field">
-          <label>Token (à coller ici)</label>
-          <input id="champToken" type="text" placeholder="colle ce qui suit access_token=" spellcheck="false" autocomplete="off">
+        <div class="card">
+          <h2>NOUVEAU DEBAT</h2>
+          <p class="sub">Lance un debat. Monitoring live 2s.</p>
+          <div class="field">
+            <label>Question</label>
+            <input id="debQuestion" type="text" placeholder="Le format court a-t-il tue la culture ?">
+          </div>
+          <div class="row grow">
+            <div class="field" style="margin-top:0">
+              <label>Choix A</label>
+              <input id="debA" type="text" placeholder="Oui">
+            </div>
+            <div class="field" style="margin-top:0">
+              <label>Choix B</label>
+              <input id="debB" type="text" placeholder="Non">
+            </div>
+          </div>
+          <div class="row grow" id="rowCD" style="display:none;margin-top:10px">
+            <div class="field" style="margin-top:0" id="fieldC">
+              <label>Choix C (optionnel)</label>
+              <input id="debC" type="text" placeholder="Peut-être">
+            </div>
+            <div class="field" style="margin-top:0" id="fieldD">
+              <label>Choix D (optionnel)</label>
+              <input id="debD" type="text" placeholder="Autre">
+            </div>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <button class="btn small ghost" id="btnAddChoice" type="button">+ AJOUTER CHOIX</button>
+            <button class="btn small ghost" id="btnRemoveChoice" type="button" style="display:none">– RETIRER</button>
+            <span class="note" id="choiceHint" style="margin-left:8px">2 choix minimum, jusqu'à 4</span>
+          </div>
+          <div class="field">
+            <label>Duree</label>
+            <div class="row" style="margin-top:6px">
+              <input id="debDur" type="number" value="120" min="15" max="600" style="max-width:110px">
+              <div class="chips" id="durChips">
+                <button class="chipbtn" data-dur="30">30S</button>
+                <button class="chipbtn" data-dur="60">1 MIN</button>
+                <button class="chipbtn" data-dur="120">2 MIN</button>
+                <button class="chipbtn" data-dur="300">5 MIN</button>
+              </div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn primary" id="btnDebat">LANCER</button>
+            <button class="btn" id="btnFinDebat">TERMINER</button>
+          </div>
         </div>
-        <div class="row">
-          <button class="btn primary small" id="btnSauverToken">Enregistrer</button>
+      </section>
+      <section class="tab" id="tab-objectif">
+        <div class="card">
+          <h2>SUB GOAL ACTUEL</h2>
+          <p class="sub">Compteur sous le chat. Auto suit le vrai nombre de subs. Ordre petit→grand, actuel en haut, checkés au-dessus.</p>
+          <div class="field">
+            <label>Nom actuel</label>
+            <input id="goalLabel" type="text" placeholder="SUB GOAL">
+          </div>
+          <div class="field">
+            <label>Objectif actuel (ex: 5)</label>
+            <input id="goalTarget" type="number" min="1">
+          </div>
+          <div class="field">
+            <label>Mode compteur</label>
+            <div class="switchRow">
+              <label class="switch">
+                <input type="checkbox" id="goalAuto">
+                <span class="switch__track"><span class="switch__thumb"></span></span>
+              </label>
+              <span class="switch__label" id="goalAutoLabel">Automatique</span>
+            </div>
+            <div class="switch__hint" id="goalAutoHint">En auto, le compteur suit Twitch. En manuel, tu fixes la valeur.</div>
+          </div>
+          <div class="field" id="rowGoalManual" style="display:none">
+            <label>Valeur manuelle</label>
+            <input id="goalManual" type="number" min="0">
+          </div>
         </div>
-        <p class="note" id="tokenNote" style="margin-top:10px"></p>
-      </div>
-
-      <div class="modal__section">
-        <h3>Mise à jour</h3>
-        <div id="versionInfo" class="note">Chargement de la version…</div>
-        <div class="row" style="margin-top:10px">
-          <button class="btn primary" id="btnUpdate">⬇ Mettre à jour</button>
-          <button class="btn small ghost" id="btnCheckUpdate">↻ Vérifier</button>
+        <div class="card" style="background:#10101a;border-color:var(--line2)">
+          <h2>🎯 PROCHAIN OBJECTIF (PRÉPARÉ À L'AVANCE)</h2>
+          <p class="sub">Affiché en dessous du goal actuel, non checké, avec tiret séparateur. Quand l'objectif actuel est dépassé (ex: 5/5 → 6 subs), switch auto vers celui-ci, et l'ancien passe en historique avec check ✓ au-dessus.</p>
+          <div class="row grow">
+            <div class="field" style="margin-top:0">
+              <label>Nom prochain (optionnel)</label>
+              <input id="goalNextLabel" type="text" placeholder="SUB GOAL 2 ou vide = même nom">
+            </div>
+            <div class="field" style="margin-top:0">
+              <label>Objectif prochain (ex: 6 = +1)</label>
+              <input id="goalNextTarget" type="number" min="0" placeholder="0 = aucun">
+            </div>
+          </div>
+          <div class="note" style="margin-top:8px">Si prochain = 0, quand tu dépasses l'objectif actuel, il ne se passe rien (reste sur même goal, barre 100%+). Si prochain >0, switch automatique.</div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn primary" id="btnSauverGoal">ENREGISTRER TOUT</button>
+            <button class="btn ghost small" id="btnClearHistory">EFFACER HISTORIQUE ✓</button>
+          </div>
+          <div id="goalHistoryPreview" class="note" style="margin-top:10px"></div>
         </div>
-        <div id="updateEtat" class="note" style="margin-top:10px"></div>
-        <div id="updateHist" class="hist"></div>
-      </div>
-
-      <div class="modal__section">
-        <h3>Liens (clique pour copier)</h3>
-        <div class="field"><label>OBS (source navigateur)</label><div class="mono copy" id="urlObs" title="Cliquer pour copier"></div></div>
-        <div class="field"><label>Démo (aperçu)</label><div class="mono copy" id="urlDemo" title="Cliquer pour copier"></div></div>
-      </div>
-
+        <div class="card">
+          <h2>APERÇU LIVE</h2>
+          <div id="goalLivePreview" class="note">Chargement...</div>
+        </div>
+      </section>
+      <section class="tab" id="tab-ambiance">
+        <div class="card">
+          <h2>AMBIANCE</h2>
+          <p class="sub">Apercu instantane dans OBS. Enregistre pour garder.</p>
+          <div class="field">
+            <label>Nuances</label>
+            <div id="swatches">
+              <div class="swatch" data-color="#9146FF" style="background:#9146FF"></div>
+              <div class="swatch" data-color="#2E9DFF" style="background:#2E9DFF"></div>
+              <div class="swatch" data-color="#22D3EE" style="background:#22D3EE"></div>
+              <div class="swatch" data-color="#2EEB7B" style="background:#2EEB7B"></div>
+              <div class="swatch" data-color="#FFD166" style="background:#FFD166"></div>
+              <div class="swatch" data-color="#FF7A1A" style="background:#FF7A1A"></div>
+              <div class="swatch" data-color="#FF4D8D" style="background:#FF4D8D"></div>
+              <div class="swatch" data-color="#FF3B3B" style="background:#FF3B3B"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Couleur perso</label>
+            <input id="accentCustom" type="color" value="#9146FF">
+          </div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn primary" id="btnSauverAmbiance">ENREGISTRER</button>
+            <button class="btn" id="btnAnnulerAmbiance">ANNULER</button>
+          </div>
+        </div>
+      </section>
+            <section class="tab" id="tab-alertes">
+        <div class="card">
+          <h2>ALERTES & SONS</h2>
+          <p class="sub">Declenche une alerte dans OBS. Chaque type a son son custom (mp3/wav/ogg) – upload direct sur l'icone, test instantane, supprimable. Le son est auto-applique dans l'overlay.</p>
+          <div class="alertGrid">
+            <div class="alertTile" data-type="follow">
+              <h3>FOLLOW</h3>
+              <p>Nouveau follower.</p>
+              <div class="row" style="margin-top:8px">
+                <button class="chipbtn" data-alert='{"type":"follow","user":"ViewerExemple"}'>TEST ALERTE</button>
+                <button class="chipbtn" data-playsound="follow">TEST SON</button>
+              </div>
+              <div class="field" style="margin-top:10px">
+                <label>Son custom FOLLOW</label>
+                <div class="row" style="gap:6px;margin-top:4px">
+                  <input type="file" accept=".mp3,.wav,.ogg,.m4a" data-type="follow" class="soundInput" style="font-size:10px;max-width:180px">
+                  <button class="btn small ghost" data-del="follow" style="display:none">SUPPR</button>
+                </div>
+                <div class="note soundStatus" data-status="follow" style="margin-top:4px;font-size:9px;color:var(--muted)">Aucun custom – son par defaut</div>
+              </div>
+            </div>
+            <div class="alertTile" data-type="sub">
+              <h3>SUB</h3>
+              <p>Nouvel abonne.</p>
+              <div class="row" style="margin-top:8px">
+                <button class="chipbtn" data-alert='{"type":"sub","user":"amelie"}'>TEST ALERTE</button>
+                <button class="chipbtn" data-playsound="sub">TEST SON</button>
+              </div>
+              <div class="field" style="margin-top:10px">
+                <label>Son custom SUB / RESUB / GIFT</label>
+                <div class="row" style="gap:6px;margin-top:4px">
+                  <input type="file" accept=".mp3,.wav,.ogg,.m4a" data-type="sub" class="soundInput" style="font-size:10px;max-width:180px">
+                  <button class="btn small ghost" data-del="sub" style="display:none">SUPPR</button>
+                </div>
+                <div class="note soundStatus" data-status="sub" style="margin-top:4px;font-size:9px;color:var(--muted)">Aucun custom – son par defaut</div>
+              </div>
+            </div>
+            <div class="alertTile" data-type="resub">
+              <h3>RESUB</h3>
+              <p>Fidele X mois.</p>
+              <div class="row" style="margin-top:8px">
+                <button class="chipbtn" data-alert='{"type":"resub","user":"Louna","stints":2,"total":12,"message":"Toujours la !"}'>TEST ALERTE</button>
+                <button class="chipbtn" data-playsound="sub">TEST SON</button>
+              </div>
+              <div class="field" style="margin-top:10px">
+                <label>Son RESUB (utilise SUB si vide)</label>
+                <div class="row" style="gap:6px;margin-top:4px">
+                  <input type="file" accept=".mp3,.wav,.ogg,.m4a" data-type="resub" class="soundInput" style="font-size:10px;max-width:180px">
+                  <button class="btn small ghost" data-del="resub" style="display:none">SUPPR</button>
+                </div>
+                <div class="note soundStatus" data-status="resub" style="margin-top:4px;font-size:9px;color:var(--muted)">Aucun custom – utilise SUB</div>
+              </div>
+            </div>
+            <div class="alertTile" data-type="gift">
+              <h3>GIFT</h3>
+              <p>Sub offert.</p>
+              <div class="row" style="margin-top:8px">
+                <button class="chipbtn" data-alert='{"type":"gift","user":"kevin","viewer":"maeva"}'>TEST ALERTE</button>
+                <button class="chipbtn" data-playsound="gift">TEST SON</button>
+              </div>
+              <div class="field" style="margin-top:10px">
+                <label>Son custom GIFT</label>
+                <div class="row" style="gap:6px;margin-top:4px">
+                  <input type="file" accept=".mp3,.wav,.ogg,.m4a" data-type="gift" class="soundInput" style="font-size:10px;max-width:180px">
+                  <button class="btn small ghost" data-del="gift" style="display:none">SUPPR</button>
+                </div>
+                <div class="note soundStatus" data-status="gift" style="margin-top:4px;font-size:9px;color:var(--muted)">Aucun custom – utilise SUB</div>
+              </div>
+            </div>
+            <div class="alertTile" data-type="raid">
+              <h3>RAID</h3>
+              <p>Autre chaine.</p>
+              <div class="row" style="margin-top:8px">
+                <button class="chipbtn" data-alert='{"type":"raid","user":"UNAUTRECREATOR","viewers":1240}'>TEST ALERTE</button>
+                <button class="chipbtn" data-playsound="raid">TEST SON</button>
+              </div>
+              <div class="field" style="margin-top:10px">
+                <label>Son custom RAID</label>
+                <div class="row" style="gap:6px;margin-top:4px">
+                  <input type="file" accept=".mp3,.wav,.ogg,.m4a" data-type="raid" class="soundInput" style="font-size:10px;max-width:180px">
+                  <button class="btn small ghost" data-del="raid" style="display:none">SUPPR</button>
+                </div>
+                <div class="note soundStatus" data-status="raid" style="margin-top:4px;font-size:9px;color:var(--muted)">Aucun custom – son par defaut</div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:12px;background:#10101a;border-color:var(--line2)">
+            <h2>🖼️ FOND ALERTE PHOTO (IMG_0607.jpg – 3024×4032)</h2>
+            <p class="sub">Remplace le fond noir/violet par ta photo. Texte blanc contour noir épais (remerciement en haut, pseudo en bas, à l'intérieur de l'image). Upload JPG/PNG → appliqué instantanément dans OBS.</p>
+            <div class="field">
+              <label>Photo actuelle</label>
+              <div id="alertBgStatus" class="note">Chargement...</div>
+              <div id="alertBgPreview" style="margin-top:8px;max-width:280px;max-height:180px;overflow:hidden;border-radius:4px;border:1px solid var(--line2);display:none"><img id="alertBgImg" style="width:100%;height:auto;display:block"></div>
+            </div>
+            <div class="field">
+              <label>Uploader nouvelle photo (JPG/PNG, max 10 Mo)</label>
+              <div class="row" style="gap:6px;margin-top:4px">
+                <input type="file" accept=".jpg,.jpeg,.png" id="alertBgInput" style="font-size:10px;max-width:220px">
+                <button class="btn small ghost" id="btnDelAlertBg" style="display:none">SUPPRIMER PHOTO</button>
+              </div>
+            </div>
+            <div class="note" style="margin-top:8px">Fichiers: <span class="mono" style="display:inline;padding:2px 6px">assets/IMG_0607.jpg</span> + <span class="mono" style="display:inline;padding:2px 6px">assets/alert-photo.jpg</span>. Si présent, alertes passent en mode photo avec texte blanc contour noir épais. Supprime pour revenir au fond par défaut.</div>
+          </div>
+          <p class="note" style="margin-top:12px">Fichiers sons stockés dans <span class="mono" style="display:inline;padding:2px 6px">sounds/alert-{type}.mp3</span>. Upload = remplacement instantané, re-détecté par OBS toutes les 15s.</p>
+          <div class="card" style="margin-top:12px;background:#0f0f1a;border-color:var(--line2)">
+            <h2 style="font-size:11px">🔊 SON DANS OBS – REGLAGE OBLIGATOIRE</h2>
+            <p class="sub" style="margin-bottom:8px">Si tu entends le son dans le panneau (TEST SON) mais pas dans OBS :</p>
+            <div class="note" style="line-height:1.6">
+              1. Dans OBS, clic droit sur ta source Navigateur (widget.html) → Propriétés<br>
+              2. Coche <b>Contrôler le son via OBS</b> (ou "Control audio via OBS")<br>
+              3. Dans le mélangeur audio OBS, la source Navigateur apparaît → mets-la en <b>Monitoring et Sortie</b> (ou au moins pas muette) et monte le volume<br>
+              4. Dans OBS → Paramètres → Audio → <b>Périphérique de monitoring</b> → choisis ton casque/haut-parleurs<br>
+              5. Assure-toi que l'URL OBS est <span class="mono" style="display:inline;padding:2px 6px">http://localhost:8321/widget.html</span> <b>sans ?mute=1</b><br>
+              6. Si toujours rien, clique une fois dans l'aperçu du navigateur OBS pour débloquer l'autoplay
+            </div>
+          </div>
+          <div class="card" style="margin-top:12px;background:#15151f;border-color:var(--line2)">
+            <h2 style="font-size:11px">🎧 ENTENDRE LES ALERTES SUR TON PC (LIVE)</h2>
+            <p class="sub" style="margin-bottom:8px">Par défaut le son sort uniquement dans OBS (viewers l'entendent). Pour que TOI tu l'entendes aussi pendant le live sans double :</p>
+            <div class="note" style="line-height:1.6;margin-bottom:10px">
+              <b>Solution recommandée (pas de double) :</b> Dans OBS, mets la source Navigateur en <b>Monitoring et Sortie</b> → tu entends via ton casque de monitoring, viewers entendent via le stream. Ne capture pas le son du bureau en plus.<br><br>
+              <b>Alternative :</b> Coche ci-dessous pour que le panneau joue aussi le son sur ce PC. <span class="warn">Attention : si tu as déjà Monitoring et Sortie activé, tu entendras double (une fois via monitoring OBS, une fois via panneau).</span>
+            </div>
+            <div class="switchRow">
+              <label class="switch">
+                <input type="checkbox" id="alertLocalPC">
+                <span class="switch__track"><span class="switch__thumb"></span></span>
+              </label>
+              <span class="switch__label">Jouer le son aussi sur ce PC (panneau)</span>
+            </div>
+            <div class="note" id="localSoundHint" style="margin-top:8px;font-size:10px">Decoche si tu utilises deja Monitoring et Sortie dans OBS (evite double).</div>
+          </div>
+        </div>
+      </section>
+            <section class="tab" id="tab-velocite">
+        <div class="card">
+          <h2>VÉLOCITÉ CHAT – % + FIN PRÉVUE AUTO +15 MIN</h2>
+          <p class="sub">Overlay plus long (700px), % très lisible 52px, barre 30px. Simple : barre + % + objectif (90% → +15 MIN) + chrono verrou + fin prévue blanc ombré. Quand fin désactivée, barre s'allonge. Seuil % + durée ajout + chrono au dessus seuil → +durée auto à fin prévue.</p>
+          <div class="field">
+            <label>Activation</label>
+            <div class="switchRow">
+              <label class="switch">
+                <input type="checkbox" id="velocityEnabled">
+                <span class="switch__track"><span class="switch__thumb"></span></span>
+              </label>
+              <span class="switch__label">Overlay activé (case à cocher = on/off)</span>
+            </div>
+            <div class="switchRow" style="margin-top:8px">
+              <label class="switch">
+                <input type="checkbox" id="velocityShowMetrics">
+                <span class="switch__track"><span class="switch__thumb"></span></span>
+              </label>
+              <span class="switch__label">Afficher % + objectif + fin</span>
+            </div>
+          </div>
+          <div class="row grow" style="margin-top:12px">
+            <div class="field" style="margin-top:0">
+              <label>Seuil objectif (%) – rouge 5 derniers %</label>
+              <input id="velocityGoalThreshold" type="number" min="10" max="99" step="1" placeholder="90">
+              <div class="note" style="margin-top:4px">Ex: 90% → quand on tient 90% pendant X sec, +15 min à fin prévue.</div>
+            </div>
+            <div class="field" style="margin-top:0">
+              <label>Durée ajoutée (minutes)</label>
+              <input id="velocityGoalDuration" type="number" min="1" max="120" step="1" placeholder="15">
+              <div class="note" style="margin-top:4px">Ex: 15 = +15 min à FIN PRÉVUE quand chrono finit.</div>
+            </div>
+          </div>
+          <div class="row grow">
+            <div class="field" style="margin-top:0">
+              <label>Chrono verrou au dessus seuil (sec)</label>
+              <input id="velocityHold" type="number" min="5" max="600" step="5" placeholder="120">
+              <div class="note" style="margin-top:4px">Ex: 120 = rester 2 min au dessus de 90% → déclenche +15.</div>
+            </div>
+            <div class="field" style="margin-top:0">
+              <label>Équilibre MPM (50%)</label>
+              <input id="velocityEquilibrium" type="number" min="1" max="120" step="1" placeholder="20">
+              <div class="note" style="margin-top:4px">20 MPM = 50%, 40 = 92% ambre.</div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:14px;background:#10101a;border-color:var(--line2)">
+            <h2 style="font-size:11px">🕘 FIN PRÉVUE – blanc ombré, heure/minutes séparés, édition rapide</h2>
+            <div class="row grow">
+              <div class="field" style="margin-top:0">
+                <label>Heure (0-23)</label>
+                <input id="velocityFinHour" type="number" min="0" max="23" step="1" placeholder="21">
+              </div>
+              <div class="field" style="margin-top:0">
+                <label>Minutes (0-59)</label>
+                <input id="velocityFinMinute" type="number" min="0" max="59" step="1" placeholder="30">
+              </div>
+              <div class="field" style="margin-top:0">
+                <label>Afficher fin prévue (fonctionnel)</label>
+                <div class="switchRow" style="margin-top:6px">
+                  <label class="switch">
+                    <input type="checkbox" id="velocityFinEnabled">
+                    <span class="switch__track"><span class="switch__thumb"></span></span>
+                  </label>
+                  <span class="switch__label">Oui – quand désactivé, barre s'allonge</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row grow" style="margin-top:12px">
+            <div class="field" style="margin-top:0">
+              <label>Largeur barre (px)</label>
+              <input id="velocityBarWidth" type="number" min="12" max="40" step="1" placeholder="30">
+            </div>
+            <div class="field" style="margin-top:0">
+              <label>Hauteur barre (px) – plus long</label>
+              <input id="velocityBarHeight" type="number" min="280" max="900" step="10" placeholder="700">
+            </div>
+          </div>
+          <div class="row grow">
+            <div class="field" style="margin-top:0">
+              <label>Climb</label>
+              <input id="velocityClimb" type="number" min="0.05" max="5" step="0.05" placeholder="0.65">
+            </div>
+            <div class="field" style="margin-top:0">
+              <label>Decay lente</label>
+              <input id="velocityDecay" type="number" min="0.02" max="5" step="0.02" placeholder="0.14">
+            </div>
+          </div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn primary" id="btnSauverVelocity">ENREGISTRER</button>
+            <button class="btn" id="btnAnnulerVelocity">ANNULER</button>
+            <button class="btn ghost" id="btnResetVelocity">RESET COMPLET</button>
+            <button class="btn small" id="btnPreviewVelocity">APERÇU</button>
+            <button class="btn ghost small" id="btnVelocityValidate">VALIDER MANUELLEMENT OBJECTIF</button>
+          </div>
+          <div class="note" style="margin-top:10px;line-height:1.6">
+            Logique V5 : leaky bucket exp(-dt/42) sans rebond minute. % = 0→eq 0-50%, eq→2.4eq 50-100% pow 0.66 → rouge 95-100%.<br>
+            Quand % ≥ seuil pendant durée verrou (ex 2 min à 90%), chrono décompte visible, puis +durée (ex +15) s'additionne à FIN PRÉVUE (21h30 → 21h45), reset % nouveau tour, MPM conservé.<br>
+            Overlay : 180×700, barre 30px, % 52px lisible, goal 13px, fin 14px blanc ombré. Pas de croix, pas de FAITES GRIMPER, pas de hint, pas d'éclair quand éteint.
+          </div>
+          <div id="velocityEtat" class="note" style="margin-top:10px"></div>
+        </div>
+      </section>
+      <section class="tab" id="tab-reglages">
+        <div class="card">
+          <h2>TITRE CHAT</h2>
+          <p class="sub">Apercu instantane dans OBS.</p>
+          <div class="field">
+            <label>Titre affiche</label>
+            <input id="chatTitle" type="text" placeholder="CHAT DE 7GIONNY">
+          </div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn primary" id="btnSauverTitre">ENREGISTRER</button>
+            <button class="btn" id="btnAnnulerTitre">ANNULER</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>CONNEXION TWITCH</h2>
+          <div id="tokenEtat" class="note" style="margin-bottom:10px"></div>
+          <div class="row">
+            <button class="btn small" id="btnLienToken">COPIER LIEN</button>
+          </div>
+          <div class="field">
+            <label>Token</label>
+            <input id="champToken" type="text" placeholder="colle access_token=" spellcheck="false" autocomplete="off">
+          </div>
+          <div class="row">
+            <button class="btn primary small" id="btnSauverToken">ENREGISTRER</button>
+          </div>
+          <p class="note" id="tokenNote" style="margin-top:10px"></p>
+        </div>
+        <div class="card">
+          <h2>MISE A JOUR</h2>
+          <div id="versionInfo" class="note">Chargement...</div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn primary" id="btnUpdate">METTRE A JOUR</button>
+            <button class="btn" id="btnCheckUpdate">VERIFIER</button>
+          </div>
+          <div id="updateEtat" class="note" style="margin-top:10px"></div>
+          <div id="updateHist" class="hist"></div>
+        </div>
+        <div class="card">
+          <h2>LIENS</h2>
+          <div class="field"><label>OBS</label><div class="mono" id="urlObs"></div></div>
+          <div class="field"><label>DEMO</label><div class="mono" id="urlDemo"></div></div>
+        </div>
+      </section>
     </div>
   </div>
 </div>
-
-<div class="toast" id="toast"></div>
-
+<div id="toast"><span id="toastTxt"></span></div>
 <script>
-const $ = id => document.getElementById(id);
-const API = location.origin;
-$('urlObs').textContent = API + '/widget.html';
-$('urlDemo').textContent = API + '/';
-
-const TOKEN_LINK = 'https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=channel:read:polls+channel:read:subscriptions+moderator:read:followers';
-
-function toast(msg){
-  const t = $('toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2600);
+const $=id=>document.getElementById(id);
+const API=location.origin;
+if($('urlObs')) $('urlObs').textContent=API+'/widget.html';
+if($('urlDemo')) $('urlDemo').textContent=API+'/';
+const TOKEN_LINK='https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=channel:read:polls+channel:read:subscriptions+moderator:read:followers';
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){if(c==='&')return'&amp;';if(c==='<')return'&lt;';if(c==='>')return'&gt;';if(c==='"')return'&quot;';return'&#39;';});}
+function fmtDate(iso){if(!iso)return'-';try{return new Date(iso).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return'-';}}
+function hexA(hex,a){try{const h=String(hex).replace('#','');const r=parseInt(h.slice(0,2),16);const g=parseInt(h.slice(2,4),16);const b=parseInt(h.slice(4,6),16);if(isNaN(r)||isNaN(g)||isNaN(b))return'rgba(145,70,255,'+a+')';return'rgba('+r+','+g+','+b+','+a+')';}catch(e){return'rgba(145,70,255,'+a+')';}}
+function setPanneauAccent(hex){
+  const acc=String(hex||'#9146FF');
+  document.documentElement.style.setProperty('--acc',acc);
+  document.documentElement.style.setProperty('--acc2',acc);
+  document.documentElement.style.setProperty('--acc-glow',hexA(acc,.18));
+  document.documentElement.style.setProperty('--acc-soft',hexA(acc,.09));
+  document.documentElement.style.setProperty('--violet',acc);
+  // update all primary buttons hover via filter, no need for acc2
 }
-async function post(url, body){
-  const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  return r.json();
-}
-function copier(txt){
-  if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt);
-  /* repli (contexte non sécurisé) : sélection + execCommand */
-  return new Promise((resolve, reject) => {
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
-      document.body.appendChild(ta); ta.select();
-      if (document.execCommand('copy')) resolve(); else reject(new Error('copy'));
-      ta.remove();
-    } catch(e){ reject(e); }
-  });
-}
-/* Liens copiables d'un simple clic (+ retour visuel « Copié ! ») */
-function rendCopiable(el, nom){
-  el.addEventListener('click', async () => {
-    try {
-      await copier(el.textContent);
-      el.classList.add('copied');
-      clearTimeout(el._h); el._h = setTimeout(() => el.classList.remove('copied'), 1400);
-      toast(nom + ' copié !');
-    } catch(e){ toast('Copie impossible — sélectionne le lien à la main.'); }
-  });
-}
-rendCopiable($('urlObs'), 'Lien OBS');
-rendCopiable($('urlDemo'), 'Lien démo');
-
-/* ---------- modal paramètres ---------- */
-$('btnParams').addEventListener('click', () => $('modalParams').classList.add('open'));
-$('btnCloseParams').addEventListener('click', () => $('modalParams').classList.remove('open'));
-$('modalParams').addEventListener('click', e => { if (e.target === $('modalParams')) $('modalParams').classList.remove('open'); });
-
-/* ---------- statut ---------- */
-function dot(ok){ return '<span class="dot ' + (ok ? 'on' : 'off') + '"></span>'; }
+function toast(msg){const t=$('toast'),tt=$('toastTxt');if(!t||!tt)return;tt.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2600);}
+async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return r.json();}
+function copier(txt){if(navigator.clipboard&&navigator.clipboard.writeText)return navigator.clipboard.writeText(txt);return new Promise((res,rej)=>{try{const ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();if(document.execCommand('copy'))res();else rej(new Error('copy'));ta.remove();}catch(e){rej(e);}});}
+function rendCopiable(el,nom){if(!el)return;el.addEventListener('click',async()=>{try{await copier(el.textContent);el.classList.add('copied');clearTimeout(el._h);el._h=setTimeout(()=>el.classList.remove('copied'),1400);toast(nom+' copie');}catch(e){toast('Copie impossible');}});}
+rendCopiable($('urlObs'),'Lien OBS');
+rendCopiable($('urlDemo'),'Lien demo');
+function dot(ok){return '<span class="dot '+(ok?'on':'off')+'"></span>';}
 function renderStatut(s){
-  const items = [
-    ['Chat', s.chat ? 'actif' : 'inactif', s.chat],
-    ['Sondages', s.poll ? 'actifs' : 'inactifs', s.poll],
-    ['Follows', s.follows ? 'actifs' : 'inactifs', s.follows],
-    ['Sub goal', (s.config && s.config.subGoalAuto) ? 'auto · ' + s.goal.current + '/' + s.goal.target : 'manuel', true]
+  const el=$('statut');if(!el)return;
+  const items=[
+    ['CHAT',s.chat?'actif':'inactif',s.chat],
+    ['SONDAGES',s.poll?'actifs':'inactifs',s.poll],
+    ['FOLLOWS',s.follows?'actifs':'inactifs',s.follows],
+    ['GOAL',s.config&&s.config.subGoalAuto?'auto '+s.goal.current+'/'+s.goal.target:'manuel',true]
   ];
-  $('statut').innerHTML = items.map(([t, v, ok]) =>
-    '<div class="stat"><span class="t">' + t + '</span>' + dot(ok) + v + '</div>'
-  ).join('');
+  el.innerHTML=items.map(([t,v,ok])=>'<div class="stat"><span class="t">'+t+'</span>'+dot(ok)+v+'</div>').join('');
+  const d=$('dotPont'),txt=$('pontTxt');
+  if(d){d.className=s&&s.chat?'on':(s?'warn':'off');d.style.background=s&&s.chat?'var(--ok)':(s?'var(--warn)':'var(--bad)');}
+  if(txt)txt.textContent=s?'connecte':'hors ligne';
 }
-
-/* ---------- connexion ---------- */
 function renderToken(t){
-  const el = $('tokenEtat');
-  if (!t) { el.innerHTML = '<span class="warn">Token non vérifié.</span>'; return; }
-  if (!t.valid) {
-    el.innerHTML = '<span class="bad">Token invalide</span> — colle un nouveau token ci-dessous.';
-    return;
-  }
-  let html = '<span class="ok">✓ Token valide</span> — compte <b>' + (t.login || '?') + '</b>.';
-  if (t.missing && t.missing.length) {
-    html += ' <span class="warn">(droits manquants : ' + t.missing.join(', ') + ')</span>';
-  }
-  el.innerHTML = html;
+  const el=$('tokenEtat');if(!el)return;
+  if(!t){el.innerHTML='<span class="warn">Token non verifie.</span>';return;}
+  if(!t.valid){el.innerHTML='<span class="bad">Token invalide</span> - colle nouveau token.';return;}
+  let html='<span class="ok">Token valide</span> - compte <b>'+esc(t.login||'?')+'</b>.';
+  if(t.missing&&t.missing.length)html+=' <span class="warn">(droits manquants: '+esc(t.missing.join(', '))+')</span>';
+  el.innerHTML=html;
 }
-
-$('btnLienToken').addEventListener('click', async () => {
-  try { await copier(TOKEN_LINK); toast('Lien copié ! Colle-le dans ton navigateur.'); }
-  catch(e){ prompt('Copie ce lien :', TOKEN_LINK); }
+document.querySelectorAll('.navbtn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const tab=btn.dataset.tab;
+    document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.gearBtn').forEach(g=>g.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    const target=$('tab-'+tab);
+    if(target)target.classList.add('active');
+  });
 });
-
-$('btnSauverToken').addEventListener('click', async () => {
-  const t = $('champToken').value.trim();
-  if (!t) return toast('Colle d\'abord ton token.');
-  const r = await post(API + '/api/secrets', { POLL_OAUTH: t });
-  if (r.ok) {
-    toast('Token enregistré ✓');
-    $('champToken').value = '';
-    // le token est lu au demarrage du pont : on le redemarre (PAS OBS, PAS la fenetre)
-    $('tokenNote').innerHTML = '<span class="warn">Le pont redémarre pour prendre en compte le token…</span>';
-    try { await fetch(API + '/api/restart', { method: 'POST' }); } catch (e) {}
-    setTimeout(() => location.reload(), 2500);
-  } else {
-    toast('Erreur : ' + (r.err || '?'));
+/* logo brand = reglages (remplace engrenage) */
+const brandReglages=$('btnReglagesBrand');
+if(brandReglages){
+  brandReglages.addEventListener('click',()=>{
+    const tab='reglages';
+    document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    const target=$('tab-'+tab);
+    if(target)target.classList.add('active');
+    toast('Reglages');
+  });
+}
+function displayKeyword(opt){
+  const words=String(opt||'').replace(/["'\u00ab\u00bb]/g,' ').split(/\s+/).map(w=>w.replace(/^[^A-Za-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u00ff0-9]+|[^A-Za-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u00ff0-9]+$/g,'')).filter(w=>w.length>=2);
+  return (words[0]||'').slice(0,18);
+}
+function setLiveStateText(mode,winner){
+  const st=$('liveState');if(!st)return;
+  let txt='-',cls='off';
+  if(mode==='live'){txt='EN DIRECT';cls='on';}
+  else if(mode==='ended'){txt='TERMINE'+(winner?' GAGNANT '+winner:'');cls='warn';}
+  else{txt='ATTENTE';cls='off';}
+  st.innerHTML='<span class="dot '+cls+'"></span><span>'+esc(txt)+'</span>';
+}
+function renderLive(s){
+  if(!s)return;
+  const mode=s.mode||'idle';
+  setLiveStateText(mode,s.winner);
+  const q=$('liveQ');if(q)q.textContent=s.question||(mode==='idle'?'Aucun debat en cours':'-');
+  const a=s.a||'Option A',b=s.b||'Option B',c=s.c||'',d=s.d||'';
+  const va=s.va||0,vb=s.vb||0,vc=s.vc||0,vd=s.vd||0;
+  const tot=va+vb+vc+vd;
+  const pct=v=>tot?Math.round(v/tot*100):0;
+  const pA=pct(va),pB=s.c||s.d?pct(vb):(tot?100-pA:0),pC=pct(vc),pD=pct(vd);
+  const la=$('liveLabelA');if(la)la.textContent=a;
+  const lb=$('liveLabelB');if(lb)lb.textContent=b;
+  const lc=$('liveLabelC');if(lc)lc.textContent=c||'Option C';
+  const ld=$('liveLabelD');if(ld)ld.textContent=d||'Option D';
+  const fa=$('liveFillA');if(fa)fa.style.width=pA+'%';
+  const fb=$('liveFillB');if(fb)fb.style.width=pB+'%';
+  const fc=$('liveFillC');if(fc)fc.style.width=pC+'%';
+  const fd=$('liveFillD');if(fd)fd.style.width=pD+'%';
+  const pa=$('livePctA');if(pa)pa.textContent=tot?pA+'%':'-';
+  const pb=$('livePctB');if(pb)pb.textContent=tot?pB+'%':'-';
+  const pc=$('livePctC');if(pc)pc.textContent=c?(tot?pC+'%':'-'):'-';
+  const pd=$('livePctD');if(pd)pd.textContent=d?(tot?pD+'%':'-'):'-';
+  const optC=$('liveOptC');if(optC)optC.style.display=c?'grid':'none';
+  const optD=$('liveOptD');if(optD)optD.style.display=d?'grid':'none';
+  const totEl=$('liveTotal');if(totEl)totEl.textContent=tot.toLocaleString('fr-FR')+' votes';
+  const mot=$('liveMot');
+  if(mot){
+    if(mode!=='idle'){
+      const keys=[a,b,c,d].filter(Boolean).map(displayKeyword).filter(Boolean);
+      if(keys.length>=2) mot.textContent=keys.map(k=>'« '+k+' »').join(' / ')+' DANS LE CHAT';
+      else mot.textContent=c&&d?'A / B / C / D DANS LE CHAT':(c?'A / B / C DANS LE CHAT':'A / B DANS LE CHAT');
+    }else mot.textContent='-';
   }
+  const time=$('liveTime');
+  if(time){
+    if(mode==='live'&&s.endsAt){
+      const rem=Math.max(0,s.endsAt-Date.now());
+      const sec=Math.ceil(rem/1000);
+      const m=String(Math.floor(sec/60)).padStart(2,'0');
+      const sc=String(sec%60).padStart(2,'0');
+      time.textContent=m+':'+sc;
+    }else if(mode==='ended'){time.textContent='00:00';}
+    else time.textContent='--:--';
+  }
+}
+async function pollLive(){
+  try{const r=await fetch(API+'/api/state',{cache:'no-store'});const j=await r.json();renderLive(j);}catch(e){}
+}
+setInterval(pollLive,2000);
+pollLive();
+const btnLienToken=$('btnLienToken');
+if(btnLienToken)btnLienToken.addEventListener('click',async()=>{try{await copier(TOKEN_LINK);toast('Lien copie');}catch(e){prompt('Copie ce lien:',TOKEN_LINK);}});
+const btnSauverToken=$('btnSauverToken');
+if(btnSauverToken)btnSauverToken.addEventListener('click',async()=>{
+  const t=$('champToken').value.trim();
+  if(!t)return toast('Colle token d\'abord');
+  const r=await post(API+'/api/secrets',{POLL_OAUTH:t});
+  if(r.ok){
+    toast('Token enregistre');
+    $('champToken').value='';
+    const note=$('tokenNote');
+    if(note)note.innerHTML='<span class="warn">Pont redemarre...</span>';
+    try{await fetch(API+'/api/restart',{method:'POST'});}catch(e){}
+    setTimeout(()=>location.reload(),2500);
+  }else toast('Erreur: '+(r.err||'?'));
 });
-
-/* ---------- sub goal ---------- */
-$('goalAuto').addEventListener('change', () => {
-  $('rowGoalManual').style.display = $('goalAuto').value === '0' ? 'block' : 'none';
-});
-$('btnSauverGoal').addEventListener('click', async () => {
-  const body = {
-    subGoalLabel: $('goalLabel').value.trim(),
-    subGoalTarget: +$('goalTarget').value,
-    subGoalAuto: $('goalAuto').value === '1'
+function updateGoalAutoUI(){
+  const auto=$('goalAuto')?$('goalAuto').checked:true;
+  const row=$('rowGoalManual');
+  const label=$('goalAutoLabel');
+  const hint=$('goalAutoHint');
+  if(row)row.style.display=auto?'none':'block';
+  if(label)label.textContent=auto?'Automatique':'Manuel';
+  if(hint)hint.textContent=auto?'En auto, le compteur suit Twitch.':'En manuel, tu fixes la valeur.';
+}
+const goalAutoEl=$('goalAuto');
+if(goalAutoEl)goalAutoEl.addEventListener('change',updateGoalAutoUI);
+function renderGoalPreview(s){
+  const el=$('goalLivePreview'), histEl=$('goalHistoryPreview');
+  if(!el) return;
+  const g=s.goal||s;
+  const cur=g.current||0, tgt=g.target||1;
+  const nextLabel=g.nextLabel||'', nextTarget=g.nextTarget||0;
+  const history=g.history||[];
+  let html='Actuel: <b>'+esc(g.label||'SUB GOAL')+'</b> '+cur+' / '+tgt+' ('+Math.min(100,Math.round(cur/tgt*100))+'%)';
+  if(nextTarget>0) html+='<br>Prochain: <b>'+esc(nextLabel||g.label||'NEXT')+'</b> 0 / '+nextTarget+' (en dessous, non checké, tiret —)';
+  else html+='<br>Prochain: <i>aucun – dépassement ne déclenche rien</i>';
+  el.innerHTML=html;
+  if(histEl){
+    if(history.length){
+      histEl.innerHTML='Historique ✓ (au-dessus):<br>'+history.slice().sort((a,b)=>a.target-b.target).map(h=>'✓ <b>'+esc(h.label||'')+'</b> '+ (h.currentAtCompletion||h.target)+' / '+h.target).join('<br>');
+    }else histEl.innerHTML='Historique vide – aucun objectif terminé';
+  }
+}
+const btnSauverGoal=$('btnSauverGoal');
+if(btnSauverGoal)btnSauverGoal.addEventListener('click',async()=>{
+  const body={
+    subGoalLabel:$('goalLabel').value.trim(),
+    subGoalTarget:+$('goalTarget').value,
+    subGoalAuto:$('goalAuto').checked,
+    subGoalNextLabel:$('goalNextLabel')?$('goalNextLabel').value.trim():'',
+    subGoalNextTarget:$('goalNextTarget')?+($('goalNextTarget').value||0):0
   };
-  if (!body.subGoalAuto) body.subGoalManual = +$('goalManual').value || 0;
-  const r = await post(API + '/api/config', body);
-  if (r.ok) toast('Sub goal enregistré ✓');
+  if(!body.subGoalAuto)body.subGoalManual=+$('goalManual').value||0;
+  const r=await post(API+'/api/config',body);
+  if(r.ok){ toast('Sub goal enregistre – actuel + prochain'); renderGoalPreview(r.goal||body); }
 });
-
-/* ---------- ambiance générale (live preview + annulation) ---------- */
-const ambianceSauvee = { chatTitle: '', accent: '#9146FF' };
-let _prevT = null;
+const btnClearHistory=$('btnClearHistory');
+if(btnClearHistory) btnClearHistory.addEventListener('click',async()=>{
+  if(!confirm('Effacer historique des objectifs checkés ?')) return;
+  const r=await post(API+'/api/config',{clearHistory:true});
+  if(r.ok){ toast('Historique efface'); renderGoalPreview(r.goal||{history:[]}); }
+});
+const ambianceSauvee={chatTitle:'',accent:'#9146FF'};
+let _prevT=null,_prevTitleT=null;
 function apercuAmbiance(){
-  /* aperçu instantané dans OBS, SANS sauvegarder (le serveur diffuse
-     sans persister quand preview:true) — anti-spam 120 ms */
   clearTimeout(_prevT);
-  _prevT = setTimeout(() => {
-    post(API + '/api/config', {
-      chatTitle: $('chatTitle').value.trim(),
-      accent: $('accent').value,
-      preview: true
-    }).catch(() => {});
-  }, 120);
+  _prevT=setTimeout(()=>{
+    const acc=$('accentCustom')?$('accentCustom').value:'#9146FF';
+    setPanneauAccent(acc);
+    post(API+'/api/config',{accent:acc,preview:true}).catch(()=>{});
+  },120);
 }
-$('accent').addEventListener('input', apercuAmbiance);
-$('chatTitle').addEventListener('input', apercuAmbiance);
-$('btnSauverApparence').addEventListener('click', async () => {
-  const r = await post(API + '/api/config', {
-    chatTitle: $('chatTitle').value.trim(),
-    accent: $('accent').value
+function apercuTitre(){
+  clearTimeout(_prevTitleT);
+  _prevTitleT=setTimeout(()=>{
+    const t=$('chatTitle')?$('chatTitle').value.trim():'';
+    post(API+'/api/config',{chatTitle:t,preview:true}).catch(()=>{});
+  },120);
+}
+const accentCustomEl=$('accentCustom');
+if(accentCustomEl)accentCustomEl.addEventListener('input',()=>{
+  const c=accentCustomEl.value;
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.toggle('active',s.dataset.color.toLowerCase()===c.toLowerCase()));
+  apercuAmbiance();
+});
+document.querySelectorAll('.swatch').forEach(sw=>{
+  sw.addEventListener('click',()=>{
+    const c=sw.dataset.color;
+    if($('accentCustom'))$('accentCustom').value=c;
+    document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+    sw.classList.add('active');
+    apercuAmbiance();
   });
-  if (r.ok) {
-    ambianceSauvee.chatTitle = $('chatTitle').value.trim();
-    ambianceSauvee.accent = $('accent').value;
-    toast('Ambiance enregistrée ✓');
+});
+const btnSauverAmbiance=$('btnSauverAmbiance');
+if(btnSauverAmbiance)btnSauverAmbiance.addEventListener('click',async()=>{
+  const acc=$('accentCustom')?$('accentCustom').value:'#9146FF';
+  const r=await post(API+'/api/config',{accent:acc});
+  if(r.ok){ambianceSauvee.accent=acc;toast('Ambiance enregistree');}
+});
+const btnAnnulerAmbiance=$('btnAnnulerAmbiance');
+if(btnAnnulerAmbiance)btnAnnulerAmbiance.addEventListener('click',async()=>{
+  const old=ambianceSauvee.accent||'#9146FF';
+  if($('accentCustom'))$('accentCustom').value=old;
+  setPanneauAccent(old);
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.toggle('active',s.dataset.color.toLowerCase()===old.toLowerCase()));
+  await post(API+'/api/config',{accent:old,preview:true}).catch(()=>{});
+  toast('Annule');
+});
+const chatTitleEl=$('chatTitle');
+if(chatTitleEl)chatTitleEl.addEventListener('input',apercuTitre);
+const btnSauverTitre=$('btnSauverTitre');
+if(btnSauverTitre)btnSauverTitre.addEventListener('click',async()=>{
+  const t=$('chatTitle').value.trim();
+  const r=await post(API+'/api/config',{chatTitle:t});
+  if(r.ok){ambianceSauvee.chatTitle=t;toast('Titre enregistre');}
+});
+const btnAnnulerTitre=$('btnAnnulerTitre');
+if(btnAnnulerTitre)btnAnnulerTitre.addEventListener('click',async()=>{
+  const old=ambianceSauvee.chatTitle||'';
+  if($('chatTitle'))$('chatTitle').value=old;
+  await post(API+'/api/config',{chatTitle:old,preview:true}).catch(()=>{});
+  toast('Titre annule');
+});
+
+/* ═══ VÉLOCITÉ V3 — panneau config % + objectif ═══ */
+const velocityDef={
+  equilibriumMPM:20,climbSensitivity:0.65,decayRate:0.14,holdDurationSeconds:120,
+  barWidth:30,barHeight:700,showMetrics:true,velocityEnabled:true,
+  goalThreshold:90,goalDurationMinutes:15,finHour:21,finMinute:30,finEnabled:true
+};
+let velocitySaved={...velocityDef};
+let _velPrevT=null;
+function getVelocityForm(){
+  return {
+    equilibriumMPM: Math.max(1, Math.round(+$('velocityEquilibrium').value || velocityDef.equilibriumMPM)),
+    climbSensitivity: Math.max(0.05, +$('velocityClimb').value || velocityDef.climbSensitivity),
+    decayRate: Math.max(0.02, +$('velocityDecay').value || velocityDef.decayRate),
+    holdDurationSeconds: Math.max(5, Math.min(600, Math.round(+$('velocityHold').value || velocityDef.holdDurationSeconds))),
+    barWidth: Math.max(12, Math.min(40, Math.round(+$('velocityBarWidth').value || velocityDef.barWidth))),
+    barHeight: Math.max(280, Math.min(900, Math.round(+$('velocityBarHeight').value || velocityDef.barHeight))),
+    showMetrics: !!$('velocityShowMetrics').checked,
+    velocityEnabled: !!$('velocityEnabled').checked,
+    goalThreshold: Math.max(10, Math.min(99, Math.round(+$('velocityGoalThreshold').value || velocityDef.goalThreshold))),
+    goalDurationMinutes: Math.max(1, Math.min(120, Math.round(+$('velocityGoalDuration').value || velocityDef.goalDurationMinutes))),
+    finHour: Math.max(0, Math.min(23, Math.round(+$('velocityFinHour').value || velocityDef.finHour))),
+    finMinute: Math.max(0, Math.min(59, Math.round(+$('velocityFinMinute').value || velocityDef.finMinute))),
+    finEnabled: !!$('velocityFinEnabled').checked
+  };
+}
+function setVelocityForm(c){
+  const s=c||{};
+  const eq=s.velocityEquilibrium!=null?s.velocityEquilibrium:(s.equilibriumMPM!=null?s.equilibriumMPM:velocityDef.equilibriumMPM);
+  const climb=s.velocityClimb!=null?s.velocityClimb:(s.climbSensitivity!=null?s.climbSensitivity:velocityDef.climbSensitivity);
+  const decay=s.velocityDecay!=null?s.velocityDecay:(s.decayRate!=null?s.decayRate:velocityDef.decayRate);
+  const hold=s.velocityHold!=null?s.velocityHold:(s.holdDurationSeconds!=null?s.holdDurationSeconds:velocityDef.holdDurationSeconds);
+  const bw=s.velocityBarWidth!=null?s.velocityBarWidth:(s.barWidth!=null?s.barWidth:velocityDef.barWidth);
+  const bh=s.velocityBarHeight!=null?s.velocityBarHeight:(s.barHeight!=null?s.barHeight:velocityDef.barHeight);
+  const sm=s.velocityShowMetrics!=null?s.velocityShowMetrics:(s.showMetrics!=null?s.showMetrics:velocityDef.showMetrics);
+  const en=s.velocityEnabled!=null?s.velocityEnabled:velocityDef.velocityEnabled;
+  const gth=s.velocityGoalThreshold!=null?s.velocityGoalThreshold:(s.goalThreshold!=null?s.goalThreshold:velocityDef.goalThreshold);
+  const gdur=s.velocityGoalDurationMinutes!=null?s.velocityGoalDurationMinutes:(s.goalDurationMinutes!=null?s.goalDurationMinutes:(s.goalDuration!=null?s.goalDuration:velocityDef.goalDurationMinutes));
+  const finH=s.velocityFinHour!=null?s.velocityFinHour:(s.finHour!=null?s.finHour:velocityDef.finHour);
+  const finM=s.velocityFinMinute!=null?s.velocityFinMinute:(s.finMinute!=null?s.finMinute:velocityDef.finMinute);
+  const finEn=s.velocityFinEnabled!=null?s.velocityFinEnabled:(s.finEnabled!=null?s.finEnabled:velocityDef.finEnabled);
+  if($('velocityEquilibrium'))$('velocityEquilibrium').value=eq;
+  if($('velocityClimb'))$('velocityClimb').value=climb;
+  if($('velocityDecay'))$('velocityDecay').value=decay;
+  if($('velocityHold'))$('velocityHold').value=hold;
+  if($('velocityBarWidth'))$('velocityBarWidth').value=bw;
+  if($('velocityBarHeight'))$('velocityBarHeight').value=bh;
+  if($('velocityShowMetrics'))$('velocityShowMetrics').checked=!!sm;
+  if($('velocityEnabled'))$('velocityEnabled').checked=!!en;
+  if($('velocityGoalThreshold'))$('velocityGoalThreshold').value=gth;
+  if($('velocityGoalDuration'))$('velocityGoalDuration').value=gdur;
+  if($('velocityFinHour'))$('velocityFinHour').value=finH;
+  if($('velocityFinMinute'))$('velocityFinMinute').value=finM;
+  if($('velocityFinEnabled'))$('velocityFinEnabled').checked=!!finEn;
+  velocitySaved={equilibriumMPM:eq,climbSensitivity:climb,decayRate:decay,holdDurationSeconds:hold,barWidth:bw,barHeight:bh,showMetrics:!!sm,velocityEnabled:!!en,goalThreshold:gth,goalDurationMinutes:gdur,finHour:finH,finMinute:finM,finEnabled:!!finEn};
+}
+function apercuVelocity(){
+  clearTimeout(_velPrevT);
+  _velPrevT=setTimeout(()=>{
+    const f=getVelocityForm();
+    // preview pour tout sauf activation qui doit persister immediatement
+    post(API+'/api/config',{...f,preview:true}).catch(()=>{});
+    const et=$('velocityEtat');
+    if(et)et.innerHTML='<span class="warn">Aperçu en direct dans OBS…</span>';
+  },140);
+}
+function sauverVelocityImmediate() {
+  const f=getVelocityForm();
+  // sauvegarde immediate pour garantir que l'overlay s'affiche meme apres reload
+  post(API+'/api/config',f).then(r=>{
+    if(r.ok){
+      velocitySaved={...f};
+      const et=$('velocityEtat');
+      if(et) et.innerHTML='<span class="ok">Vélocité '+(f.velocityEnabled?'activée ✔':'désactivée')+' – visible dans OBS</span>';
+      toast(f.velocityEnabled?'Vélocité ON – overlay visible':'Vélocité OFF');
+    }
+  }).catch(()=>{});
+}
+['velocityEquilibrium','velocityClimb','velocityDecay','velocityHold','velocityBarWidth','velocityBarHeight','velocityGoalThreshold','velocityGoalDuration','velocityFinHour','velocityFinMinute'].forEach(id=>{
+  const el=$(id);
+  if(el) el.addEventListener('input',apercuVelocity);
+});
+['velocityShowMetrics','velocityFinEnabled'].forEach(id=>{
+  const el=$(id);
+  if(el) el.addEventListener('change',apercuVelocity);
+});
+// velocityEnabled = sauvegarde immediate + preview
+const velEnabledEl=$('velocityEnabled');
+if(velEnabledEl){
+  velEnabledEl.addEventListener('change',()=>{
+    const f=getVelocityForm();
+    // preview instant
+    post(API+'/api/config',{...f,preview:true}).catch(()=>{});
+    // puis sauvegarde pour persistance
+    setTimeout(()=>sauverVelocityImmediate(), 200);
+  });
+}
+const btnSauverVelocity=$('btnSauverVelocity');
+if(btnSauverVelocity) btnSauverVelocity.addEventListener('click',async()=>{
+  const f=getVelocityForm();
+  const r=await post(API+'/api/config',f);
+  if(r.ok){ velocitySaved={...f}; toast('Vélocité enregistrée'); const et=$('velocityEtat'); if(et) et.innerHTML='<span class=\"ok\">Enregistré ✔</span>'; }
+});
+const btnAnnulerVelocity=$('btnAnnulerVelocity');
+if(btnAnnulerVelocity) btnAnnulerVelocity.addEventListener('click',async()=>{
+  setVelocityForm(velocitySaved);
+  await post(API+'/api/config',{...velocitySaved,preview:true}).catch(()=>{});
+  toast('Vélocité annulée');
+  const et=$('velocityEtat'); if(et) et.innerHTML='<span class=\"note\">Annulé – ancienne valeur restaurée</span>';
+});
+const btnPreviewVelocity=$('btnPreviewVelocity');
+if(btnPreviewVelocity) btnPreviewVelocity.addEventListener('click',()=>{
+  apercuVelocity();
+  toast('Aperçu vélocité envoyé à OBS');
+});
+const btnResetVelocity=$('btnResetVelocity');
+if(btnResetVelocity) btnResetVelocity.addEventListener('click',async()=>{
+  try{
+    const r=await fetch(API+'/api/velocity/reset',{method:'POST'});
+    const j=await r.json();
+    if(j.ok){ toast('Vélocité reset complet'); const et=$('velocityEtat'); if(et) et.innerHTML='<span class="ok">Reset complet – MPM + % à 0 dans OBS</span>'; }
+  }catch(e){ toast('Erreur reset'); }
+});
+
+const btnVelocityValidate=$('btnVelocityValidate');
+if(btnVelocityValidate) btnVelocityValidate.addEventListener('click',async()=>{
+  try{
+    const r=await fetch(API+'/api/velocity/validate',{method:'POST'});
+    const j=await r.json();
+    if(j.ok){ toast('Objectif validé – nouveau tour'); const et=$('velocityEtat'); if(et) et.innerHTML='<span class="ok">Nouveau tour – % à 0, MPM conservé</span>'; }
+  }catch(e){ toast('Erreur validation'); }
+});
+
+
+document.querySelectorAll('#durChips [data-dur]').forEach(b=>{
+  b.addEventListener('click',()=>{if($('debDur'))$('debDur').value=b.dataset.dur;document.querySelectorAll('#durChips .chipbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');});
+});
+let choiceCount=2;
+function updateChoiceUI(){
+  const rowCD=$('rowCD');
+  const fieldC=$('fieldC');
+  const fieldD=$('fieldD');
+  const btnAdd=$('btnAddChoice');
+  const btnRemove=$('btnRemoveChoice');
+  const hint=$('choiceHint');
+  if(!rowCD) return;
+  if(choiceCount>=3){ rowCD.style.display='grid'; }
+  else { rowCD.style.display='none'; }
+  if(fieldC) fieldC.style.display=choiceCount>=3?'block':'none';
+  if(fieldD) fieldD.style.display=choiceCount>=4?'block':'none';
+  if(choiceCount===3){ rowCD.style.gridTemplateColumns='1fr'; }
+  if(choiceCount===4){ rowCD.style.gridTemplateColumns='1fr 1fr'; }
+  if(btnAdd){
+    if(choiceCount>=4){ btnAdd.style.display='none'; }
+    else { btnAdd.style.display='inline-flex'; }
+  }
+  if(btnRemove){
+    if(choiceCount>2){ btnRemove.style.display='inline-flex'; }
+    else { btnRemove.style.display='none'; }
+  }
+  if(hint){
+    if(choiceCount>=4) hint.textContent='4 choix max – tu peux retirer avec –';
+    else if(choiceCount===3) hint.textContent='3 choix (A/B/C) – + pour D, – pour retirer';
+    else hint.textContent='2 choix (A/B) – + pour ajouter C/D';
+  }
+}
+const btnAddChoice=$('btnAddChoice');
+if(btnAddChoice) btnAddChoice.addEventListener('click',()=>{
+  if(choiceCount<4){ choiceCount++; updateChoiceUI(); }
+});
+const btnRemoveChoice=$('btnRemoveChoice');
+if(btnRemoveChoice) btnRemoveChoice.addEventListener('click',()=>{
+  if(choiceCount>2){
+    // clear value of removed choice
+    if(choiceCount===4){ const d=$('debD'); if(d) d.value=''; }
+    if(choiceCount===3){ const c=$('debC'); if(c) c.value=''; }
+    choiceCount--; updateChoiceUI();
   }
 });
-$('btnAnnulerApparence').addEventListener('click', async () => {
-  /* rétablit immédiatement l'ancienne ambiance (champs + overlay) */
-  $('chatTitle').value = ambianceSauvee.chatTitle;
-  $('accent').value = ambianceSauvee.accent;
-  await post(API + '/api/config', {
-    chatTitle: ambianceSauvee.chatTitle,
-    accent: ambianceSauvee.accent,
-    preview: true
-  }).catch(() => {});
-  toast('Modifications annulées');
-});
+updateChoiceUI();
 
-/* ---------- débat ---------- */
-$('btnDebat').addEventListener('click', async () => {
-  const question = $('debQuestion').value.trim();
-  const a = $('debA').value.trim(), b = $('debB').value.trim();
-  if (!question || !a || !b) return toast('Remplis question + choix A + choix B.');
-  const r = await post(API + '/api/debate', { question, a, b, duration: +$('debDur').value || 120 });
-  if (r.ok) toast('Débat lancé ✓');
-  else toast('Erreur (vérifie le token admin si configuré)');
+const btnDebat=$('btnDebat');
+if(btnDebat)btnDebat.addEventListener('click',async()=>{
+  const question=$('debQuestion').value.trim();
+  const a=$('debA').value.trim(),b=$('debB').value.trim();
+  const cEl=$('debC'), dEl=$('debD');
+  const c=cEl?cEl.value.trim():'', d=dEl?dEl.value.trim():'';
+  if(!question||!a||!b)return toast('Remplis question + A + B');
+  const payload={question,a,b,duration:+$('debDur').value||120};
+  if(c) payload.c=c;
+  if(d) payload.d=d;
+  const r=await post(API+'/api/debate',payload);
+  if(r.ok)toast('Debat lance'+(c||d?' ('+(2+(c?1:0)+(d?1:0))+' choix)':''));else toast('Erreur token admin');
 });
-$('btnFinDebat').addEventListener('click', async () => {
-  await post(API + '/api/end', {});
-  toast('Débat terminé');
-});
-
-/* ---------- alertes ---------- */
-document.querySelectorAll('[data-alert]').forEach(b => {
-  b.addEventListener('click', async () => {
-    await post(API + '/api/alert', JSON.parse(b.dataset.alert));
-    toast('Alerte envoyée ✓');
+const btnFinDebat=$('btnFinDebat');
+if(btnFinDebat)btnFinDebat.addEventListener('click',async()=>{await post(API+'/api/end',{});toast('Debat termine');});
+document.querySelectorAll('[data-alert]').forEach(el=>{
+  el.addEventListener('click',async(e)=>{
+    e.preventDefault(); e.stopPropagation();
+    try{
+      const data=JSON.parse(el.dataset.alert);
+      const r=await fetch(API+'/api/alert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      const j=await r.json();
+      if(j.ok){ toast('Alerte '+data.type+' envoyee ▶'); }
+      else toast('Erreur alerte');
+    }catch(err){ toast('Erreur alerte: '+(err.message||'')); }
   });
 });
 
-/* ---------- version & mise à jour ---------- */
-function fmtDate(iso){
-  if (!iso) return '—';
-  try { return new Date(iso).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); }
-  catch(e){ return '—'; }
+/* — SONS CUSTOM INLINE (sur chaque tuile) — */
+function fileToBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>{ 
+      try{
+        const result=r.result;
+        // result is data:audio/...;base64,XXXX
+        const b64=result.split(',')[1];
+        res(b64);
+      }catch(e){ rej(e); }
+    };
+    r.onerror=()=>rej(r.error);
+    r.readAsDataURL(file);
+  });
 }
-let _verCache = null;
-async function refreshVersion(silent){
-  const info = $('versionInfo'), hist = $('updateHist'), btn = $('btnUpdate');
-  if (!silent) info.textContent = 'Vérification…';
-  try {
-    const v = await (await fetch(API + '/api/version', { cache: 'no-store' })).json();
-    _verCache = v;
-    let html = 'Version actuelle : <b>' + (v.current || '?') + '</b><br>' +
-      'Dernière mise à jour faite : <b>' + fmtDate(v.lastUpdate) + '</b><br>';
-    if (v.latest) {
-      html += 'Dernière version disponible : <b>' + v.latest + '</b> · ';
-      html += v.upToDate
-        ? '<span class="ok">À jour ✓</span>'
-        : '<span class="warn">Mise à jour disponible ⬇</span>';
-      btn.disabled = false;
-      btn.textContent = v.upToDate ? '✓ Déjà à jour' : '⬇ Mettre à jour (' + v.latest + ')';
-    } else {
-      html += '<span class="warn">' + (v.checkError || 'Version distante inconnue.') + '</span>';
-      btn.disabled = false;
-      btn.textContent = '⬇ Mettre à jour';
+async function loadSounds(){
+  try{
+    const r=await fetch(API+'/api/sounds',{cache:'no-store'});
+    const j=await r.json();
+    const map={};
+    if(j.files){ j.files.forEach(f=>{ map[f.type]=f; }); }
+    // aussi liste brute pour debug si besoin
+    const allFiles = j.all || [];
+    document.querySelectorAll('.soundStatus').forEach(el=>{
+      const type=el.dataset.status;
+      const has=map[type];
+      if(has){
+        el.textContent='Custom: '+has.file+' ('+type+') ✔';
+        el.style.color='var(--ok)';
+        const delBtn=document.querySelector(`[data-del="${type}"]`);
+        if(delBtn) delBtn.style.display='inline-flex';
+      }else{
+        // si aucun custom pour ce type, mais au moins un fichier custom existe globalement, on le dit
+        if(allFiles.length>0){
+          // cherche fallback sub pour resub/gift
+          if((type==='resub' || type==='gift') && map['sub']){
+            el.textContent='Utilise SUB: '+map['sub'].file+' ✔ (fallback)';
+            el.style.color='var(--ok)';
+          }else{
+            el.textContent='Aucun custom '+type.toUpperCase()+' – son par defaut (fichiers custom: '+allFiles.filter(f=>f.startsWith('alert-')).length+')';
+            el.style.color='var(--muted)';
+          }
+        }else{
+          el.textContent=type==='resub'?'Aucun custom – utilise SUB':(type==='gift'?'Aucun custom – utilise SUB':'Aucun custom – son par defaut');
+          el.style.color='var(--muted)';
+        }
+        const delBtn=document.querySelector(`[data-del="${type}"]`);
+        if(delBtn) delBtn.style.display='none';
+      }
+    });
+    // debug console
+    console.log('[sons] custom detectes', j.files, 'all', allFiles);
+  }catch(e){
+    console.warn('loadSounds fail',e);
+  }
+}
+document.querySelectorAll('.soundInput').forEach(inp=>{
+  inp.addEventListener('change',async()=>{
+    const file=inp.files[0];
+    if(!file) return;
+    const type=inp.dataset.type;
+    if(file.size>6*1024*1024){ toast('Fichier trop gros (max 6 Mo)'); inp.value=''; return; }
+    const allowed=['mp3','wav','ogg','m4a','mp4','webm'];
+    const ext=file.name.split('.').pop().toLowerCase();
+    if(!allowed.includes(ext)){ toast('Format non supporte (mp3/wav/ogg)'); inp.value=''; return; }
+    inp.disabled=true;
+    try{
+      const b64=await fileToBase64(file);
+      const r=await fetch(API+'/api/sounds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,data:b64,ext})});
+      const j=await r.json();
+      if(j.ok){ toast('Son '+type+' enregistre ✔'); loadSounds(); }
+      else toast('Erreur: '+(j.err||'?'));
+    }catch(e){ toast('Erreur upload: '+(e.message||'')); }
+    inp.disabled=false;
+    inp.value='';
+  });
+});
+document.querySelectorAll('[data-playsound]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const type=btn.dataset.playsound;
+    const tile=btn.closest('.alertTile');
+    // remove old preview if any
+    if(tile){
+      const oldPrev=tile.querySelector('.audioPreview');
+      if(oldPrev) oldPrev.remove();
     }
-    info.innerHTML = html;
-    hist.innerHTML = (v.history && v.history.length)
-      ? 'Historique :<br>' + v.history.slice(0, 5).map(h => '· <b>' + h.version + '</b> — ' + fmtDate(h.date)).join('<br>')
-      : '';
+    const tryUrls=[
+      API+'/sounds/alert-'+type+'.mp3?v='+Date.now(),
+      API+'/sounds/alert-'+type+'.wav?v='+Date.now(),
+      API+'/sounds/alert-'+type+'.ogg?v='+Date.now(),
+      API+'/sounds/alert-'+type+'.m4a?v='+Date.now(),
+      API+'/sounds/alert-sub.mp3?v='+Date.now(),
+      API+'/sounds/alert-follow.mp3?v='+Date.now()
+    ];
+    let idx=0;
+    const audio=new Audio();
+    audio.controls=true;
+    audio.style.cssText='width:100%;margin-top:8px';
+    audio.className='audioPreview';
+    if(tile) tile.appendChild(audio);
+    function tryNext(){
+      if(idx>=tryUrls.length){ toast('Aucun son '+type+' trouve – upload d\'abord'); if(tile){ const ap=tile.querySelector('.audioPreview'); if(ap) ap.remove(); } return; }
+      const url=tryUrls[idx++];
+      audio.src=url;
+      audio.volume=0.75;
+      audio.play().then(()=>{
+        toast('Lecture '+type+' ▶ ('+url.split('/').pop().split('?')[0]+')');
+      }).catch(()=>tryNext());
+      audio.onerror=()=>tryNext();
+    }
+    tryNext();
+  });
+});
+document.querySelectorAll('[data-del]').forEach(btn=>{
+  btn.addEventListener('click',async()=>{
+    const type=btn.dataset.del;
+    if(!confirm('Supprimer son custom '+type+' ?')) return;
+    try{
+      const r=await fetch(API+'/api/sounds?type='+encodeURIComponent(type),{method:'DELETE'});
+      const j=await r.json();
+      if(j.ok){ toast('Son '+type+' supprime'); loadSounds(); }
+    }catch(e){ toast('Erreur suppression'); }
+  });
+});
+loadSounds();
+
+// --- Son local sur PC (panneau) : ecoute les alertes via SSE et joue le son custom si case cochee ---
+let localPCEnabled = localStorage.getItem('alertLocalPC') === '1';
+const localPCCheck=$('alertLocalPC');
+if(localPCCheck){
+  localPCCheck.checked=localPCEnabled;
+  localPCCheck.addEventListener('change',()=>{
+    localPCEnabled=localPCCheck.checked;
+    localStorage.setItem('alertLocalPC', localPCEnabled?'1':'0');
+    toast(localPCEnabled?'Son local PC active – attention double si Monitoring OBS':'Son local PC desactive');
+  });
+}
+function playLocalAlertSound(type){
+  if(!localPCEnabled) return;
+  const urls=[
+    API+'/sounds/alert-'+type+'.mp3?v='+Date.now(),
+    API+'/sounds/alert-'+type+'.wav?v='+Date.now(),
+    API+'/sounds/alert-'+type+'.ogg?v='+Date.now(),
+    API+'/sounds/alert-'+type+'.m4a?v='+Date.now(),
+    API+'/sounds/'+type+'.mp3?v='+Date.now(),
+    API+'/sounds/alert-sub.mp3?v='+Date.now()
+  ];
+  let i=0;
+  function tryNext(){
+    if(i>=urls.length) return;
+    const a=new Audio(urls[i++]);
+    a.volume=0.75;
+    a.play().then(()=>{}).catch(()=>tryNext());
+    a.onerror=()=>tryNext();
+  }
+  tryNext();
+}
+/* — FOND ALERTE PHOTO — */
+async function loadAlertBg(){
+  try{
+    const r=await fetch(API+'/api/alert-bg',{cache:'no-store'});
+    const j=await r.json();
+    const el=$('alertBgStatus'), prev=$('alertBgPreview'), img=$('alertBgImg'), delBtn=$('btnDelAlertBg');
+    if(j.files && j.files.length){
+      const f=j.files[0];
+      el.innerHTML='<span class="ok">Custom photo: '+esc(f.file)+' ('+Math.round((f.size||0)/1024)+' Ko) ✔</span>';
+      if(img){ img.src=API+'/assets/'+f.file+'?v='+Date.now(); if(prev) prev.style.display='block'; }
+      if(delBtn) delBtn.style.display='inline-flex';
+    }else{
+      el.innerHTML='<span class="note">Aucune photo custom – fond par défaut (alert-bg.png)</span>';
+      if(prev) prev.style.display='none';
+      if(delBtn) delBtn.style.display='none';
+    }
+  }catch(e){ console.warn('loadAlertBg fail',e); }
+}
+loadAlertBg();
+const alertBgInput=$('alertBgInput');
+if(alertBgInput){
+  alertBgInput.addEventListener('change',async()=>{
+    const file=alertBgInput.files[0];
+    if(!file) return;
+    if(file.size>10*1024*1024){ toast('Fichier trop gros (max 10 Mo)'); alertBgInput.value=''; return; }
+    const ext=file.name.split('.').pop().toLowerCase();
+    if(!['jpg','jpeg','png'].includes(ext)){ toast('Format JPG/PNG uniquement'); alertBgInput.value=''; return; }
+    alertBgInput.disabled=true;
+    try{
+      const b64=await fileToBase64(file);
+      const r=await fetch(API+'/api/alert-bg',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:b64,ext})});
+      const j=await r.json();
+      if(j.ok){ toast('Photo alerte enregistrée ✔ – visible dans OBS'); loadAlertBg(); }
+      else toast('Erreur: '+(j.err||'?'));
+    }catch(e){ toast('Erreur upload photo: '+(e.message||'')); }
+    alertBgInput.disabled=false;
+    alertBgInput.value='';
+  });
+}
+const btnDelAlertBg=$('btnDelAlertBg');
+if(btnDelAlertBg){
+  btnDelAlertBg.addEventListener('click',async()=>{
+    if(!confirm('Supprimer photo custom alerte ? Retour au fond par défaut.')) return;
+    try{
+      const r=await fetch(API+'/api/alert-bg',{method:'DELETE'});
+      const j=await r.json();
+      if(j.ok){ toast('Photo alerte supprimée – fond par défaut'); loadAlertBg(); }
+    }catch(e){ toast('Erreur suppression'); }
+  });
+}
+
+// branche SSE pour alertes (si pas deja connecte)
+(function connectAlertSSE(){
+  try{
+    const es=new EventSource(API+'/events');
+    es.onmessage=(e)=>{
+      try{
+        const m=JSON.parse(e.data);
+        if(m.alert){
+          playLocalAlertSound(m.alert);
+        }
+      }catch(err){}
+    };
+  }catch(e){}
+})();
+
+let _verCache=null;
+function formatVer(v){
+  if(!v)return'?';
+  let s=String(v).trim().replace(/^v+/i,'');
+  return 'V'+s.toUpperCase();
+}
+async function refreshVersion(silent,btn){
+  const info=$('versionInfo'),hist=$('updateHist');
+  const targetBtn=btn||$('btnCheckUpdate');
+  if(!silent&&info){
+    info.style.opacity='0.5';
+  }
+  if(targetBtn){targetBtn.classList.add('loading');targetBtn.disabled=true;}
+  try{
+    const resp=await fetch(API+'/api/version?force=1',{cache:'no-store'});
+    if(!resp.ok) throw new Error('http '+resp.status);
+    const v=await resp.json();
+    _verCache=v;
+    if($('verPill'))$('verPill').textContent=formatVer(v.current||'28');
+    let html='Version actuelle : <b>'+esc(formatVer(v.current||'?'))+'</b><br>Derniere mise a jour faite : <b>'+esc(fmtDate(v.lastUpdate))+'</b><br>';
+    if(v.latest){
+      const latestFmt=formatVer(v.latest);
+      html+='Derniere version dispo : <b>'+esc(latestFmt)+'</b> - '+(v.upToDate?'<span class="ok">A jour</span>':'<span class="warn">Mise a jour dispo</span>');
+      if(v.checkError) html+='<br><span class="note" style="opacity:.6">'+esc(v.checkError)+'</span>';
+    }else{
+      if(v.checkError){
+        html+='<span class="warn">Verification hors-ligne</span> – <span class="ok">Version locale OK ('+esc(formatVer(v.current))+')</span><br><span class="note" style="opacity:.6">Detail: '+esc(v.checkError)+' – verifie ta connexion internet</span>';
+      }else{
+        html+='<span class="warn">Version distante inconnue</span> – <span class="ok">Locale OK ('+esc(formatVer(v.current))+')</span>';
+      }
+    }
+    if(info){ info.innerHTML=html; info.style.opacity='1'; }
+    if(hist)hist.innerHTML=(v.history&&v.history.length)?'Historique :<br>'+v.history.slice(0,5).map(h=>' - <b>'+esc(formatVer(h.version))+'</b> '+esc(fmtDate(h.date))).join('<br>'):'';
     return v;
-  } catch(e){
-    info.innerHTML = '<span class="bad">Impossible de lire la version.</span>';
+  }catch(e){
+    if(info){
+      const curPill=$('verPill')?$('verPill').textContent:'V?';
+      info.innerHTML='<span class="bad">Pont injoignable</span><br><span class="note">Verifie que server.js tourne sur '+esc(API)+'<br>Version locale: <b>'+esc(curPill)+'</b> – Erreur: '+esc(e.message||'')+'</span>';
+      info.style.opacity='1';
+    }
     return null;
+  }finally{
+    if(targetBtn){targetBtn.classList.remove('loading');targetBtn.disabled=false;}
+    if(info) info.style.opacity='1';
   }
 }
-$('btnCheckUpdate').addEventListener('click', () => refreshVersion(false));
-$('btnUpdate').addEventListener('click', async () => {
-  const btn = $('btnUpdate'), etat = $('updateEtat');
-  /* 1) on vérifie d'abord : si déjà à jour, on ne retélécharge rien */
-  btn.disabled = true; btn.textContent = 'Vérification...';
-  etat.textContent = '';
-  const v = await refreshVersion(true);
-  if (v && v.upToDate) {
-    etat.innerHTML = '<span class="ok">✓ Déjà à jour (' + v.current + ') — rien à télécharger.</span>';
-    toast('Déjà à jour ✓');
-    btn.disabled = false; btn.textContent = '✓ Déjà à jour';
-    return;
-  }
-  /* 2) vraiment en retard (ou vérification impossible) → MAJ */
-  btn.textContent = 'Mise à jour...';
-  etat.textContent = 'Téléchargement de la dernière version...';
-  try {
-    const r = await fetch(API + '/api/update', { method: 'POST' });
-    const j = await r.json();
-    if (j.ok) {
-      etat.innerHTML = '<span class="ok">✓ À jour (' + (j.version || 'OK') + ').</span>';
-      toast('Mise à jour terminée ✓');
-      await refreshVersion(true);
-      btn.textContent = '↻ Relancer le panneau';
-      btn.disabled = false;
-      btn.onclick = () => location.reload();   // ne relance QUE la fenêtre (jamais OBS ni le pont)
-    } else {
-      etat.innerHTML = '<span class="bad">Échec : ' + (j.error || '?') + '</span>';
-      btn.textContent = '⬇ Mettre à jour';
-      btn.disabled = false;
+const btnCheckUpdate=$('btnCheckUpdate');
+if(btnCheckUpdate)btnCheckUpdate.addEventListener('click',()=>refreshVersion(false,btnCheckUpdate));
+const btnUpdate=$('btnUpdate');
+if(btnUpdate){
+  const originalUpdateText=btnUpdate.textContent;
+  btnUpdate.addEventListener('click',async()=>{
+    const etat=$('updateEtat');
+    btnUpdate.classList.add('loading');
+    btnUpdate.disabled=true;
+    if(etat)etat.innerHTML='<span class="warn">Mise a jour en cours (arriere-plan)...</span><br><span class="note">Telechargement depuis GitHub, ne ferme pas la fenetre – le pont va redemarrer tout seul</span>';
+    toast('Mise a jour lancee...');
+    try{
+      const r=await fetch(API+'/api/update',{method:'POST'});
+      const j=await r.json();
+      if(j.ok){
+        if(etat)etat.innerHTML='<span class="ok">A jour ('+esc(formatVer(j.version||'OK'))+')</span><br><span class="note">Fichiers remplaces – redemarrage en cours... (5s)</span>';
+        toast('Mise a jour terminee – redemarrage auto');
+        // si le backend n'a pas deja redemarre (Linux sandbox), on tente restart
+        if(!j.restart){
+          try{ await fetch(API+'/api/restart',{method:'POST'}); }catch(e){}
+        }
+        // polling jusqu'a ce que le pont revienne (evite "connexion refusee" bloquee)
+        let tries=0;
+        const pollRestart=async()=>{
+          tries++;
+          try{
+            const hr=await fetch(API+'/healthz',{cache:'no-store'});
+            if(hr.ok){
+              if(etat)etat.innerHTML='<span class="ok">Pont relance ✔ ('+esc(formatVer(j.version||'OK'))+')</span><br><span class="note">Rechargement...</span>';
+              setTimeout(()=>location.reload(), 800);
+              return;
+            }
+          }catch(e){}
+          if(tries<30){
+            if(etat)etat.innerHTML='<span class="warn">Redemarrage... tentative '+tries+'/30</span><br><span class="note">Si ca bloque, relance lancer-app.vbs ou demarrer-pont.bat</span>';
+            setTimeout(pollRestart, 1000);
+          }else{
+            if(etat)etat.innerHTML='<span class="bad">Pont ne repond pas apres 30s</span><br><span class="note">Relance manuellement lancer-app.vbs puis recharge cette page</span>';
+          }
+        };
+        setTimeout(pollRestart, 2000);
+      }else{
+        if(etat)etat.innerHTML='<span class="bad">Echec: '+esc(j.error||'?')+'</span><br><span class="note">Verifie internet ou lance manuellement mettre-a-jour.bat</span>';
+        toast('Echec mise a jour');
+      }
+    }catch(e){
+      if(etat)etat.innerHTML='<span class="bad">Erreur reseau: '+esc(e.message||'')+'</span><br><span class="note">Le pont a peut-etre deja redemarre – attends 5s puis recharge</span>';
+      toast('Erreur reseau – reessaye dans 5s');
+      setTimeout(()=>location.reload(), 5000);
+    }finally{
+      btnUpdate.classList.remove('loading');
+      btnUpdate.disabled=false;
+      btnUpdate.textContent=originalUpdateText;
     }
-  } catch(e) {
-    etat.innerHTML = '<span class="bad">Impossible de mettre à jour (pas d\'internet ?).</span>';
-    btn.textContent = '⬇ Mettre à jour';
-    btn.disabled = false;
-  }
-});
-
-/* ---------- init ---------- */
+  });
+}
 async function init(){
-  try {
-    const s = await (await fetch(API + '/api/status')).json();
+  try{
+    const s=await (await fetch(API+'/api/status')).json();
     renderStatut(s);
     renderToken(s.token);
-    if (s.config){
-      $('goalLabel').value = s.config.subGoalLabel || '';
-      $('goalTarget').value = s.config.subGoalTarget || 50;
-      $('goalAuto').value = s.config.subGoalAuto ? '1' : '0';
-      $('goalManual').value = s.config.subGoalManual || 0;
-      $('chatTitle').value = s.config.chatTitle || '';
-      $('accent').value = s.config.accent || '#9146FF';
-      ambianceSauvee.chatTitle = $('chatTitle').value;
-      ambianceSauvee.accent = $('accent').value;
-      $('rowGoalManual').style.display = s.config.subGoalAuto ? 'none' : 'block';
+    if(s.config){
+      if($('goalLabel'))$('goalLabel').value=s.config.subGoalLabel||'';
+      if($('goalTarget'))$('goalTarget').value=s.config.subGoalTarget||50;
+      if($('goalAuto'))$('goalAuto').checked=!!s.config.subGoalAuto;
+      if($('goalManual'))$('goalManual').value=s.config.subGoalManual||0;
+      if($('goalNextLabel'))$('goalNextLabel').value=s.config.subGoalNextLabel||'';
+      if($('goalNextTarget'))$('goalNextTarget').value=s.config.subGoalNextTarget||0;
+      if(s.goal) renderGoalPreview(s.goal);
+      if($('chatTitle'))$('chatTitle').value=s.config.chatTitle||'';
+      const acc=s.config.accent||'#9146FF';
+      if($('accentCustom'))$('accentCustom').value=acc;
+      ambianceSauvee.chatTitle=$('chatTitle')?$('chatTitle').value:'';
+      ambianceSauvee.accent=acc;
+      setPanneauAccent(acc);
+      document.querySelectorAll('.swatch').forEach(sw=>sw.classList.toggle('active',sw.dataset.color.toLowerCase()===acc.toLowerCase()));
+      updateGoalAutoUI();
+      setVelocityForm(s.config);
+      const et=$('velocityEtat');
+      if(et) et.innerHTML='<span class=\"note\">Config chargée – équilibre '+esc(velocitySaved.equilibriumMPM+' MPM')+'</span>';
     }
-    refreshVersion(true);
-  } catch(e){ $('statut').innerHTML = '<p class="bad">Impossible de joindre le pont.</p>'; }
+    refreshVersion(true,$('btnCheckUpdate'));
+  }catch(e){
+    const st=$('statut');
+    if(st)st.innerHTML='<p class="bad">Pont injoignable</p>';
+  }
 }
 init();
-setInterval(async () => {
-  try { const s = await (await fetch(API + '/api/status')).json(); renderStatut(s); renderToken(s.token); } catch(e){}
-}, 8000);
+setInterval(async()=>{try{const s=await (await fetch(API+'/api/status')).json();renderStatut(s);renderToken(s.token);}catch(e){}},8000);
 </script>
 </body>
 </html>

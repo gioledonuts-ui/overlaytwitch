@@ -177,8 +177,8 @@ tête du JS — remets un `true` pour les réactiver, tout est en place) :
 
 ## 6. Le chat Twitch (panneau gauche)
 
-Panneau **430 × 520 px**, à **droite**, **bottom 160 px** (la carte du débat reste
-centrée — aucun chevauchement). **~50 % transparent** (flou 12 px en dessous : on voit
+Panneau **460 × 640 px**, à **droite**, **bottom 160 px** (la carte du débat reste
+centrée — aucun chevauchement, marge de 12 px conservée). **~50 % transparent** (flou 12 px en dessous : on voit
 la caméra à travers), bordure 1 px, coins 12 px, pastille violet pulsée.
 
 - **En démo** (`/`) : un **chat fictif** tourne en boucle pour te laisser juger le rendu
@@ -192,16 +192,16 @@ la caméra à travers), bordure 1 px, coins 12 px, pastille violet pulsée.
   ```
 - **Rôles visuels** (couleur du pseudo) : streamer = **blanc**, mod = **violet**,
   spectateur = **couleur vive et stable par pseudo** (palette de 8 teintes).
-  Police 14 px bien lisible + stack d'emojis système (Segoe UI Emoji / Noto Color Emoji)
-  pour des **emojis lisibles**. 9 messages visibles, les plus anciens s'estompent,
-  arrivée animée (slide-up 350 ms).
+  Police **18 px** bien lisible + stack d'emojis système (Segoe UI Emoji / Noto Color Emoji)
+  pour des **emojis lisibles**. 10 messages visibles, les plus anciens s'estompent,
+  arrivée animée (slide-up 350 ms). Badges 20 px, emotes 26 px, réponses 13 px.
 - **Badges Twitch officiels** (sub + palier, mod, VIP, staff, team…) : lus depuis les
   tags IRC du message et rendus via `static-cdn.jtvnw.net` ; si l'image ne charge pas,
   une **chip texte** prend le relais (SUB 2, MOD, VIP, STAFF…). Avec ton compte branché,
   ce sont **les vrais badges de ton chat** qui s'affichent automatiquement.
 - **Message MIS EN AVANT** (highlight Twitch) : encart **violet**, en avant dans le flux.
 - **Message ÉPINGLÉ** : il apparaît **en haut du chat**, style **blanc**, un cran plus
-  gros, avec 📌 — apparaît quand tu épingle sur Twitch (détecté via les notices IRC) ou
+  gros (pseudo 20 px / texte 18 px), avec 📌 — apparaît quand tu épingle sur Twitch (détecté via les notices IRC) ou
   via `POST /api/pin {"user":"…","msg":"…"}` / `{"clear":true}` pour le retirer.
   Style volontairement différent du highlight violet.
 - **Réponses à message** (thread) : faisable — le tag IRC `reply-parent-display-name`
@@ -211,12 +211,10 @@ la caméra à travers), bordure 1 px, coins 12 px, pastille violet pulsée.
   images animées (Kreygasm, CatJAM, etc.) ; les **URLs .gif / .webp brutes** dans un
   message s'affichent aussi inline (exemples dans la démo, dont un GIF local servi par
   le pont sur `/demo/gif-demo.gif`).
-- **Liste pleine hauteur** : 14 messages visibles, ils remplissent tout le panneau ;
+- **Liste pleine hauteur** : 10 messages visibles, ils remplissent tout le panneau ;
   la **disparition progressive se fait en HAUT** (fondu 64 px) là où les messages
   sortent — rendu propre, pas d'espace mort.
-- **Typographie** : pseudo en **Bebas Neue** (mis en avant, lisible, cohérent avec la
-  carte du débat) + texte en **Inter 500** 15 px (lisibilité maximale). La même
-  corrélation s'applique à la carte du débat (chip, titre, chrono, % en Bebas).
+- **Typographie** : pseudo en **Outfit 700 19px** (max-width 170, mis en avant, lisible) + texte en **Inter 500 18px** line-height 1.5 (lisibilité maximale). Titre du chat en Bebas 18px. Sub-goal label + compteur en Outfit 800 18px, barre 10px.
 - **ALERTES (haut centre, top 80 px)** — animation d'apparition propre (slide-down +
   fade 0,9 s, fond en calque qui fade-in 1,2 s, sortie 0,35 s), queue si plusieurs à
   la fois, fond unique `assets/alert-bg.png`. **Composition CENTRÉE** avec hiérarchie
@@ -319,12 +317,13 @@ distance ou en secours. Budget KV Free : 100 000 lectures/jour ≈ 1 widget en p
 
 ## 8. Calibration & DA — rappel des valeurs
 
-- Scène de référence : **1920×1080**, carte **880×208 px** (compact), centrée, **bottom 96 px**
-  (tiers inférieur ; ta face au centre n'est jamais masquée).
+- Scène de référence : **1920×1080**, carte **880×272 px** (lisible, 880×272), centrée, **bottom 96 px**
+  (tiers inférieur ; ta face au centre n'est jamais masquée). Chat **460×640 px**, bottom 160 px, marge 12 px avec la carte.
 - Couleurs : `#0A0A0A` · `#7000FF` · `#9146FF` · `#FFFFFF` · gris neutres `#9AA0A6 / #6B7280`.
 - Bordures 1 px, coins 12 px, glassmorphism sombre `blur(18px)` — aucun décor superflu
   (aucun filet / dégradé en haut de carte : le bord supérieur est propre).
-- Typos : **Bebas Neue** (question, timer, pourcentages) · **Inter** (labels, chip, footer).
+- Typos : **Bebas Neue** (question 46px, timer 28px, pourcentages 30px, chip 14px) · **Outfit** (labels 700 16px, badges A/B 20px, tag GAGNANT 9px, pseudos chat 700 19px, sub-goal 800 18px, pied 600 12.5px .14em) · **Inter** (messages 500 18px line-height 1.5).
+- Grille options : **200/1fr/76** (label/barre/%), barres **12px**, badges A/B **20px**, emotes chat **26px**, badges chat **20px**, réponses **13px**, épinglé pseudo **20px** / texte **18px**.
 - Animations : entrée `650 ms` expo-out (slide-up 46 px), barres `700 ms`, sortie `420 ms` ease-in.
 - Sentence : 5 s, gagnant en pulse sobre (violet ou blanc selon le choix), badge **GAGNANT**,
   perdant à 30 % d'opacité.
@@ -339,6 +338,6 @@ distance ou en secours. Budget KV Free : 100 000 lectures/jour ≈ 1 widget en p
 - **Lecture des options** : badges **A** (violet) / **B** (blanc) — ancre visuelle et
   rappel de la commande chat ; total des votes à **droite, sous les pourcentages**,
   commande **centrée**.
-- Question **centrée**, une seule ligne (Bebas Neue 32 px).
+- Question **centrée**, une seule ligne (Bebas Neue 46 px), 10 messages max dans le chat.
 
-Pour recaler la position : modifie `bottom:100px` (ou `width:1240px`) en tête du CSS de `widget.html`.
+Pour recaler la position : modifie `bottom:96px` (ou `width:880px`) en tête du CSS de `widget.html`.

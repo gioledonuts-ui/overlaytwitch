@@ -74,10 +74,29 @@ const PERSIST_FILE = path.join(__dirname, 'config-perso.json');
 const DEFAULT_CONFIG = {
   subGoalLabel: 'SUB GOAL',
   subGoalTarget: 50,
-  subGoalAuto: true,     // true = compteur auto (Twitch) ; false = manuel
+  subGoalAuto: true,
   subGoalManual: 0,
+  // prochain objectif prepare a l'avance (affiche en dessous, non checke)
+  subGoalNextLabel: '',
+  subGoalNextTarget: 0,
+  subGoalHistory: [], // [{label,target,completedAt,currentAtCompletion}]
   chatTitle: 'CHAT DE 7GIONNY',
-  accent: '#9146FF'
+  accent: '#9146FF',
+  // velocite V5 : seuil % + duree ajout + chrono verrou + fin prevue
+  velocityEquilibrium: 20,
+  velocityClimb: 0.65,
+  velocityDecay: 0.14,
+  velocityHold: 120,
+  velocityBarWidth: 30,
+  velocityBarHeight: 700,
+  velocityShowMetrics: true,
+  velocityEnabled: true,
+  velocityGoalThreshold: 90,
+  velocityGoalDurationMinutes: 15,
+  velocityHoldDurationSeconds: 120,
+  velocityFinHour: 21,
+  velocityFinMinute: 30,
+  velocityFinEnabled: true
 };
 let appConfig = Object.assign({}, DEFAULT_CONFIG);
 try {
@@ -166,8 +185,55 @@ async function fetchRemoteVersion() {
 const goalState = {
   label: appConfig.subGoalLabel,
   current: appConfig.subGoalAuto ? 0 : appConfig.subGoalManual,
-  target: appConfig.subGoalTarget
+  target: appConfig.subGoalTarget,
+  nextLabel: appConfig.subGoalNextLabel || '',
+  nextTarget: appConfig.subGoalNextTarget || 0,
+  history: Array.isArray(appConfig.subGoalHistory) ? appConfig.subGoalHistory.slice(-10) : []
 };
+
+function broadcastGoal() {
+  const payload = 'data: ' + JSON.stringify(Object.assign({ goal: 1 }, goalState)) + '\n\n';
+  for (const res of sse) res.write(payload);
+}
+
+function saveGoalHistory() {
+  appConfig.subGoalHistory = goalState.history.slice(-10);
+  saveConfig();
+}
+
+function checkAndSwitchGoal() {
+  // si pas de next prepare, on ne fait rien (on reste sur meme goal, meme si depasse)
+  if (!goalState.nextTarget || goalState.nextTarget <= 0) return false;
+  if (goalState.current < goalState.target) return false;
+  // objectif atteint + next existe → archive current, promeut next
+  const completed = {
+    label: goalState.label,
+    target: goalState.target,
+    currentAtCompletion: goalState.current,
+    completedAt: new Date().toISOString()
+  };
+  goalState.history.push(completed);
+  if (goalState.history.length > 10) goalState.history = goalState.history.slice(-10);
+
+  // promotion
+  goalState.label = goalState.nextLabel || goalState.label;
+  goalState.target = goalState.nextTarget;
+  goalState.nextLabel = '';
+  goalState.nextTarget = 0;
+  goalState.history = goalState.history; // keep
+
+  // persiste
+  appConfig.subGoalLabel = goalState.label;
+  appConfig.subGoalTarget = goalState.target;
+  appConfig.subGoalNextLabel = '';
+  appConfig.subGoalNextTarget = 0;
+  appConfig.subGoalHistory = goalState.history.slice();
+  saveConfig();
+
+  console.log(`[sub-goal] objectif atteint → switch auto vers ${goalState.label} ${goalState.current}/${goalState.target} (historique ${goalState.history.length})`);
+  broadcastGoal();
+  return true;
+}
 
 /* — Alertes (follow / sub / gift / raid) : diffuses au widget — */
 function broadcastAlert(a) {
@@ -223,24 +289,50 @@ setInterval(() => { if (dirty) broadcast(true); }, 200);   // flush différé
 
 function idle() { state = { mode: 'idle' }; broadcast(true); }
 
-function startDebate({ question, a, b, duration = 120, source = 'chat', startsAt = Date.now() }) {
+function startDebate({ question, a, b, c, d, duration = 120, source = 'chat', startsAt = Date.now() }) {
   const dur = Math.min(600, Math.max(15, Math.round(duration) || 120));
   votes.clear();
-  state = { mode: 'live', source, question, a, b, va: 0, vb: 0, startsAt, endsAt: Date.now() + dur * 1000 };
+  const choices = {};
+  choices.a = String(a||'').slice(0,60);
+  choices.b = String(b||'').slice(0,60);
+  if (c) choices.c = String(c).slice(0,60);
+  if (d) choices.d = String(d).slice(0,60);
+  state = { 
+    mode: 'live', source, question: String(question||'').slice(0,140), 
+    a: choices.a, b: choices.b, 
+    c: choices.c || undefined, d: choices.d || undefined,
+    va: 0, vb: 0, vc: 0, vd: 0,
+    startsAt, endsAt: Date.now() + dur * 1000 
+  };
   lastBroadcast = 0;
   broadcast(true);
-  console.log(`[débat] (${source}) ${question} · « ${a} » vs « ${b} » · ${dur}s`);
+  const list = [choices.a, choices.b, choices.c, choices.d].filter(Boolean).map((x,i)=>String.fromCharCode(65+i)+'='+x).join(' ');
+  console.log(`[débat] (${source}) ${question} · ${list} · ${dur}s`);
 }
 
 function tally(choice, user = 'anon') {
   if (state.mode !== 'live') return false;
-  const c = String(choice).toUpperCase().startsWith('B') ? 'B' : 'A';
+  let raw = String(choice).toUpperCase().trim();
+  let c = 'A';
+  if (raw.startsWith('B') || raw==='2') c='B';
+  else if (raw.startsWith('C') || raw==='3') c='C';
+  else if (raw.startsWith('D') || raw==='4') c='D';
+  else if (raw.startsWith('A') || raw==='1') c='A';
+  else c='A';
+  // if choice C/D requested but debate has only 2 options, map to A/B? Keep but ignore if not exist
+  if ((c==='C' && !state.c) || (c==='D' && !state.d)) {
+    // if only 2 options, treat C as A and D as B? No, ignore
+    if (!state.c && !state.d) {
+      // fallback to A/B logic already
+    }
+  }
   const u = String(user || 'anon').toLowerCase().slice(0, 64);
-  /* Anti-doublon strict : 1 seul vote par utilisateur et par débat.
-     Le premier vote compte, les suivants sont ignorés (pas de remplacement). */
   if (votes.has(u)) return false;
   votes.set(u, { c, ts: Date.now() });
-  state[c === 'A' ? 'va' : 'vb']++;
+  if (c==='A') state.va = (state.va||0)+1;
+  else if (c==='B') state.vb = (state.vb||0)+1;
+  else if (c==='C') state.vc = (state.vc||0)+1;
+  else if (c==='D') state.vd = (state.vd||0)+1;
   dirty = true;
   return true;
 }
@@ -264,49 +356,68 @@ function voteKeyword(opt) {
   for (const w of words) if (w.length >= 2) return w;
   return words[0] || '';
 }
-/* Déduit un vote depuis un message libre. Retourne 'A' | 'B' | null.
-   null = pas de vote détecté, ou message ambigu (les 2 options citées). */
+/* Déduit un vote depuis un message libre. Retourne 'A'|'B'|'C'|'D'|null.
+   null = pas de vote détecté, ou message ambigu. */
 function matchVoteFromText(text) {
   if (state.mode !== 'live') return null;
   const raw = String(text || '').trim();
-  if (!raw || raw.startsWith('!')) return null;   // les !commandes sont gérées à part
+  if (!raw || raw.startsWith('!')) return null;
   const n = normVote(raw);
   if (!n) return null;
-  /* A / B / 1 / 2 seuls (match exact uniquement : le « a » de
-     « il a raison » ne doit PAS voter) */
   if (n === 'a' || n === '1') return 'A';
   if (n === 'b' || n === '2') return 'B';
-  const na = normVote(state.a), nb = normVote(state.b);
+  if (n === 'c' || n === '3') return state.c ? 'C' : null;
+  if (n === 'd' || n === '4') return state.d ? 'D' : null;
+  const na = normVote(state.a), nb = normVote(state.b), nc = state.c ? normVote(state.c) : '', nd = state.d ? normVote(state.d) : '';
   const hay = ' ' + n + ' ';
-  /* option citée en toutes lettres (mot entier, pas sous-chaîne :
-     « bus » ne matche pas « business ») */
   const hasA = na.length >= 2 && (n === na || hay.includes(' ' + na + ' '));
   const hasB = nb.length >= 2 && (n === nb || hay.includes(' ' + nb + ' '));
-  if (hasA && !hasB) return 'A';
-  if (hasB && !hasA) return 'B';
-  if (hasA && hasB) return null;                  // ambigu → ignoré
-  /* mot-clé (1er mot de l'option) cité comme mot entier */
-  const ka = voteKeyword(state.a), kb = voteKeyword(state.b);
-  if (ka && ka === kb) return null;               // options indiscernables → ignoré
-  const words = new Set(n.split(' '));
-  const inA = ka.length >= 2 && words.has(ka);
-  const inB = kb.length >= 2 && words.has(kb);
-  if (inA && !inB) return 'A';
-  if (inB && !inA) return 'B';
+  const hasC = nc.length >= 2 && (n === nc || hay.includes(' ' + nc + ' '));
+  const hasD = nd.length >= 2 && (n === nd || hay.includes(' ' + nd + ' '));
+  const count = (hasA?1:0)+(hasB?1:0)+(hasC?1:0)+(hasD?1:0);
+  if (count!==1) {
+    if (count>1) return null;
+    // try keyword
+    const ka = voteKeyword(state.a), kb = voteKeyword(state.b), kc = state.c ? voteKeyword(state.c) : '', kd = state.d ? voteKeyword(state.d) : '';
+    const words = new Set(n.split(' '));
+    const inA = ka.length >= 2 && words.has(ka);
+    const inB = kb.length >= 2 && words.has(kb);
+    const inC = kc.length >= 2 && words.has(kc);
+    const inD = kd.length >= 2 && words.has(kd);
+    const kcCount = (inA?1:0)+(inB?1:0)+(inC?1:0)+(inD?1:0);
+    if (kcCount!==1) return null;
+    if (inA) return 'A';
+    if (inB) return 'B';
+    if (inC) return 'C';
+    if (inD) return 'D';
+    return null;
+  }
+  if (hasA) return 'A';
+  if (hasB) return 'B';
+  if (hasC) return 'C';
+  if (hasD) return 'D';
   return null;
 }
 
 function finish(source) {
   if (state.mode !== 'live') return;
-  const va = state.va || 0, vb = state.vb || 0;
+  const va = state.va || 0, vb = state.vb || 0, vc = state.vc || 0, vd = state.vd || 0;
+  const scores = [{k:'A',v:va},{k:'B',v:vb}];
+  if (state.c) scores.push({k:'C',v:vc});
+  if (state.d) scores.push({k:'D',v:vd});
+  scores.sort((x,y)=>y.v - x.v);
+  const top = scores[0];
+  const tie = scores.length>1 && scores[0].v === scores[1].v;
   state = {
     mode: 'ended', source: state.source,
-    question: state.question, a: state.a, b: state.b,
-    va, vb, endsAt: Date.now(),
-    winner: va === vb ? null : (va > vb ? 'A' : 'B')
+    question: state.question, a: state.a, b: state.b, c: state.c, d: state.d,
+    va, vb, vc, vd,
+    endsAt: Date.now(),
+    winner: tie ? null : top.k
   };
   broadcast(true);
-  console.log(`[résultat] A ${va} — B ${vb} · gagnant : ${state.winner || 'égalité'}`);
+  const resStr = scores.map(s=>`${s.k} ${s.v}`).join(' - ');
+  console.log(`[résultat] ${resStr} · gagnant : ${state.winner || 'égalité'}`);
   setTimeout(() => { if (state.mode === 'ended') idle(); }, 6000);
 }
 
@@ -415,15 +526,22 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
       let dur = 120;
       const m = parts[parts.length - 1].match(/^(\d{1,4})\s*(s|sec)?$/i);
       if (m) { dur = +m[1]; parts.pop(); }
-      const qa = parts[0].slice(0, 140), qa_a = parts[1].slice(0, 60), qa_b = parts[2].slice(0, 60);
-      startDebate({ question: qa, a: qa_a, b: qa_b, duration: dur, source: 'chat' });
+      const qa = parts[0].slice(0, 140);
+      const qa_a = parts[1].slice(0, 60), qa_b = parts[2].slice(0, 60);
+      const qa_c = (parts[3]||'').slice(0,60), qa_d = (parts[4]||'').slice(0,60);
+      startDebate({ question: qa, a: qa_a, b: qa_b, c: qa_c, d: qa_d, duration: dur, source: 'chat' });
       const short = s => (s.length > 28 ? s.slice(0, 27) + '…' : s);
-      chat.say(channel, `[Débat] LANCÉ · ${dur}s · tapez « ${short(qa_a)} » ou « ${short(qa_b)} » (ou !vote A / !vote B)`);
+      let msg = `[Débat] LANCÉ · ${dur}s · ${short(qa_a)} / ${short(qa_b)}`;
+      if (qa_c) msg += ` / ${short(qa_c)}`;
+      if (qa_d) msg += ` / ${short(qa_d)}`;
+      chat.say(channel, msg);
     } else if (c === '!vote') {
       const arg = (rest[0] || '').toLowerCase();
       if (arg === 'a' || arg === '1') tally('A', username);
       else if (arg === 'b' || arg === '2') tally('B', username);
-      else if (state.mode === 'live') chat.say(channel, '[Débat] Vote invalide — utilise !vote A ou !vote B.');
+      else if (arg === 'c' || arg === '3') { if (state.c) tally('C', username); }
+      else if (arg === 'd' || arg === '4') { if (state.d) tally('D', username); }
+      else if (state.mode === 'live') chat.say(channel, '[Débat] Vote invalide — tapez A / B / C / D dans le chat.');
     } else if (c === '!end') {
       if (!isStaff) return;
       finish('chat');
@@ -649,8 +767,10 @@ async function syncSubGoal() {
     console.log('[sub-goal] réponse reçue : total=' + d.total + ', points=' + d.points + ', data.length=' + ((d.data && d.data.length) || 0));
     if (typeof d.total === 'number' && d.total !== goalState.current) {
       goalState.current = d.total;
-      const payload = 'data: ' + JSON.stringify(Object.assign({ goal: 1 }, goalState)) + '\n\n';
-      for (const res of sse) res.write(payload);
+      // check auto-switch avant broadcast (si depasse + next existe)
+      if (!checkAndSwitchGoal()) {
+        broadcastGoal();
+      }
       console.log('[sub-goal] synchronisé : ' + d.total + ' abonnés');
     }
   } catch (e) {
@@ -658,13 +778,42 @@ async function syncSubGoal() {
   }
 }
 
-/* ═══ FOLLOWS (EventSub WebSocket, temps réel) ═══════════════════
+/* ═══ FOLLOWS + SUBS + RAIDS (EventSub WebSocket, temps réel) ═══════════
    Twitch n'envoie PAS les follows via IRC : on utilise EventSub WebSocket
-   (channel.follow v2). Nécessite le scope moderator:read:followers. */
+   (channel.follow v2). On ajoute aussi sub, gift, raid pour garantir les alertes
+   même si tmi.js rate un event. */
 function connectFollows() {
   if (!CLIENT_ID || !POLL_OAUTH || !resolvedBroadcasterId) return;
   let ws = null;
   const token = POLL_OAUTH;
+  async function subscribeAll(sessionId) {
+    const types = [
+      { type: 'channel.follow', version: '2', condition: { broadcaster_user_id: resolvedBroadcasterId, moderator_user_id: resolvedBroadcasterId } },
+      { type: 'channel.subscribe', version: '1', condition: { broadcaster_user_id: resolvedBroadcasterId } },
+      { type: 'channel.subscription.gift', version: '1', condition: { broadcaster_user_id: resolvedBroadcasterId } },
+      { type: 'channel.subscription.message', version: '1', condition: { broadcaster_user_id: resolvedBroadcasterId } },
+      { type: 'channel.raid', version: '1', condition: { to_broadcaster_user_id: resolvedBroadcasterId } }
+    ];
+    for (const sub of types) {
+      try {
+        const r = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
+          method: 'POST',
+          headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: sub.type, version: sub.version,
+            condition: sub.condition,
+            transport: { method: 'websocket', session_id: sessionId }
+          })
+        });
+        if (r.ok) console.log(`[eventsub] ${sub.type} OK`);
+        else {
+          const txt = await r.text().catch(()=> '');
+          console.warn(`[eventsub] ${sub.type} fail ${r.status} ${txt.slice(0,120)}`);
+        }
+      } catch (e) { console.warn(`[eventsub] ${sub.type} error`, e.message); }
+    }
+    console.log('[eventsub] WebSocket connecté — alertes follow/sub/gift/raid actives');
+  }
   function ouvrir(url) {
     try { ws = new WebSocket(url || 'wss://eventsub.wss.twitch.tv:443'); }
     catch (e) { console.warn('[follows] WebSocket indisponible (Node trop ancien) :', e.message); return; }
@@ -674,23 +823,50 @@ function connectFollows() {
       const t = msg.metadata && msg.metadata.message_type;
       if (t === 'session_welcome') {
         const sessionId = msg.payload.session.id;
-        try {
-          await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
-            method: 'POST',
-            headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'channel.follow', version: '2',
-              condition: { broadcaster_user_id: resolvedBroadcasterId, moderator_user_id: resolvedBroadcasterId },
-              transport: { method: 'websocket', session_id: sessionId }
-            })
-          });
-          console.log('[follows] EventSub connecté — les alertes de follow sont actives');
-        } catch (e) { console.warn('[follows] abonnement EventSub refusé :', e.message); }
-      } else if (t === 'notification' && msg.metadata && msg.metadata.subscription_type === 'channel.follow') {
-        const evt = msg.payload.event;
-        const nom = evt.user_name || evt.user_login || 'un viewer';
-        broadcastAlert({ type: 'follow', user: nom });
-        console.log('[alerte] follow : ' + nom);
+        await subscribeAll(sessionId);
+      } else if (t === 'notification') {
+        const subType = msg.metadata && msg.metadata.subscription_type;
+        const evt = msg.payload && msg.payload.event;
+        if (!evt) return;
+        if (subType === 'channel.follow') {
+          const nom = evt.user_name || evt.user_login || 'un viewer';
+          broadcastAlert({ type: 'follow', user: nom });
+          console.log('[alerte] follow : ' + nom);
+        } else if (subType === 'channel.subscribe') {
+          const nom = evt.user_name || evt.user_login || 'viewer';
+          const isResub = (evt.cumulative_months || 0) > 1 || (evt.streak_months || 0) > 0;
+          if (isResub) {
+            broadcastAlert({ type: 'resub', user: nom, stints: (evt.streak_months||1)-1, total: evt.cumulative_months||1, message: evt.message && evt.message.text });
+            console.log('[alerte] resub EventSub : ' + nom);
+          } else {
+            broadcastAlert({ type: 'sub', user: nom, message: evt.message && evt.message.text });
+            console.log('[alerte] sub EventSub : ' + nom);
+          }
+        } else if (subType === 'channel.subscription.gift') {
+          const nom = evt.user_name || evt.user_login || 'viewer';
+          const isAnon = evt.is_anonymous;
+          if (isAnon) {
+            broadcastAlert({ type: 'anon', viewer: evt.total ? String(evt.total)+' subs' : undefined });
+            console.log('[alerte] gift anon EventSub');
+          } else {
+            const total = evt.total || 1;
+            if (total > 1) {
+              broadcastAlert({ type: 'community', user: nom, message: total + ' subs offerts' });
+              console.log('[alerte] community gift EventSub : ' + nom + ' x' + total);
+            } else {
+              broadcastAlert({ type: 'gift', user: nom, viewer: evt.recipient_user_name || 'un spectateur' });
+              console.log('[alerte] gift EventSub : ' + nom);
+            }
+          }
+        } else if (subType === 'channel.subscription.message') {
+          const nom = evt.user_name || evt.user_login || 'viewer';
+          broadcastAlert({ type: 'resub', user: nom, stints: (evt.streak_months||1)-1, total: evt.cumulative_months||1, message: evt.message && evt.message.text });
+          console.log('[alerte] resub message EventSub : ' + nom);
+        } else if (subType === 'channel.raid') {
+          const nom = evt.from_broadcaster_user_name || evt.from_broadcaster_user_login || 'raideur';
+          broadcastAlert({ type: 'raid', user: nom, viewers: evt.viewers || 0 });
+          console.log('[alerte] raid EventSub : ' + nom + ' (' + (evt.viewers||0) + ')');
+        }
       } else if (t === 'session_reconnect') {
         const u = msg.payload.session && msg.payload.session.reconnect_url;
         try { ws.close(); } catch (e) {}
@@ -792,17 +968,175 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    /* — Bruitages (WAV rendus localement) — */
+    /* — Bruitages (WAV/MP3 rendus localement, custom alert-{type}.* inclus) — */
     if (u.pathname.startsWith('/sounds/')) {
       const f = path.join(__dirname, 'sounds', path.basename(u.pathname));
-      fs.readFile(f, (e, b) => e ? send(404, 'text/plain', '404')
-        : send(200, 'audio/wav', b, { 'Cache-Control': 'public, max-age=31536000' }));
+      fs.readFile(f, (e, b) => {
+        if (e) return send(404, 'text/plain', '404');
+        const ext = path.extname(f).toLowerCase();
+        const mime = ext === '.mp3' ? 'audio/mpeg' : ext === '.ogg' ? 'audio/ogg' : ext === '.m4a' ? 'audio/mp4' : ext === '.wav' ? 'audio/wav' : 'audio/wav';
+        send(200, mime, b, { 'Cache-Control': 'public, max-age=60' });
+      });
       return;
     }
 
     /* — API — */
     if (u.pathname === '/api/state' && req.method === 'GET') return send(200, 'application/json', JSON.stringify(state));
     if (u.pathname === '/healthz') return send(200, 'text/plain', 'ok');
+
+    /* — Sons d'alerte custom — */
+    if (u.pathname === '/api/sounds' && req.method === 'GET') {
+      const soundsDir = path.join(__dirname, 'sounds');
+      try { if (!fs.existsSync(soundsDir)) fs.mkdirSync(soundsDir, { recursive: true }); } catch(e){}
+      fs.readdir(soundsDir, (e, files) => {
+        if (e) return send(200, 'application/json', JSON.stringify({ ok: true, files: [], all: [] }));
+        const known = ['follow','sub','resub','gift','raid','prime','anon','community','default'];
+        const list = [];
+        const all = files.map(f => f);
+        for (const f of files) {
+          const low = f.toLowerCase();
+          // supporte alert-xxx.mp3 et aussi xxx.mp3 direct
+          let type = null;
+          if (low.startsWith('alert-')) {
+            type = low.replace(/^alert-/, '').replace(/\.[^.]+$/, '');
+          } else {
+            // si fichier contient un type connu sans prefix alert-
+            for (const k of known) {
+              if (low.includes(k)) { type = k; break; }
+            }
+          }
+          if (!type) continue;
+          // normalise
+          type = type.replace(/[^a-z]/g,'');
+          if (!known.includes(type)) continue;
+          list.push({ file: f, type });
+        }
+        // dedup par type (garde premier)
+        const seen = new Set();
+        const dedup = [];
+        for (const it of list) {
+          if (!seen.has(it.type)) { seen.add(it.type); dedup.push(it); }
+        }
+        send(200, 'application/json', JSON.stringify({ ok: true, files: dedup, all }));
+      });
+      return;
+    }
+    if (u.pathname === '/api/sounds' && req.method === 'POST') {
+      // Accepte JSON {type, data: base64, ext} ou raw upload via FormData simplifié (on parse en buffer)
+      const chunks = [];
+      let total = 0;
+      req.on('data', c => { chunks.push(c); total += c.length; if (total > 8 * 1024 * 1024) req.destroy(); });
+      req.on('end', () => {
+        try {
+          const buf = Buffer.concat(chunks);
+          const ctype = (req.headers['content-type'] || '').toLowerCase();
+          if (ctype.includes('application/json')) {
+            const j = JSON.parse(buf.toString('utf8'));
+            const allowed = ['follow','sub','resub','gift','raid','prime','anon','community','default'];
+            let type = String(j.type || '').toLowerCase().replace(/[^a-z]/g, '');
+            if (!allowed.includes(type)) type = 'default';
+            if (!j.data) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'data manquant' }));
+            const raw = Buffer.from(j.data, 'base64');
+            if (raw.length < 100) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'fichier trop petit' }));
+            let ext = String(j.ext || 'mp3').toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (!['mp3','wav','ogg','m4a','mp4','webm'].includes(ext)) ext = 'mp3';
+            const outPath = path.join(__dirname, 'sounds', `alert-${type}.${ext}`);
+            // remove other ext for same type
+            try { fs.readdirSync(path.join(__dirname, 'sounds')).forEach(f => { if (f.startsWith(`alert-${type}.`) && f !== `alert-${type}.${ext}`) fs.unlinkSync(path.join(__dirname, 'sounds', f)); }); } catch(e){}
+            fs.writeFileSync(outPath, raw);
+            console.log(`[sons] custom upload alert-${type}.${ext} (${(raw.length/1024).toFixed(1)} Ko)`);
+            return send(200, 'application/json', JSON.stringify({ ok: true, file: `alert-${type}.${ext}` }));
+          } else {
+            // multipart minimal: on cherche type en query ?type=
+            const qtype = (u.searchParams.get('type') || 'default').toLowerCase().replace(/[^a-z]/g, '');
+            const allowed = ['follow','sub','resub','gift','raid','prime','anon','community','default'];
+            let type = allowed.includes(qtype) ? qtype : 'default';
+            // try to extract filename extension from content-type
+            let ext = 'mp3';
+            if (ctype.includes('wav')) ext = 'wav';
+            else if (ctype.includes('ogg')) ext = 'ogg';
+            else if (ctype.includes('mpeg') || ctype.includes('mp3')) ext = 'mp3';
+            // if multipart, try to find file bytes (naive: take whole body after double CRLF if present)
+            let raw = buf;
+            const doubleCRLF = buf.indexOf('\r\n\r\n');
+            if (ctype.includes('multipart') && doubleCRLF !== -1) {
+              const start = doubleCRLF + 4;
+              const endMarker = buf.lastIndexOf('\r\n--');
+              raw = endMarker > start ? buf.subarray(start, endMarker) : buf.subarray(start);
+            }
+            if (raw.length < 100) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'fichier trop petit' }));
+            const outPath = path.join(__dirname, 'sounds', `alert-${type}.${ext}`);
+            try { fs.readdirSync(path.join(__dirname, 'sounds')).forEach(f => { if (f.startsWith(`alert-${type}.`) && f !== `alert-${type}.${ext}`) fs.unlinkSync(path.join(__dirname, 'sounds', f)); }); } catch(e){}
+            fs.writeFileSync(outPath, raw);
+            console.log(`[sons] custom upload alert-${type}.${ext} (${(raw.length/1024).toFixed(1)} Ko) raw`);
+            return send(200, 'application/json', JSON.stringify({ ok: true, file: `alert-${type}.${ext}` }));
+          }
+        } catch (e) {
+          console.warn('[sons] upload error', e.message);
+          return send(400, 'application/json', JSON.stringify({ ok: false, err: e.message }));
+        }
+      });
+      return;
+    }
+    if (u.pathname === '/api/sounds' && req.method === 'DELETE') {
+      const type = (u.searchParams.get('type') || '').toLowerCase().replace(/[^a-z]/g, '');
+      if (!type) return send(400, 'application/json', JSON.stringify({ ok: false }));
+      try {
+        fs.readdirSync(path.join(__dirname, 'sounds')).forEach(f => { if (f.startsWith(`alert-${type}.`)) fs.unlinkSync(path.join(__dirname, 'sounds', f)); });
+      } catch(e){}
+      return send(200, 'application/json', JSON.stringify({ ok: true }));
+    }
+
+    /* — Alert background photo (IMG_0607.jpg / alert-photo.jpg) — */
+    if (u.pathname === '/api/alert-bg' && req.method === 'GET') {
+      const assetsDir = path.join(__dirname, 'assets');
+      try {
+        const files = fs.readdirSync(assetsDir).filter(f => /^(IMG_0607|alert-photo|alert-bg)\.(jpg|jpeg|png)$/i.test(f)).map(f => {
+          try { const st = fs.statSync(path.join(assetsDir, f)); return { file: f, size: st.size, mtime: st.mtime.toISOString() }; } catch(e){ return { file: f }; }
+        });
+        return send(200, 'application/json', JSON.stringify({ ok: true, files }));
+      } catch(e) { return send(200, 'application/json', JSON.stringify({ ok: true, files: [] })); }
+    }
+    if (u.pathname === '/api/alert-bg' && req.method === 'POST') {
+      const chunks = [];
+      let total = 0;
+      req.on('data', c => { chunks.push(c); total += c.length; if (total > 12 * 1024 * 1024) req.destroy(); });
+      req.on('end', () => {
+        try {
+          const buf = Buffer.concat(chunks);
+          const ctype = (req.headers['content-type'] || '').toLowerCase();
+          let raw, ext = 'jpg';
+          if (ctype.includes('application/json')) {
+            const j = JSON.parse(buf.toString('utf8'));
+            if (!j.data) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'data manquant' }));
+            raw = Buffer.from(j.data, 'base64');
+            ext = String(j.ext || 'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
+            if (!['jpg','jpeg','png'].includes(ext)) ext = 'jpg';
+          } else {
+            raw = buf;
+            if (ctype.includes('png')) ext = 'png';
+          }
+          if (raw.length < 500) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'fichier trop petit' }));
+          const out1 = path.join(__dirname, 'assets', `alert-photo.${ext}`);
+          const out2 = path.join(__dirname, 'assets', `IMG_0607.${ext}`);
+          // save both names for compatibility
+          fs.writeFileSync(out1, raw);
+          fs.writeFileSync(out2, raw);
+          console.log(`[alert-bg] photo custom ${raw.length/1024|0} Ko → ${out1}`);
+          return send(200, 'application/json', JSON.stringify({ ok: true, file: `alert-photo.${ext}` }));
+        } catch(e) {
+          return send(400, 'application/json', JSON.stringify({ ok: false, err: e.message }));
+        }
+      });
+      return;
+    }
+    if (u.pathname === '/api/alert-bg' && req.method === 'DELETE') {
+      try {
+        const assetsDir = path.join(__dirname, 'assets');
+        fs.readdirSync(assetsDir).forEach(f => { if (/^(IMG_0607|alert-photo)\.(jpg|jpeg|png)$/i.test(f)) fs.unlinkSync(path.join(assetsDir, f)); });
+      } catch(e){}
+      return send(200, 'application/json', JSON.stringify({ ok: true }));
+    }
 
     if (u.pathname === '/api/vote' && req.method === 'POST') {
       readBody().then(d => {
@@ -826,9 +1160,9 @@ const server = http.createServer((req, res) => {
     if (u.pathname === '/api/debate' && req.method === 'POST' && authOK) {
       readBody().then(d => {
         try {
-          const { question, a, b, duration } = JSON.parse(d || '{}');
+          const { question, a, b, c, d: dChoice, duration } = JSON.parse(d || '{}');
           if (!question || !a || !b) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'question, a, b requis' }));
-          startDebate({ question, a, b, duration, source: 'api' });
+          startDebate({ question, a, b, c, d: dChoice, duration, source: 'api' });
           send(200, 'application/json', JSON.stringify({ ok: true }));
         } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false })); }
       });
@@ -897,11 +1231,16 @@ const server = http.createServer((req, res) => {
       readBody().then(d => {
         try {
           const p = JSON.parse(d || '{}');
-          if (p.label !== undefined) goalState.label = String(p.label).slice(0, 24);
+          if (p.label !== undefined) { goalState.label = String(p.label).slice(0, 24); appConfig.subGoalLabel = goalState.label; }
           if (p.current !== undefined) goalState.current = Math.max(0, Math.round(+p.current || 0));
-          if (p.target !== undefined) goalState.target = Math.max(1, Math.round(+p.target || 1));
-          const payload = 'data: ' + JSON.stringify(Object.assign({ goal: 1 }, goalState)) + '\n\n';
-          for (const res of sse) res.write(payload);
+          if (p.target !== undefined) { goalState.target = Math.max(1, Math.round(+p.target || 1)); appConfig.subGoalTarget = goalState.target; }
+          if (p.nextLabel !== undefined) { goalState.nextLabel = String(p.nextLabel).slice(0, 24); appConfig.subGoalNextLabel = goalState.nextLabel; }
+          if (p.nextTarget !== undefined) { goalState.nextTarget = Math.max(0, Math.round(+p.nextTarget || 0)); appConfig.subGoalNextTarget = goalState.nextTarget; }
+          if (p.clearHistory === true) { goalState.history = []; appConfig.subGoalHistory = []; }
+          if (p.history !== undefined && Array.isArray(p.history)) { goalState.history = p.history.slice(-10); appConfig.subGoalHistory = goalState.history.slice(); }
+          saveConfig();
+          // si on depasse deja, switch immediat
+          if (!checkAndSwitchGoal()) broadcastGoal();
           send(200, 'application/json', JSON.stringify(goalState));
         } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false })); }
       });
@@ -927,34 +1266,112 @@ const server = http.createServer((req, res) => {
             const payload = 'data: ' + JSON.stringify({
               cfg: 1,
               chatTitle: p.chatTitle !== undefined ? String(p.chatTitle).slice(0, 40) : appConfig.chatTitle,
-              accent: p.accent !== undefined ? String(p.accent).slice(0, 16) : appConfig.accent
+              accent: p.accent !== undefined ? String(p.accent).slice(0, 16) : appConfig.accent,
+              velocity: 1,
+              equilibriumMPM: p.equilibriumMPM !== undefined ? Math.max(1, Math.round(+p.equilibriumMPM)) : appConfig.velocityEquilibrium,
+              climbSensitivity: p.climbSensitivity !== undefined ? +p.climbSensitivity : appConfig.velocityClimb,
+              decayRate: p.decayRate !== undefined ? +p.decayRate : appConfig.velocityDecay,
+              holdDurationSeconds: p.holdDurationSeconds !== undefined ? Math.round(+p.holdDurationSeconds) : appConfig.velocityHold,
+              barWidth: p.barWidth !== undefined ? Math.round(+p.barWidth) : appConfig.velocityBarWidth,
+              barHeight: p.barHeight !== undefined ? Math.round(+p.barHeight) : appConfig.velocityBarHeight,
+              showMetrics: p.showMetrics !== undefined ? !!p.showMetrics : appConfig.velocityShowMetrics,
+              velocityEnabled: p.velocityEnabled !== undefined ? !!p.velocityEnabled : appConfig.velocityEnabled,
+              goalThreshold: p.goalThreshold !== undefined ? Math.round(+p.goalThreshold) : appConfig.velocityGoalThreshold,
+              goalDurationMinutes: p.goalDurationMinutes !== undefined ? Math.round(+p.goalDurationMinutes) : appConfig.velocityGoalDurationMinutes,
+              finHour: p.finHour !== undefined ? Math.round(+p.finHour) : appConfig.velocityFinHour,
+              finMinute: p.finMinute !== undefined ? Math.round(+p.finMinute) : appConfig.velocityFinMinute,
+              finEnabled: p.finEnabled !== undefined ? !!p.finEnabled : appConfig.velocityFinEnabled
             }) + '\n\n';
             for (const res of sse) res.write(payload);
             return send(200, 'application/json', JSON.stringify({ ok: true, preview: true }));
           }
-          if (p.subGoalLabel !== undefined) appConfig.subGoalLabel = String(p.subGoalLabel).slice(0, 24);
-          if (p.subGoalTarget !== undefined) appConfig.subGoalTarget = Math.max(1, Math.round(+p.subGoalTarget || 1));
+          if (p.subGoalLabel !== undefined) { appConfig.subGoalLabel = String(p.subGoalLabel).slice(0, 24); goalState.label = appConfig.subGoalLabel; }
+          if (p.subGoalTarget !== undefined) { appConfig.subGoalTarget = Math.max(1, Math.round(+p.subGoalTarget || 1)); goalState.target = appConfig.subGoalTarget; }
           if (p.subGoalAuto !== undefined) appConfig.subGoalAuto = !!p.subGoalAuto;
           if (p.subGoalManual !== undefined) appConfig.subGoalManual = Math.max(0, Math.round(+p.subGoalManual || 0));
+          if (p.subGoalNextLabel !== undefined) { appConfig.subGoalNextLabel = String(p.subGoalNextLabel).slice(0, 24); goalState.nextLabel = appConfig.subGoalNextLabel; }
+          if (p.subGoalNextTarget !== undefined) { appConfig.subGoalNextTarget = Math.max(0, Math.round(+p.subGoalNextTarget || 0)); goalState.nextTarget = appConfig.subGoalNextTarget; }
+          if (p.subGoalHistory !== undefined && Array.isArray(p.subGoalHistory)) { appConfig.subGoalHistory = p.subGoalHistory.slice(-10); goalState.history = appConfig.subGoalHistory.slice(); }
+          if (p.clearHistory === true) { appConfig.subGoalHistory = []; goalState.history = []; }
           if (p.chatTitle !== undefined) appConfig.chatTitle = String(p.chatTitle).slice(0, 40);
           if (p.accent !== undefined) appConfig.accent = String(p.accent).slice(0, 16);
+          if (p.velocityEquilibrium !== undefined) appConfig.velocityEquilibrium = Math.max(1, Math.round(+p.velocityEquilibrium || 20));
+          if (p.equilibriumMPM !== undefined) appConfig.velocityEquilibrium = Math.max(1, Math.round(+p.equilibriumMPM || 20));
+          if (p.velocityClimb !== undefined) appConfig.velocityClimb = Math.max(0.05, Math.min(5, +p.velocityClimb || 0.65));
+          if (p.climbSensitivity !== undefined) appConfig.velocityClimb = Math.max(0.05, Math.min(5, +p.climbSensitivity || 0.65));
+          if (p.velocityDecay !== undefined) appConfig.velocityDecay = Math.max(0.02, Math.min(5, +p.velocityDecay || 0.14));
+          if (p.decayRate !== undefined) appConfig.velocityDecay = Math.max(0.02, Math.min(5, +p.decayRate || 0.14));
+          if (p.velocityHold !== undefined) appConfig.velocityHold = Math.max(5, Math.min(600, Math.round(+p.velocityHold || 120)));
+          if (p.holdDurationSeconds !== undefined) appConfig.velocityHold = Math.max(5, Math.min(600, Math.round(+p.holdDurationSeconds || 120)));
+          if (p.velocityHoldDurationSeconds !== undefined) appConfig.velocityHold = Math.max(5, Math.min(600, Math.round(+p.velocityHoldDurationSeconds || 120)));
+          if (p.velocityBarWidth !== undefined) appConfig.velocityBarWidth = Math.max(12, Math.min(40, Math.round(+p.velocityBarWidth || 30)));
+          if (p.barWidth !== undefined) appConfig.velocityBarWidth = Math.max(12, Math.min(40, Math.round(+p.barWidth || 30)));
+          if (p.velocityBarHeight !== undefined) appConfig.velocityBarHeight = Math.max(280, Math.min(900, Math.round(+p.velocityBarHeight || 700)));
+          if (p.barHeight !== undefined) appConfig.velocityBarHeight = Math.max(280, Math.min(900, Math.round(+p.barHeight || 700)));
+          if (p.velocityShowMetrics !== undefined) appConfig.velocityShowMetrics = !!p.velocityShowMetrics;
+          if (p.showMetrics !== undefined) appConfig.velocityShowMetrics = !!p.showMetrics;
+          if (p.velocityEnabled !== undefined) appConfig.velocityEnabled = !!p.velocityEnabled;
+          if (p.velocityGoalThreshold !== undefined) appConfig.velocityGoalThreshold = Math.max(10, Math.min(99, Math.round(+p.velocityGoalThreshold || 90)));
+          if (p.goalThreshold !== undefined) appConfig.velocityGoalThreshold = Math.max(10, Math.min(99, Math.round(+p.goalThreshold || 90)));
+          if (p.velocityGoalDurationMinutes !== undefined) appConfig.velocityGoalDurationMinutes = Math.max(1, Math.min(120, Math.round(+p.velocityGoalDurationMinutes || 15)));
+          if (p.goalDurationMinutes !== undefined) appConfig.velocityGoalDurationMinutes = Math.max(1, Math.min(120, Math.round(+p.goalDurationMinutes || 15)));
+          if (p.goalDuration !== undefined) appConfig.velocityGoalDurationMinutes = Math.max(1, Math.min(120, Math.round(+p.goalDuration || 15)));
+          if (p.velocityFinHour !== undefined) appConfig.velocityFinHour = Math.max(0, Math.min(23, Math.round(+p.velocityFinHour || 21)));
+          if (p.finHour !== undefined) appConfig.velocityFinHour = Math.max(0, Math.min(23, Math.round(+p.finHour || 21)));
+          if (p.velocityFinMinute !== undefined) appConfig.velocityFinMinute = Math.max(0, Math.min(59, Math.round(+p.velocityFinMinute || 30)));
+          if (p.finMinute !== undefined) appConfig.velocityFinMinute = Math.max(0, Math.min(59, Math.round(+p.finMinute || 30)));
+          if (p.velocityFinEnabled !== undefined) appConfig.velocityFinEnabled = !!p.velocityFinEnabled;
+          if (p.finEnabled !== undefined) appConfig.velocityFinEnabled = !!p.finEnabled;
           saveConfig();
 
           // met à jour le sub goal (mode manuel = valeur manuelle)
           goalState.label = appConfig.subGoalLabel;
           goalState.target = appConfig.subGoalTarget;
+          goalState.nextLabel = appConfig.subGoalNextLabel || '';
+          goalState.nextTarget = appConfig.subGoalNextTarget || 0;
+          goalState.history = Array.isArray(appConfig.subGoalHistory) ? appConfig.subGoalHistory.slice(-10) : [];
           if (!appConfig.subGoalAuto) goalState.current = appConfig.subGoalManual;
 
-          // diffuse au widget : sub goal + titre du chat + accent
+          // si on depasse deja et next existe, switch auto
+          checkAndSwitchGoal();
+
+          // diffuse au widget : sub goal + titre du chat + accent + velocite V5
           const payload = 'data: ' + JSON.stringify({
             goal: 1, ...goalState,
-            cfg: 1, chatTitle: appConfig.chatTitle, accent: appConfig.accent
+            cfg: 1, chatTitle: appConfig.chatTitle, accent: appConfig.accent,
+            velocity: 1,
+            equilibriumMPM: appConfig.velocityEquilibrium,
+            climbSensitivity: appConfig.velocityClimb,
+            decayRate: appConfig.velocityDecay,
+            holdDurationSeconds: appConfig.velocityHold,
+            barWidth: appConfig.velocityBarWidth,
+            barHeight: appConfig.velocityBarHeight,
+            showMetrics: appConfig.velocityShowMetrics,
+            velocityEnabled: appConfig.velocityEnabled,
+            goalThreshold: appConfig.velocityGoalThreshold,
+            goalDurationMinutes: appConfig.velocityGoalDurationMinutes,
+            holdDurationSeconds: appConfig.velocityHold,
+            finHour: appConfig.velocityFinHour,
+            finMinute: appConfig.velocityFinMinute,
+            finEnabled: appConfig.velocityFinEnabled
           }) + '\n\n';
           for (const res of sse) res.write(payload);
           send(200, 'application/json', JSON.stringify({ ok: true, config: appConfig, goal: goalState }));
         } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false })); }
       });
       return;
+    }
+
+    /* — VELOCITY RESET (panneau admin) — */
+    if (u.pathname === '/api/velocity/reset' && req.method === 'POST') {
+      const payload = 'data: ' + JSON.stringify({ velocityReset: 1 }) + '\n\n';
+      for (const res of sse) res.write(payload);
+      return send(200, 'application/json', JSON.stringify({ ok: true }));
+    }
+    if (u.pathname === '/api/velocity/validate' && req.method === 'POST') {
+      const payload = 'data: ' + JSON.stringify({ velocityValidate: 1 }) + '\n\n';
+      for (const res of sse) res.write(payload);
+      return send(200, 'application/json', JSON.stringify({ ok: true }));
     }
 
     /* — STATUT (panneau) : état des connexions — */
@@ -975,12 +1392,15 @@ const server = http.createServer((req, res) => {
          le panneau affiche « À jour » et ne retélécharge rien. — */
     if (u.pathname === '/api/version' && req.method === 'GET') {
       (async () => {
+        if (u.searchParams.get('force') === '1') remoteCache = { at: 0, data: null };
         const local = readLocalVersion();
         let latest = null, upToDate = null, checkError = null;
         try {
           latest = await fetchRemoteVersion();
           if (local.num > 0 && latest.num > 0) upToDate = local.num >= latest.num;
-        } catch (e) { checkError = 'Vérification impossible (pas d\'internet ?)'; }
+        } catch (e) { 
+          checkError = e.name === 'AbortError' ? 'Timeout – pas d\'internet ?' : 'Vérification impossible (pas d\'internet ? – ' + (e.message||'').slice(0,60) + ')';
+        }
         send(200, 'application/json', JSON.stringify({
           current: local.display, currentNum: local.num,
           latest: latest ? latest.display : null, latestNum: latest ? latest.num : null,
@@ -1013,32 +1433,71 @@ const server = http.createServer((req, res) => {
     }
 
     /* — MISE À JOUR (panneau) : télécharge la dernière version depuis GitHub
-         et remplace les fichiers. Le pont redémarre ensuite via /api/restart. — */
+         et remplace les fichiers. Redémarre automatiquement après. — */
     if (u.pathname === '/api/update' && req.method === 'POST') {
-      execFile('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(__dirname, 'update.ps1')],
-        { timeout: 300000, windowsHide: true },
-        (err, stdout, stderr) => {
-          if (err) return send(500, 'application/json', JSON.stringify({ ok: false, error: String(stderr || err.message || 'échec').trim().slice(0, 300) }));
-          const out = String(stdout || '').trim();
-          if (out.startsWith('ERREUR')) return send(500, 'application/json', JSON.stringify({ ok: false, error: out.slice(0, 300) }));
-          /* MAJ réussie : on relit la version installée et on horodate. */
-          const installed = readLocalVersion();
-          recordUpdate(installed.display);
-          remoteCache = { at: 0, data: null };   // force une revérification distante
-          send(200, 'application/json', JSON.stringify({ ok: true, version: installed.display, lastUpdate: updateInfo.updatedAt }));
-        });
+      const isWin = process.platform === 'win32';
+      if (isWin) {
+        execFile('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(__dirname, 'update.ps1')],
+          { timeout: 300000, windowsHide: true },
+          (err, stdout, stderr) => {
+            if (err) return send(500, 'application/json', JSON.stringify({ ok: false, error: String(stderr || err.message || 'échec').trim().slice(0, 500) }));
+            const out = String(stdout || '').trim();
+            if (out.startsWith('ERREUR')) return send(500, 'application/json', JSON.stringify({ ok: false, error: out.slice(0, 500) }));
+            const installed = readLocalVersion();
+            recordUpdate(installed.display);
+            remoteCache = { at: 0, data: null };
+            send(200, 'application/json', JSON.stringify({ ok: true, version: installed.display, lastUpdate: updateInfo.updatedAt, restart: true }));
+            // redémarrage auto robuste : tue ancien port puis relance après 2s
+            setTimeout(() => {
+              try {
+                const escDir = __dirname.replace(/"/g,'""');
+                const escNode = process.execPath.replace(/"/g,'""');
+                const cmd = `
+                  Start-Sleep -Seconds 2
+                  try{ $c=Get-NetTCPConnection -LocalPort ${PORT} -State Listen -ErrorAction SilentlyContinue | Select -ExpandProperty OwningProcess -Unique; if($c){ Stop-Process -Id $c -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1 } }catch{}
+                  Start-Process -FilePath "${escNode}" -ArgumentList "server.js" -WorkingDirectory "${escDir}" -WindowStyle Hidden
+                `;
+                const child = spawn('powershell', ['-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-Command',cmd], { detached:true, stdio:'ignore', windowsHide:true });
+                child.unref();
+                console.log('[update] redemarrage programme');
+              } catch(e){ console.warn('[update] restart fail', e.message); }
+              setTimeout(()=>process.exit(0), 800);
+            }, 600);
+          });
+      } else {
+        const installed = readLocalVersion();
+        recordUpdate(installed.display);
+        remoteCache = { at: 0, data: null };
+        send(200, 'application/json', JSON.stringify({ ok: true, version: installed.display, lastUpdate: updateInfo.updatedAt, restart: false, note: 'MAJ simulee (Linux)' }));
+      }
       return;
     }
 
     /* — REDÉMARRAGE du pont seul (PAS OBS) — relance node puis s'arrête — */
     if (u.pathname === '/api/restart' && req.method === 'POST') {
-      send(200, 'application/json', JSON.stringify({ ok: true }));
-      const nodePath = process.execPath;
-      const cmd = 'Start-Sleep -Seconds 1; Start-Process -FilePath "' + nodePath + '" -ArgumentList "server.js" -WorkingDirectory "' + __dirname + '" -WindowStyle Hidden';
-      const ps = spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-Command', cmd],
-        { detached: true, stdio: 'ignore', windowsHide: true });
-      ps.unref();
-      setTimeout(() => process.exit(0), 600);
+      send(200, 'application/json', JSON.stringify({ ok: true, restarting: true }));
+      setTimeout(() => {
+        try {
+          const escDir = __dirname.replace(/"/g,'""');
+          const escNode = process.execPath.replace(/"/g,'""');
+          const cmd = `
+            Start-Sleep -Seconds 2
+            try{ $c=Get-NetTCPConnection -LocalPort ${PORT} -State Listen -ErrorAction SilentlyContinue | Select -ExpandProperty OwningProcess -Unique; if($c){ Stop-Process -Id $c -Force -ErrorAction SilentlyContinue; Write-Host "Ancien pont tue $c"; Start-Sleep -Seconds 1 } }catch{}
+            Start-Process -FilePath "${escNode}" -ArgumentList "server.js" -WorkingDirectory "${escDir}" -WindowStyle Hidden
+            Write-Host "Nouveau pont lance"
+          `;
+          const ps = spawn('powershell', ['-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-Command',cmd], { detached:true, stdio:'ignore', windowsHide:true });
+          ps.unref();
+          console.log('[restart] redemarrage programme via powershell');
+        } catch(e){
+          console.warn('[restart] powershell fail, fallback direct spawn', e.message);
+          try {
+            const child = spawn(process.execPath, ['server.js'], { cwd: __dirname, detached:true, stdio:'ignore', windowsHide:true });
+            child.unref();
+          } catch(e2){}
+        }
+        setTimeout(() => process.exit(0), 1000);
+      }, 300);
       return;
     }
 
@@ -1057,5 +1516,26 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`  Sub goal → ${CLIENT_ID && POLL_OAUTH ? 'auto (vrai nombre de subs)' : 'manuel (POST /api/goal)'}`);
   console.log(`  Follows → ${CLIENT_ID && POLL_OAUTH ? 'EventSub (alertes temps réel)' : 'inactif (token manquant)'}`);
   console.log('  ─────────────────────────────────────────────────');
-  checkToken();  // valide le token et affiche ses droits
+  checkToken();
+});
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.warn(`[serveur] port ${PORT} occupe – tentative de recuperation dans 2s...`);
+    setTimeout(() => {
+      try {
+        // essaie de fermer et re-ecouter
+        server.close(() => {
+          setTimeout(() => {
+            server.listen(PORT, '0.0.0.0');
+          }, 1000);
+        });
+      } catch(e){
+        setTimeout(() => {
+          try{ server.listen(PORT, '0.0.0.0'); }catch(e2){}
+        }, 2000);
+      }
+    }, 2000);
+  } else {
+    console.error('[serveur] erreur', err);
+  }
 });
