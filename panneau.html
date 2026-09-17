@@ -563,15 +563,17 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
       </section>
       <section class="tab" id="tab-objectif">
         <div class="card">
-          <h2>SUB GOAL ACTUEL</h2>
-          <p class="sub">Compteur sous le chat. Auto suit le vrai nombre de subs. Ordre petit→grand, actuel en haut, checkés au-dessus.</p>
-          <div class="field">
-            <label>Nom actuel</label>
-            <input id="goalLabel" type="text" placeholder="SUB GOAL">
-          </div>
-          <div class="field">
-            <label>Objectif actuel (ex: 5)</label>
-            <input id="goalTarget" type="number" min="1">
+          <h2>SUB GOAL – COMPTEUR</h2>
+          <p class="sub">Le compteur suit le nombre réel de subs. L'objectif actuel est toujours le plus proche au-dessus du nombre actuel. Ex: 2 subs, objectifs 5 et 10 → actuel = 5.</p>
+          <div class="row grow">
+            <div class="field" style="margin-top:0">
+              <label>Nom actuel (affiché)</label>
+              <input id="goalLabel" type="text" placeholder="SUB GOAL">
+            </div>
+            <div class="field" style="margin-top:0">
+              <label>Objectif actuel (ex: 5)</label>
+              <input id="goalTarget" type="number" min="1">
+            </div>
           </div>
           <div class="field">
             <label>Mode compteur</label>
@@ -585,33 +587,46 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
             <div class="switch__hint" id="goalAutoHint">En auto, le compteur suit Twitch. En manuel, tu fixes la valeur.</div>
           </div>
           <div class="field" id="rowGoalManual" style="display:none">
-            <label>Valeur manuelle</label>
+            <label>Valeur manuelle (mode manuel uniquement)</label>
             <input id="goalManual" type="number" min="0">
           </div>
-        </div>
-        <div class="card" style="background:#10101a;border-color:var(--line2)">
-          <h2>🎯 PROCHAIN OBJECTIF (PRÉPARÉ À L'AVANCE)</h2>
-          <p class="sub">Affiché en dessous du goal actuel, non checké, avec tiret séparateur. Quand l'objectif actuel est dépassé (ex: 5/5 → 6 subs), switch auto vers celui-ci, et l'ancien passe en historique avec check ✓ au-dessus.</p>
-          <div class="row grow">
-            <div class="field" style="margin-top:0">
-              <label>Nom prochain (optionnel)</label>
-              <input id="goalNextLabel" type="text" placeholder="SUB GOAL 2 ou vide = même nom">
-            </div>
-            <div class="field" style="margin-top:0">
-              <label>Objectif prochain (ex: 6 = +1)</label>
-              <input id="goalNextTarget" type="number" min="0" placeholder="0 = aucun">
-            </div>
-          </div>
-          <div class="note" style="margin-top:8px">Si prochain = 0, quand tu dépasses l'objectif actuel, il ne se passe rien (reste sur même goal, barre 100%+). Si prochain >0, switch automatique.</div>
           <div class="row" style="margin-top:12px">
-            <button class="btn primary" id="btnSauverGoal">ENREGISTRER TOUT</button>
+            <button class="btn primary" id="btnSauverGoal">ENREGISTRER COMPTEUR</button>
             <button class="btn ghost small" id="btnClearHistory">EFFACER HISTORIQUE ✓</button>
           </div>
-          <div id="goalHistoryPreview" class="note" style="margin-top:10px"></div>
         </div>
-        <div class="card">
-          <h2>APERÇU LIVE</h2>
+
+        <div class="card" style="background:#10101a;border-color:var(--line2)">
+          <h2>🎯 FILE D'ATTENTE D'OBJECTIFS</h2>
+          <p class="sub">Tous les objectifs triés petit → grand. Le plus proche au-dessus du nombre actuel devient l'actuel. Ceux en dessous passent en historique ✓. Ajoute et supprime à volonté – le chat grandit vers le haut, espace messages toujours 460px.</p>
+
+          <div id="goalQueueList" style="display:flex;flex-direction:column;gap:6px;margin-top:10px"></div>
+
+          <div class="row grow" style="margin-top:14px;align-items:flex-end">
+            <div class="field" style="margin-top:0;flex:1">
+              <label>Nom nouvel objectif</label>
+              <input id="goalNewLabel" type="text" placeholder="SUB GOAL">
+            </div>
+            <div class="field" style="margin-top:0;width:120px">
+              <label>Cible</label>
+              <input id="goalNewTarget" type="number" min="1" placeholder="10">
+            </div>
+            <button class="btn primary small" id="btnAddGoal" style="height:32px;margin-bottom:6px">AJOUTER</button>
+          </div>
+          <div class="note" style="margin-top:8px">Ex: tu as 2 subs, tu ajoutes 5 et 10 → actuel = 5 (le plus proche au-dessus). Quand tu passes à 5, 5 passe en ✓ et actuel devient 10. Supprime un objectif pour le retirer de la file et de l'historique.</div>
+
+          <div id="goalHistoryPreview" class="note" style="margin-top:12px"></div>
+        </div>
+
+        <div class="card" style="background:#0f0f12;border-color:var(--line2)">
+          <h2>APERÇU LIVE – LOGIQUE PLUS PROCHE</h2>
           <div id="goalLivePreview" class="note">Chargement...</div>
+        </div>
+
+        <!-- compat ancien prochain objectif (cache, pour API) -->
+        <div style="display:none">
+          <input id="goalNextLabel" type="text">
+          <input id="goalNextTarget" type="number">
         </div>
       </section>
       <section class="tab" id="tab-ambiance">
@@ -1085,19 +1100,63 @@ function updateGoalAutoUI(){
 const goalAutoEl=$('goalAuto');
 if(goalAutoEl)goalAutoEl.addEventListener('change',updateGoalAutoUI);
 function renderGoalPreview(s){
-  const el=$('goalLivePreview'), histEl=$('goalHistoryPreview');
+  const el=$('goalLivePreview'), histEl=$('goalHistoryPreview'), queueEl=$('goalQueueList');
   if(!el) return;
-  const g=s.goal||s;
-  const cur=g.current||0, tgt=g.target||1;
+  const g=s.goal||s.config||s;
+  const cur=g.current!=null?g.current:(s.goal? s.goal.current:0);
+  const tgt=g.target||1;
+  const label=g.label||'SUB GOAL';
+  const history=Array.isArray(g.history)?g.history.slice():[];
+  const queue=Array.isArray(g.queue)?g.queue.slice().sort((a,b)=>a.target-b.target): (g.subGoalQueue? g.subGoalQueue.slice().sort((a,b)=>a.target-b.target):[]);
+  const upcoming=Array.isArray(g.upcoming)?g.upcoming.slice().sort((a,b)=>a.target-b.target):[];
   const nextLabel=g.nextLabel||'', nextTarget=g.nextTarget||0;
-  const history=g.history||[];
-  let html='Actuel: <b>'+esc(g.label||'SUB GOAL')+'</b> '+cur+' / '+tgt+' ('+Math.min(100,Math.round(cur/tgt*100))+'%)';
-  if(nextTarget>0) html+='<br>Prochain: <b>'+esc(nextLabel||g.label||'NEXT')+'</b> 0 / '+nextTarget+' (en dessous, non checké, tiret —)';
-  else html+='<br>Prochain: <i>aucun – dépassement ne déclenche rien</i>';
+
+  // queue list UI
+  if(queueEl){
+    if(queue.length===0){
+      queueEl.innerHTML='<div class="note">Aucun objectif – ajoute 5 et 10 par ex.</div>';
+    }else{
+      queueEl.innerHTML='';
+      for(const q of queue){
+        const isDone = q.target <= cur;
+        const isCurrent = !isDone && q.target===tgt;
+        const isUpcoming = !isDone && !isCurrent;
+        const row=document.createElement('div');
+        row.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,.04);border:1px solid var(--line2);border-radius:4px;font-size:11px';
+        const badge=document.createElement('span');
+        badge.style.cssText='flex:none;padding:2px 6px;border-radius:4px;font-weight:800;font-size:9px;letter-spacing:.06em';
+        if(isDone){ badge.textContent='✓ FAIT'; badge.style.background='rgba(145,70,255,.25)'; badge.style.color='#C79BFF'; }
+        else if(isCurrent){ badge.textContent='ACTUEL'; badge.style.background='rgba(255,255,255,.12)'; badge.style.color='#fff'; }
+        else { badge.textContent='À VENIR'; badge.style.background='rgba(255,255,255,.06)'; badge.style.color='rgba(255,255,255,.6)'; }
+        const name=document.createElement('span'); name.style.flex='1'; name.innerHTML='<b>'+esc(q.label||'SUB GOAL')+'</b> – '+q.target;
+        const del=document.createElement('button'); del.className='btn ghost small'; del.textContent='SUPPR'; del.style.cssText='height:22px;padding:0 8px;font-size:9px';
+        del.addEventListener('click', async()=>{
+          if(!confirm('Supprimer objectif '+q.target+' ?')) return;
+          const r=await post(API+'/api/goal',{removeTarget:q.target, removeHistoryToo:true});
+          if(r && r.target!=null){ toast('Objectif '+q.target+' supprimé'); renderGoalPreview(r); }
+          else { const rr=await fetch(API+'/api/config').then(x=>x.json()); renderGoalPreview(rr); toast('Objectif supprimé'); }
+        });
+        row.append(badge,name,del);
+        queueEl.appendChild(row);
+      }
+    }
+  }
+
+  // live preview texte
+  let html='Actuel (plus proche au-dessus de '+cur+'): <b>'+esc(label)+'</b> '+cur+' / '+tgt+' ('+Math.min(100,Math.round(cur/tgt*100))+'%)';
+  if(upcoming.length>0){
+    html+='<br>À venir: '+upcoming.map(u=>'<b>'+esc(u.label||label)+'</b> 0 / '+u.target).join(' → ');
+  }else if(nextTarget>0){
+    html+='<br>À venir: <b>'+esc(nextLabel||label)+'</b> 0 / '+nextTarget;
+  }else{
+    html+='<br>À venir: <i>aucun – reste sur dernier objectif</i>';
+  }
+  html+='<br><span style="opacity:.6">Logique: 2 subs, objectifs 5 et 10 → actuel = 5 (le plus proche au-dessus). Quand 5 atteint, passe en ✓ et actuel = 10.</span>';
   el.innerHTML=html;
+
   if(histEl){
     if(history.length){
-      histEl.innerHTML='Historique ✓ (au-dessus):<br>'+history.slice().sort((a,b)=>a.target-b.target).map(h=>'✓ <b>'+esc(h.label||'')+'</b> '+ (h.currentAtCompletion||h.target)+' / '+h.target).join('<br>');
+      histEl.innerHTML='Historique ✓ (au-dessus, petit→grand):<br>'+history.slice().sort((a,b)=>a.target-b.target).map(h=>'✓ <b>'+esc(h.label||'')+'</b> '+ (h.currentAtCompletion||h.target)+' / '+h.target).join('<br>');
     }else histEl.innerHTML='Historique vide – aucun objectif terminé';
   }
 }
@@ -1106,19 +1165,39 @@ if(btnSauverGoal)btnSauverGoal.addEventListener('click',async()=>{
   const body={
     subGoalLabel:$('goalLabel').value.trim(),
     subGoalTarget:+$('goalTarget').value,
-    subGoalAuto:$('goalAuto').checked,
-    subGoalNextLabel:$('goalNextLabel')?$('goalNextLabel').value.trim():'',
-    subGoalNextTarget:$('goalNextTarget')?+($('goalNextTarget').value||0):0
+    subGoalAuto:$('goalAuto').checked
   };
   if(!body.subGoalAuto)body.subGoalManual=+$('goalManual').value||0;
+  // compat ancien prochain si encore utilise
+  const nl=$('goalNextLabel'), nt=$('goalNextTarget');
+  if(nl) body.subGoalNextLabel=nl.value.trim();
+  if(nt) body.subGoalNextTarget=+(nt.value||0);
   const r=await post(API+'/api/config',body);
-  if(r.ok){ toast('Sub goal enregistre – actuel + prochain'); renderGoalPreview(r.goal||body); }
+  if(r.ok){ toast('Compteur enregistré – logique plus proche appliquée'); renderGoalPreview(r); }
 });
 const btnClearHistory=$('btnClearHistory');
 if(btnClearHistory) btnClearHistory.addEventListener('click',async()=>{
   if(!confirm('Effacer historique des objectifs checkés ?')) return;
   const r=await post(API+'/api/config',{clearHistory:true});
   if(r.ok){ toast('Historique efface'); renderGoalPreview(r.goal||{history:[]}); }
+});
+const btnAddGoal=$('btnAddGoal');
+if(btnAddGoal) btnAddGoal.addEventListener('click',async()=>{
+  const labEl=$('goalNewLabel'), tgtEl=$('goalNewTarget');
+  const label=(labEl?labEl.value.trim():'')||'SUB GOAL';
+  const target=Math.max(1, Math.round(+ (tgtEl? tgtEl.value:0) || 0));
+  if(!target){ toast('Cible invalide'); return; }
+  const r=await post(API+'/api/goal',{add:{label,target}});
+  if(r && r.target!=null){
+    toast('Objectif '+target+' ajouté – actuel recalculé (plus proche au-dessus)');
+    renderGoalPreview(r);
+    if(labEl) labEl.value=''; if(tgtEl) tgtEl.value='';
+  }else{
+    // fallback recharge config
+    const rr=await fetch(API+'/api/config').then(x=>x.json());
+    renderGoalPreview(rr);
+    toast('Objectif ajouté');
+  }
 });
 const ambianceSauvee={chatTitle:'',accent:'#9146FF'};
 let _prevT=null,_prevTitleT=null;
@@ -1729,7 +1808,8 @@ async function init(){
       if($('goalManual'))$('goalManual').value=s.config.subGoalManual||0;
       if($('goalNextLabel'))$('goalNextLabel').value=s.config.subGoalNextLabel||'';
       if($('goalNextTarget'))$('goalNextTarget').value=s.config.subGoalNextTarget||0;
-      if(s.goal) renderGoalPreview(s.goal);
+      // V31 : file d'attente
+      renderGoalPreview(s);
       if($('chatTitle'))$('chatTitle').value=s.config.chatTitle||'';
       const acc=s.config.accent||'#9146FF';
       if($('accentCustom'))$('accentCustom').value=acc;

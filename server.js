@@ -76,7 +76,9 @@ const DEFAULT_CONFIG = {
   subGoalTarget: 50,
   subGoalAuto: true,
   subGoalManual: 0,
-  // prochain objectif prepare a l'avance (affiche en dessous, non checke)
+  // file d'attente d'objectifs (tous les objectifs definis par l'utilisateur, tries petit->grand)
+  subGoalQueue: [], // [{label,target}]
+  // prochain objectif prepare a l'avance (compat V30, affiche en dessous, non checke)
   subGoalNextLabel: '',
   subGoalNextTarget: 0,
   subGoalHistory: [], // [{label,target,completedAt,currentAtCompletion}]
@@ -181,17 +183,56 @@ async function fetchRemoteVersion() {
   } finally { clearTimeout(timer); }
 }
 
-/* — SUB GOAL : état dérivé de la config (modifiable via le panneau) — */
+/* — SUB GOAL V31 : file d'attente + logique plus proche du nombre de subs — */
+function normalizeQueue(q) {
+  if (!Array.isArray(q)) return [];
+  const cleaned = q.map(o => {
+    if (typeof o === 'number') return { label: 'SUB GOAL', target: Math.max(1, Math.round(o)) };
+    return { label: String(o.label || 'SUB GOAL').slice(0,24), target: Math.max(1, Math.round(+o.target || 0)) };
+  }).filter(o => o.target > 0);
+  cleaned.sort((a,b)=> a.target - b.target);
+  // dedup par target (garde premier)
+  const seen = new Set();
+  const dedup = [];
+  for (const it of cleaned) {
+    if (!seen.has(it.target)) { seen.add(it.target); dedup.push(it); }
+  }
+  return dedup;
+}
+
+// si queue vide mais ancien next existe, on l'injecte dans queue pour compat
+if ((!appConfig.subGoalQueue || appConfig.subGoalQueue.length===0) && appConfig.subGoalNextTarget>0) {
+  appConfig.subGoalQueue = [{ label: appConfig.subGoalNextLabel||appConfig.subGoalLabel, target: appConfig.subGoalNextTarget }];
+}
+// si queue vide mais current target existe, on l'injecte aussi (au moins 1 objectif)
+if (!appConfig.subGoalQueue || appConfig.subGoalQueue.length===0) {
+  appConfig.subGoalQueue = [{ label: appConfig.subGoalLabel, target: appConfig.subGoalTarget }];
+}
+appConfig.subGoalQueue = normalizeQueue(appConfig.subGoalQueue);
+
 const goalState = {
   label: appConfig.subGoalLabel,
   current: appConfig.subGoalAuto ? 0 : appConfig.subGoalManual,
   target: appConfig.subGoalTarget,
   nextLabel: appConfig.subGoalNextLabel || '',
   nextTarget: appConfig.subGoalNextTarget || 0,
-  history: Array.isArray(appConfig.subGoalHistory) ? appConfig.subGoalHistory.slice(-10) : []
+  history: Array.isArray(appConfig.subGoalHistory) ? appConfig.subGoalHistory.slice(-10) : [],
+  queue: appConfig.subGoalQueue.slice(), // tous les objectifs definis tries
+  upcoming: [] // ceux > current, a venir
 };
 
+// init V31 : calcule actuel/upcoming/history depuis queue + current
+// on ne peut pas appeler recompute avant sa declaration, on le fera apres definition
 function broadcastGoal() {
+  // compat : next = premier upcoming
+  if (goalState.upcoming && goalState.upcoming.length>0) {
+    goalState.nextLabel = goalState.upcoming[0].label;
+    goalState.nextTarget = goalState.upcoming[0].target;
+  } else {
+    // fallback ancien champ
+    goalState.nextLabel = goalState.nextLabel || '';
+    goalState.nextTarget = goalState.nextTarget || 0;
+  }
   const payload = 'data: ' + JSON.stringify(Object.assign({ goal: 1 }, goalState)) + '\n\n';
   for (const res of sse) res.write(payload);
 }
@@ -201,39 +242,84 @@ function saveGoalHistory() {
   saveConfig();
 }
 
-function checkAndSwitchGoal() {
-  // si pas de next prepare, on ne fait rien (on reste sur meme goal, meme si depasse)
-  if (!goalState.nextTarget || goalState.nextTarget <= 0) return false;
-  if (goalState.current < goalState.target) return false;
-  // objectif atteint + next existe → archive current, promeut next
-  const completed = {
-    label: goalState.label,
-    target: goalState.target,
-    currentAtCompletion: goalState.current,
-    completedAt: new Date().toISOString()
-  };
-  goalState.history.push(completed);
-  if (goalState.history.length > 10) goalState.history = goalState.history.slice(-10);
+// recompute : logique "plus proche du nombre de subs actuels"
+// - queue trie petit->grand
+// - tout target <= current → history (si pas deja dedans)
+// - premier target > current → current goal (actuel)
+// - reste → upcoming (a venir en dessous)
+function recomputeGoalsFromCount() {
+  const cur = goalState.current;
+  const queue = normalizeQueue(appConfig.subGoalQueue);
+  appConfig.subGoalQueue = queue;
+  goalState.queue = queue.slice();
 
-  // promotion
-  goalState.label = goalState.nextLabel || goalState.label;
-  goalState.target = goalState.nextTarget;
-  goalState.nextLabel = '';
-  goalState.nextTarget = 0;
-  goalState.history = goalState.history; // keep
+  // history existant : on garde ceux deja completes + on ajoute ceux <= cur qui ne sont pas deja en history
+  const histTargets = new Set(goalState.history.map(h=>h.target));
+  const newCompleted = [];
+  for (const q of queue) {
+    if (q.target <= cur && !histTargets.has(q.target)) {
+      newCompleted.push({ label: q.label, target: q.target, currentAtCompletion: cur, completedAt: new Date().toISOString() });
+    }
+  }
+  if (newCompleted.length) {
+    goalState.history = goalState.history.concat(newCompleted);
+    // tri history petit->grand
+    goalState.history.sort((a,b)=>a.target-b.target);
+    if (goalState.history.length>10) goalState.history = goalState.history.slice(-10);
+    appConfig.subGoalHistory = goalState.history.slice();
+  }
 
-  // persiste
-  appConfig.subGoalLabel = goalState.label;
-  appConfig.subGoalTarget = goalState.target;
-  appConfig.subGoalNextLabel = '';
-  appConfig.subGoalNextTarget = 0;
-  appConfig.subGoalHistory = goalState.history.slice();
+  // trouve actuel : plus proche au dessus du nombre actuel
+  // ex: 2 subs, objectifs 5 et 10 → 5
+  const above = queue.filter(q => q.target > cur).sort((a,b)=>a.target-b.target);
+  if (above.length>0) {
+    const chosen = above[0];
+    goalState.label = chosen.label;
+    goalState.target = chosen.target;
+    goalState.upcoming = above.slice(1);
+    // compat anciens champs
+    appConfig.subGoalLabel = chosen.label;
+    appConfig.subGoalTarget = chosen.target;
+    if (goalState.upcoming.length>0) {
+      appConfig.subGoalNextLabel = goalState.upcoming[0].label;
+      appConfig.subGoalNextTarget = goalState.upcoming[0].target;
+    } else {
+      appConfig.subGoalNextLabel = '';
+      appConfig.subGoalNextTarget = 0;
+    }
+  } else {
+    // aucun au dessus : on reste sur le dernier objectif (meme si depasse) comme demande
+    if (queue.length>0) {
+      const last = queue[queue.length-1];
+      goalState.label = last.label;
+      goalState.target = last.target;
+      goalState.upcoming = [];
+      appConfig.subGoalLabel = last.label;
+      appConfig.subGoalTarget = last.target;
+      appConfig.subGoalNextLabel = '';
+      appConfig.subGoalNextTarget = 0;
+    }
+    // sinon garde actuel
+  }
   saveConfig();
-
-  console.log(`[sub-goal] objectif atteint → switch auto vers ${goalState.label} ${goalState.current}/${goalState.target} (historique ${goalState.history.length})`);
   broadcastGoal();
-  return true;
 }
+
+function checkAndSwitchGoal() {
+  // V31 : on passe par recompute, qui gere automatiquement le plus proche
+  const beforeLabel = goalState.label;
+  const beforeTarget = goalState.target;
+  const beforeHistLen = goalState.history.length;
+  recomputeGoalsFromCount();
+  const switched = (goalState.label !== beforeLabel || goalState.target !== beforeTarget || goalState.history.length !== beforeHistLen);
+  if (switched) {
+    console.log(`[sub-goal] recompute → actuel ${goalState.label} ${goalState.current}/${goalState.target} (hist ${goalState.history.length}, upcoming ${goalState.upcoming.length})`);
+  }
+  return switched;
+}
+
+// init au demarrage : calcule upcoming/history selon current
+try { recomputeGoalsFromCount(); } catch(e){ console.warn('init goal recompute', e.message); }
 
 /* — Alertes (follow / sub / gift / raid) : diffuses au widget — */
 function broadcastAlert(a) {
@@ -1231,18 +1317,61 @@ const server = http.createServer((req, res) => {
       readBody().then(d => {
         try {
           const p = JSON.parse(d || '{}');
+          // gestion queue V31
+          if (p.queue !== undefined && Array.isArray(p.queue)) {
+            appConfig.subGoalQueue = normalizeQueue(p.queue);
+            goalState.queue = appConfig.subGoalQueue.slice();
+            saveConfig();
+            recomputeGoalsFromCount();
+            return send(200, 'application/json', JSON.stringify(goalState));
+          }
+          if (p.add !== undefined) {
+            const toAdd = normalizeQueue([p.add])[0];
+            if (toAdd) {
+              appConfig.subGoalQueue = normalizeQueue((appConfig.subGoalQueue||[]).concat([toAdd]));
+              saveConfig();
+              recomputeGoalsFromCount();
+            }
+            return send(200, 'application/json', JSON.stringify(goalState));
+          }
+          if (p.removeTarget !== undefined) {
+            const rem = Math.max(1, Math.round(+p.removeTarget));
+            appConfig.subGoalQueue = (appConfig.subGoalQueue||[]).filter(q=>q.target!==rem);
+            // aussi retire de history si present ?
+            if (p.removeHistoryToo) {
+              goalState.history = goalState.history.filter(h=>h.target!==rem);
+              appConfig.subGoalHistory = goalState.history.slice();
+            }
+            saveConfig();
+            recomputeGoalsFromCount();
+            return send(200, 'application/json', JSON.stringify(goalState));
+          }
           if (p.label !== undefined) { goalState.label = String(p.label).slice(0, 24); appConfig.subGoalLabel = goalState.label; }
           if (p.current !== undefined) goalState.current = Math.max(0, Math.round(+p.current || 0));
-          if (p.target !== undefined) { goalState.target = Math.max(1, Math.round(+p.target || 1)); appConfig.subGoalTarget = goalState.target; }
+          if (p.target !== undefined) { 
+            // si on modifie target directement, on met a jour queue aussi
+            const t = Math.max(1, Math.round(+p.target || 1));
+            goalState.target = t; appConfig.subGoalTarget = t;
+            // met a jour queue : remplace ou ajoute
+            const idx = (appConfig.subGoalQueue||[]).findIndex(q=>q.target===t || q.label===goalState.label);
+            if (idx>=0) appConfig.subGoalQueue[idx] = { label: goalState.label, target: t };
+            else appConfig.subGoalQueue = normalizeQueue((appConfig.subGoalQueue||[]).concat([{label:goalState.label, target:t}]));
+          }
           if (p.nextLabel !== undefined) { goalState.nextLabel = String(p.nextLabel).slice(0, 24); appConfig.subGoalNextLabel = goalState.nextLabel; }
-          if (p.nextTarget !== undefined) { goalState.nextTarget = Math.max(0, Math.round(+p.nextTarget || 0)); appConfig.subGoalNextTarget = goalState.nextTarget; }
+          if (p.nextTarget !== undefined) { 
+            const nt = Math.max(0, Math.round(+p.nextTarget || 0));
+            goalState.nextTarget = nt; appConfig.subGoalNextTarget = nt;
+            if (nt>0) {
+              appConfig.subGoalQueue = normalizeQueue((appConfig.subGoalQueue||[]).concat([{label:goalState.nextLabel||goalState.label, target:nt}]));
+            }
+          }
           if (p.clearHistory === true) { goalState.history = []; appConfig.subGoalHistory = []; }
           if (p.history !== undefined && Array.isArray(p.history)) { goalState.history = p.history.slice(-10); appConfig.subGoalHistory = goalState.history.slice(); }
           saveConfig();
-          // si on depasse deja, switch immediat
-          if (!checkAndSwitchGoal()) broadcastGoal();
+          // recompute logique plus proche
+          recomputeGoalsFromCount();
           send(200, 'application/json', JSON.stringify(goalState));
-        } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false })); }
+        } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false, err: e.message })); }
       });
       return;
     }
@@ -1285,6 +1414,10 @@ const server = http.createServer((req, res) => {
             for (const res of sse) res.write(payload);
             return send(200, 'application/json', JSON.stringify({ ok: true, preview: true }));
           }
+          if (p.subGoalQueue !== undefined && Array.isArray(p.subGoalQueue)) {
+            appConfig.subGoalQueue = normalizeQueue(p.subGoalQueue);
+            goalState.queue = appConfig.subGoalQueue.slice();
+          }
           if (p.subGoalLabel !== undefined) { appConfig.subGoalLabel = String(p.subGoalLabel).slice(0, 24); goalState.label = appConfig.subGoalLabel; }
           if (p.subGoalTarget !== undefined) { appConfig.subGoalTarget = Math.max(1, Math.round(+p.subGoalTarget || 1)); goalState.target = appConfig.subGoalTarget; }
           if (p.subGoalAuto !== undefined) appConfig.subGoalAuto = !!p.subGoalAuto;
@@ -1293,6 +1426,12 @@ const server = http.createServer((req, res) => {
           if (p.subGoalNextTarget !== undefined) { appConfig.subGoalNextTarget = Math.max(0, Math.round(+p.subGoalNextTarget || 0)); goalState.nextTarget = appConfig.subGoalNextTarget; }
           if (p.subGoalHistory !== undefined && Array.isArray(p.subGoalHistory)) { appConfig.subGoalHistory = p.subGoalHistory.slice(-10); goalState.history = appConfig.subGoalHistory.slice(); }
           if (p.clearHistory === true) { appConfig.subGoalHistory = []; goalState.history = []; }
+          // sync queue depuis label/target/next si queue vide
+          if ((!appConfig.subGoalQueue || appConfig.subGoalQueue.length===0) && appConfig.subGoalTarget>0) {
+            appConfig.subGoalQueue = [{ label: appConfig.subGoalLabel, target: appConfig.subGoalTarget }];
+            if (appConfig.subGoalNextTarget>0) appConfig.subGoalQueue.push({ label: appConfig.subGoalNextLabel||appConfig.subGoalLabel, target: appConfig.subGoalNextTarget });
+            appConfig.subGoalQueue = normalizeQueue(appConfig.subGoalQueue);
+          }
           if (p.chatTitle !== undefined) appConfig.chatTitle = String(p.chatTitle).slice(0, 40);
           if (p.accent !== undefined) appConfig.accent = String(p.accent).slice(0, 16);
           if (p.velocityEquilibrium !== undefined) appConfig.velocityEquilibrium = Math.max(1, Math.round(+p.velocityEquilibrium || 20));
@@ -1324,16 +1463,19 @@ const server = http.createServer((req, res) => {
           if (p.finEnabled !== undefined) appConfig.velocityFinEnabled = !!p.finEnabled;
           saveConfig();
 
-          // met à jour le sub goal (mode manuel = valeur manuelle)
+          // met à jour le sub goal (mode manuel = valeur manuelle) V31 avec queue
           goalState.label = appConfig.subGoalLabel;
           goalState.target = appConfig.subGoalTarget;
           goalState.nextLabel = appConfig.subGoalNextLabel || '';
           goalState.nextTarget = appConfig.subGoalNextTarget || 0;
           goalState.history = Array.isArray(appConfig.subGoalHistory) ? appConfig.subGoalHistory.slice(-10) : [];
+          goalState.queue = normalizeQueue(appConfig.subGoalQueue || []);
+          appConfig.subGoalQueue = goalState.queue.slice();
+          goalState.upcoming = [];
           if (!appConfig.subGoalAuto) goalState.current = appConfig.subGoalManual;
 
-          // si on depasse deja et next existe, switch auto
-          checkAndSwitchGoal();
+          // logique plus proche
+          recomputeGoalsFromCount();
 
           // diffuse au widget : sub goal + titre du chat + accent + velocite V5
           const payload = 'data: ' + JSON.stringify({

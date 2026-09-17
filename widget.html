@@ -167,8 +167,14 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 #card.is-critical .timebar__fill{animation:tbPulse .55s ease-in-out infinite}
 @keyframes tbPulse{0%,100%{opacity:1}50%{opacity:.4}}
 
-/* ═══ CHAT TWITCH — 460 × 640 px · DROITE · bottom 160 · ~50 % transparent ═══ */
-.chat{position:absolute;right:48px;bottom:160px;width:460px;height:640px;
+/* ═══ CHAT TWITCH — 460 × auto · DROITE · bottom 160 · grandit vers le haut ═══
+   Fix V30 : le chat ne doit plus rétrécir quand on ajoute des sub goals.
+   - .chat height auto + min-height 640, bottom 160 fixe → grandit vers le haut
+   - .chat__list hauteur fixe 460px (ne bouge pas) → espace messages constant
+   - .chat__goal en dessous, variable, ne pousse pas la liste */
+.chat{
+  position:absolute;right:48px;bottom:160px;
+  width:460px;height:auto;min-height:640px;max-height:88vh;
   display:flex;flex-direction:column;
   background:rgba(10,10,12,.88);
   -webkit-backdrop-filter:blur(12px) saturate(1.2);
@@ -176,7 +182,8 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   border:1px solid rgba(255,255,255,.10);border-radius:12px;
   box-shadow:0 20px 50px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.04);
   opacity:1;visibility:visible;transform:none;
-  transition:opacity .5s var(--ease-out),transform .5s var(--ease-out)}
+  transition:opacity .5s var(--ease-out),transform .5s var(--ease-out),height .35s var(--ease-out);
+}
 .chat.is-on{opacity:1;visibility:visible;transform:none}
 .chat__head{display:flex;align-items:center;gap:9px;padding:14px 20px 12px;
   font-family:'Bebas Neue',sans-serif;font-size:22px;font-weight:400;letter-spacing:.22em;color:#E7E9EE;
@@ -211,9 +218,11 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .chat__pin .cn{font-size:24px}
 .chat__pin .ctext{font-size:22px}
 .chat__pin .cflag{flex:none}
-/* liste : les messages remplissent TOUT le panneau ; fondu progressif en HAUT
-   (là où ils disparaissent), rendu pro pas « IA » */
-.chat__list{flex:1;overflow:hidden;padding:14px 20px;
+/* liste : hauteur FIXE 460px pour que le chat garde toujours le même espace
+   même si on a 10 sub goals au dessus/dessous. Le conteneur .chat grandit vers le haut (bottom fixe). */
+.chat__list{
+  flex:none;height:460px;min-height:460px;max-height:460px;
+  overflow:hidden;padding:14px 20px;
   display:flex;flex-direction:column;justify-content:flex-end;gap:12px;
   -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 64px);
   mask-image:linear-gradient(180deg,transparent 0,#000 64px)}
@@ -265,8 +274,9 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   box-shadow:0 0 10px rgba(145,70,255,.4);transition:width .8s var(--ease-out)}
 .goal__main.is-done .goal__label{color:var(--blanc)}
 .goal__main.is-done .goal__fill{background:linear-gradient(90deg,var(--violet),#C79BFF)}
-.goal__next{opacity:.85}
+.goal__next{opacity:.85;display:flex;flex-direction:column;gap:10px}
 .goal__next[hidden]{display:none !important}
+.goal__nextItem{display:flex;flex-direction:column;gap:6px}
 .goal__sep{display:flex;align-items:center;justify-content:center;gap:8px;margin:2px 0 6px}
 .goal__sep span{flex:none;width:26px;height:1px;background:rgba(255,255,255,.14);position:relative}
 .goal__sep span::after{content:'—';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:10px;color:rgba(255,255,255,.28);background:rgba(10,10,12,.88);padding:0 4px}
@@ -1217,15 +1227,21 @@ function pushChat(m) {
 /* Préchargement des assets d'alertes à l'ouverture : au premier follow/sub/raid,
    plus de fond noir qui « pop » (l'image est déjà en cache) */
 let usePhotoAlert = false;
-for (const u of ['assets/alert-bg.png','assets/icon-follow.png','assets/icon-sub.png','assets/icon-raid.png','assets/alert-photo.jpg','assets/IMG_0607.jpg']) {
-  const im = new Image(); im.src = u;
-  if (u.includes('alert-photo') || u.includes('IMG_0607')) {
-    im.onload = () => { usePhotoAlert = true; console.log('[alert] photo custom detectee', u); };
-  }
+function refreshPhotoFlag(){
+  const ts = Date.now();
+  // HEAD avec cache bust pour capter upload via panneau instantanément dans OBS
+  fetch('assets/IMG_0607.jpg?v='+ts, {method:'HEAD', cache:'no-store'}).then(r=>{ if(r.ok){ if(!usePhotoAlert) console.log('[alert] photo custom detectee IMG_0607.jpg'); usePhotoAlert=true; } }).catch(()=>{});
+  fetch('assets/alert-photo.jpg?v='+ts, {method:'HEAD', cache:'no-store'}).then(r=>{ if(r.ok){ if(!usePhotoAlert) console.log('[alert] photo custom detectee alert-photo.jpg'); usePhotoAlert=true; } }).catch(()=>{});
 }
-// probe photo existence async
-fetch('assets/IMG_0607.jpg', {method:'HEAD'}).then(r=>{ if(r.ok) usePhotoAlert=true; }).catch(()=>{});
-fetch('assets/alert-photo.jpg', {method:'HEAD'}).then(r=>{ if(r.ok) usePhotoAlert=true; }).catch(()=>{});
+for (const u of ['assets/alert-bg.png','assets/icon-follow.png','assets/icon-sub.png','assets/icon-raid.png']) {
+  const im = new Image(); im.src = u;
+}
+for (const u of ['assets/alert-photo.jpg','assets/IMG_0607.jpg']) {
+  const im = new Image(); im.src = u + '?v=' + Date.now();
+  im.onload = () => { usePhotoAlert = true; console.log('[alert] photo custom detectee', u); };
+}
+refreshPhotoFlag();
+setInterval(refreshPhotoFlag, 3000);
 /* — SONS D'ALERTES PERSONNALISABLES —
    Dépose tes fichiers dans sounds/ (.wav, .mp3, .ogg, .m4a) :
      sounds/alert-follow.*  → FOLLOW
@@ -1309,9 +1325,18 @@ function showAlert(a) {
   if (!t) return;
   const d = document.createElement('div');
   // si photo custom dispo (IMG_0607.jpg ou alert-photo.jpg), on utilise variante photo avec texte blanc contour noir epais
+  // on re-probe rapidement pour capter upload panneau instantanément
+  refreshPhotoFlag();
+  const ts = Date.now();
   const photoClass = usePhotoAlert ? ' alert--photo' : '';
   d.className = 'alert alert--' + t.kind + photoClass;
   const bg = document.createElement('div'); bg.className = 'alert__bg';
+  // cache bust : force reload de la photo custom si elle vient d'être uploadée via panneau
+  // on met les 3 URLs avec timestamp, la première qui existe sera affichée (fallback chain)
+  bg.style.backgroundImage = `url('assets/IMG_0607.jpg?v=${ts}'), url('assets/alert-photo.jpg?v=${ts}'), url('assets/alert-bg.png?v=${ts}')`;
+  bg.style.backgroundSize = 'cover';
+  bg.style.backgroundPosition = 'center';
+  bg.style.backgroundRepeat = 'no-repeat';
   d.appendChild(bg);
   const mk = document.createElement('span'); mk.className = 'mark7g';
   const mki = document.createElement('img'); mki.src = 'assets/logo-7g.png?v=30'; mki.alt = '7G';
@@ -1441,28 +1466,28 @@ function setPin(m) {
   chatPin.classList.add('is-on');
 }
 function clearPin() { chatPin.classList.remove('is-on'); }
-/* — SUB GOAL V30 : file d'attente + historique avec check — */
+/* — SUB GOAL V31 : file d'attente complete, plus proche du nombre de subs, croissance vers le haut — */
 function setGoal(g) {
   const cur = Math.max(0, Math.round(+g.current || 0));
   const tgt = Math.max(1, Math.round(+g.target || 1));
   const label = String(g.label || 'SUB GOAL').slice(0, 24).toUpperCase();
-  const nextLabel = g.nextLabel ? String(g.nextLabel).slice(0,24).toUpperCase() : '';
-  const nextTarget = g.nextTarget ? Math.max(0, Math.round(+g.nextTarget)) : 0;
-  const history = Array.isArray(g.history) ? g.history.slice(-5) : [];
+  const queue = Array.isArray(g.queue) ? g.queue.slice() : [];
+  const upcoming = Array.isArray(g.upcoming) ? g.upcoming.slice() : (g.nextTarget ? [{label:g.nextLabel||label, target:g.nextTarget}] : []);
+  const history = Array.isArray(g.history) ? g.history.slice() : [];
 
-  // main
+  // main = actuel = plus proche au dessus du nombre actuel (calcule serveur)
   if (goalLabel) goalLabel.textContent = label;
   if (goalCount) goalCount.textContent = cur + ' / ' + tgt;
   if (goalFill) goalFill.style.width = Math.min(100, (cur / tgt) * 100).toFixed(1) + '%';
   if (goalMain) goalMain.classList.toggle('is-done', cur >= tgt);
 
-  // history : checked items au dessus, ordre petit→grand (comme demande : checkes au dessus, actuel au plus haut)
+  // history : checked items au dessus, ordre petit→grand
   if (goalHistory) {
     goalHistory.innerHTML = '';
-    // on affiche historique du plus petit au plus grand, mais au dessus du current
-    // tri par target asc
     const sorted = history.slice().sort((a,b)=> (a.target||0)-(b.target||0));
-    for (const h of sorted) {
+    // on limite affichage a 10 mais garde tout pour croissance
+    const toShow = sorted.slice(-10);
+    for (const h of toShow) {
       const div = document.createElement('div');
       div.className = 'goal__histItem';
       const chk = document.createElement('span'); chk.className='goal__check'; chk.textContent='✓';
@@ -1473,15 +1498,48 @@ function setGoal(g) {
     }
   }
 
-  // next : affiche en dessous, non checke, avec tiret separateur
+  // upcoming : tous les objectifs a venir en dessous, tries petit->grand
   if (goalNext) {
-    if (nextTarget > 0) {
+    // on reutilise goalNext comme conteneur pour liste multiple
+    goalNext.innerHTML = '';
+    const allUpcoming = upcoming.slice().sort((a,b)=>a.target-b.target);
+    if (allUpcoming.length>0) {
       goalNext.hidden = false;
-      if (goalNextLabel) goalNextLabel.textContent = (nextLabel || label) + ' — À VENIR';
-      if (goalNextCount) goalNextCount.textContent = '0 / ' + nextTarget;
-      if (goalNextFill) goalNextFill.style.width = '0%';
+      // separateur
+      const sep = document.createElement('div'); sep.className='goal__sep'; sep.innerHTML='<span></span>';
+      goalNext.appendChild(sep);
+      for (const up of allUpcoming) {
+        const row = document.createElement('div');
+        row.className='goal__nextItem';
+        const top = document.createElement('div'); top.className='goal__top';
+        const lab = document.createElement('span'); lab.className='goal__label goal__label--next'; lab.textContent = String(up.label||label).slice(0,24).toUpperCase() + ' — À VENIR';
+        const cnt = document.createElement('span'); cnt.className='goal__count goal__count--next'; cnt.textContent = '0 / ' + up.target;
+        top.append(lab,cnt);
+        const bar = document.createElement('div'); bar.className='goal__bar goal__bar--next';
+        const fill = document.createElement('div'); fill.className='goal__fill goal__fill--next'; fill.style.width='0%';
+        bar.appendChild(fill);
+        row.append(top,bar);
+        goalNext.appendChild(row);
+      }
     } else {
-      goalNext.hidden = true;
+      // compat ancien nextLabel/nextTarget affichage si queue non presente
+      const legacyNextTarget = g.nextTarget ? Math.max(0, Math.round(+g.nextTarget)) : 0;
+      if (legacyNextTarget>0) {
+        goalNext.hidden = false;
+        const sep = document.createElement('div'); sep.className='goal__sep'; sep.innerHTML='<span></span>';
+        const row = document.createElement('div'); row.className='goal__nextItem';
+        const top = document.createElement('div'); top.className='goal__top';
+        const lab = document.createElement('span'); lab.className='goal__label goal__label--next'; lab.id='goalNextLabel'; lab.textContent = (String(g.nextLabel||label).slice(0,24).toUpperCase()) + ' — À VENIR';
+        const cnt = document.createElement('span'); cnt.className='goal__count goal__count--next'; cnt.id='goalNextCount'; cnt.textContent = '0 / ' + legacyNextTarget;
+        top.append(lab,cnt);
+        const bar = document.createElement('div'); bar.className='goal__bar goal__bar--next';
+        const fill = document.createElement('div'); fill.className='goal__fill goal__fill--next'; fill.id='goalNextFill'; fill.style.width='0%';
+        bar.appendChild(fill);
+        row.append(top,bar);
+        goalNext.append(sep,row);
+      } else {
+        goalNext.hidden = true;
+      }
     }
   }
 }
