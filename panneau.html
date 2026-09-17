@@ -1111,32 +1111,58 @@ function renderGoalPreview(s){
   const upcoming=Array.isArray(g.upcoming)?g.upcoming.slice().sort((a,b)=>a.target-b.target):[];
   const nextLabel=g.nextLabel||'', nextTarget=g.nextTarget||0;
 
-  // queue list UI
+  // queue list UI avec édition
   if(queueEl){
     if(queue.length===0){
-      queueEl.innerHTML='<div class="note">Aucun objectif – ajoute 5 et 10 par ex.</div>';
+      queueEl.innerHTML='<div class="note">Aucun objectif – ajoute 5 et 10 par ex. (2 subs → actuel = 5)</div>';
     }else{
       queueEl.innerHTML='';
       for(const q of queue){
         const isDone = q.target <= cur;
         const isCurrent = !isDone && q.target===tgt;
-        const isUpcoming = !isDone && !isCurrent;
         const row=document.createElement('div');
-        row.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,.04);border:1px solid var(--line2);border-radius:4px;font-size:11px';
+        row.style.cssText='display:flex;align-items:center;gap:6px;padding:6px 8px;background:rgba(255,255,255,.04);border:1px solid var(--line2);border-radius:4px;font-size:11px';
         const badge=document.createElement('span');
         badge.style.cssText='flex:none;padding:2px 6px;border-radius:4px;font-weight:800;font-size:9px;letter-spacing:.06em';
         if(isDone){ badge.textContent='✓ FAIT'; badge.style.background='rgba(145,70,255,.25)'; badge.style.color='#C79BFF'; }
         else if(isCurrent){ badge.textContent='ACTUEL'; badge.style.background='rgba(255,255,255,.12)'; badge.style.color='#fff'; }
         else { badge.textContent='À VENIR'; badge.style.background='rgba(255,255,255,.06)'; badge.style.color='rgba(255,255,255,.6)'; }
+
         const name=document.createElement('span'); name.style.flex='1'; name.innerHTML='<b>'+esc(q.label||'SUB GOAL')+'</b> – '+q.target;
-        const del=document.createElement('button'); del.className='btn ghost small'; del.textContent='SUPPR'; del.style.cssText='height:22px;padding:0 8px;font-size:9px';
+        name.style.cursor='pointer';
+        name.title='Cliquer pour modifier';
+
+        const editBtn=document.createElement('button'); editBtn.className='btn ghost small'; editBtn.textContent='EDIT'; editBtn.style.cssText='height:22px;padding:0 8px;font-size:9px';
+        const del=document.createElement('button'); del.className='btn ghost small'; del.textContent='SUPPR'; del.style.cssText='height:22px;padding:0 8px;font-size:9px;background:rgba(255,60,60,.12);border-color:rgba(255,60,60,.25)';
+
+        // édition inline
+        const startEdit = () => {
+          row.innerHTML='';
+          const labIn=document.createElement('input'); labIn.type='text'; labIn.value=q.label||'SUB GOAL'; labIn.style.cssText='flex:1;min-width:80px;height:26px;font-size:11px;padding:0 6px;border-radius:4px;border:1px solid var(--line2);background:rgba(0,0,0,.3);color:#fff';
+          const tgtIn=document.createElement('input'); tgtIn.type='number'; tgtIn.min='1'; tgtIn.value=q.target; tgtIn.style.cssText='width:70px;height:26px;font-size:11px;padding:0 6px;border-radius:4px;border:1px solid var(--line2);background:rgba(0,0,0,.3);color:#fff';
+          const save=document.createElement('button'); save.className='btn primary small'; save.textContent='OK'; save.style.cssText='height:26px;padding:0 10px;font-size:10px';
+          const cancel=document.createElement('button'); cancel.className='btn ghost small'; cancel.textContent='X'; cancel.style.cssText='height:26px;padding:0 8px;font-size:10px';
+          save.addEventListener('click', async()=>{
+            const newLabel = labIn.value.trim()||'SUB GOAL';
+            const newTarget = Math.max(1, Math.round(+tgtIn.value||0));
+            if(!newTarget){ toast('Cible invalide'); return; }
+            const r=await post(API+'/api/goal',{edit:{oldTarget:q.target, newTarget, newLabel}});
+            if(r && r.target!=null){ toast('Objectif modifié '+q.target+' → '+newTarget); renderGoalPreview(r); }
+            else { const rr=await fetch(API+'/api/config').then(x=>x.json()); renderGoalPreview(rr); toast('Modifié'); }
+          });
+          cancel.addEventListener('click', ()=> renderGoalPreview(s));
+          row.append(badge, labIn, tgtIn, save, cancel);
+        };
+
+        name.addEventListener('click', startEdit);
+        editBtn.addEventListener('click', startEdit);
         del.addEventListener('click', async()=>{
           if(!confirm('Supprimer objectif '+q.target+' ?')) return;
           const r=await post(API+'/api/goal',{removeTarget:q.target, removeHistoryToo:true});
           if(r && r.target!=null){ toast('Objectif '+q.target+' supprimé'); renderGoalPreview(r); }
           else { const rr=await fetch(API+'/api/config').then(x=>x.json()); renderGoalPreview(rr); toast('Objectif supprimé'); }
         });
-        row.append(badge,name,del);
+        row.append(badge,name,editBtn,del);
         queueEl.appendChild(row);
       }
     }
@@ -1184,16 +1210,17 @@ if(btnClearHistory) btnClearHistory.addEventListener('click',async()=>{
 const btnAddGoal=$('btnAddGoal');
 if(btnAddGoal) btnAddGoal.addEventListener('click',async()=>{
   const labEl=$('goalNewLabel'), tgtEl=$('goalNewTarget');
+  const raw = tgtEl ? String(tgtEl.value||'').trim() : '';
+  if(!raw){ toast('Renseigne une cible (ex: 5)'); return; }
   const label=(labEl?labEl.value.trim():'')||'SUB GOAL';
-  const target=Math.max(1, Math.round(+ (tgtEl? tgtEl.value:0) || 0));
-  if(!target){ toast('Cible invalide'); return; }
+  const target=Math.max(1, Math.round(+raw||0));
+  if(!target || isNaN(target)){ toast('Cible invalide'); return; }
   const r=await post(API+'/api/goal',{add:{label,target}});
   if(r && r.target!=null){
     toast('Objectif '+target+' ajouté – actuel recalculé (plus proche au-dessus)');
     renderGoalPreview(r);
     if(labEl) labEl.value=''; if(tgtEl) tgtEl.value='';
   }else{
-    // fallback recharge config
     const rr=await fetch(API+'/api/config').then(x=>x.json());
     renderGoalPreview(rr);
     toast('Objectif ajouté');

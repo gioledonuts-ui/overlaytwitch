@@ -21,6 +21,8 @@
   --noir:#0A0A0A;
   --violet:#9146FF;
   --violet-deep:#7000FF;
+  --violet-rgb:145,70,255;
+  --violet-light:#C79BFF;
   --blanc:#FFFFFF;
   --gris:#9AA0A6;
   --gris-fonce:#6B7280;
@@ -256,7 +258,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   background:var(--violet);color:#fff;
   display:flex;align-items:center;justify-content:center;
   font-size:10px;font-weight:900;
-  box-shadow:0 0 8px rgba(145,70,255,.6);
+  box-shadow:0 0 8px rgba(var(--violet-rgb,145,70,255),.6);
 }
 .goal__histItem .goal__histLabel{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .goal__histItem .goal__histCount{font-variant-numeric:tabular-nums;color:rgba(255,255,255,.9)}
@@ -264,16 +266,16 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .goal__top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px}
 .goal__label{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;letter-spacing:.08em;color:var(--violet);
   transition:color .4s}
-.goal__label--current{color:#fff;text-shadow:0 0 12px rgba(145,70,255,.5)}
+.goal__label--current{color:#fff;text-shadow:0 0 12px rgba(var(--violet-rgb,145,70,255),.5)}
 .goal__count{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;letter-spacing:.04em;color:var(--blanc);
   font-variant-numeric:tabular-nums}
 .goal__bar{height:10px;border-radius:5px;background:rgba(255,255,255,.07);
   border:1px solid rgba(255,255,255,.08);overflow:hidden}
 .goal__fill{height:100%;width:0%;border-radius:5px;
   background:linear-gradient(90deg,var(--violet-deep),var(--violet));
-  box-shadow:0 0 10px rgba(145,70,255,.4);transition:width .8s var(--ease-out)}
+  box-shadow:0 0 10px rgba(var(--violet-rgb,145,70,255),.4);transition:width .8s var(--ease-out)}
 .goal__main.is-done .goal__label{color:var(--blanc)}
-.goal__main.is-done .goal__fill{background:linear-gradient(90deg,var(--violet),#C79BFF)}
+.goal__main.is-done .goal__fill{background:linear-gradient(90deg,var(--violet),var(--violet-light,#C79BFF))}
 .goal__next{opacity:.85;display:flex;flex-direction:column;gap:10px}
 .goal__next[hidden]{display:none !important}
 .goal__nextItem{display:flex;flex-direction:column;gap:6px}
@@ -319,8 +321,21 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .alert__bg{position:absolute;inset:0;z-index:0;pointer-events:none;
   background:url('assets/alert-bg.png') center/cover no-repeat;
   opacity:0;animation:bgFade 1.2s ease-out .1s forwards}
+.alert--photo{
+  /* V32 : image entière visible, ratio 4:5 par défaut (3024x4032 ~ 3:4) mais adapté dynamiquement via JS */
+  min-width:480px;
+  width:560px;
+  aspect-ratio:4 / 5;
+  padding:28px 36px;
+  background:#000;
+  justify-content:center;
+}
 .alert--photo .alert__bg{
   background-image:url('assets/IMG_0607.jpg'), url('assets/alert-photo.jpg'), url('assets/alert-bg.png');
+  background-size:contain !important;
+  background-position:center center !important;
+  background-repeat:no-repeat !important;
+  background-color:#000;
   filter:brightness(.92) contrast(1.08);
 }
 .alert--photo::after{
@@ -1085,11 +1100,36 @@ function apply(m) {
 }
 
 /* — Applique le titre du chat + la couleur d'accent + velocity config — */
+function hexToRgb(hex){
+  try{
+    let h = String(hex||'').trim().replace('#','');
+    if(h.length===3) h = h.split('').map(ch=>ch+ch).join('');
+    const n = parseInt(h,16);
+    if(isNaN(n)) return null;
+    return {r:(n>>16)&255, g:(n>>8)&255, b:n&255};
+  }catch(e){ return null; }
+}
+function darkenHex(hex, amt){
+  const rgb = hexToRgb(hex);
+  if(!rgb) return hex;
+  const d = (v)=> Math.max(0, Math.min(255, Math.round(v*(1-amt))));
+  const toHex = (v)=> v.toString(16).padStart(2,'0');
+  return '#'+toHex(d(rgb.r))+toHex(d(rgb.g))+toHex(d(rgb.b));
+}
 function applyConfig(c) {
   if (c.chatTitle) { const t = document.getElementById('chatTitle'); if (t) t.textContent = c.chatTitle; }
   if (c.accent) {
-    document.documentElement.style.setProperty('--violet', c.accent);
-    document.documentElement.style.setProperty('--violet-deep', c.accent);
+    const accent = c.accent;
+    const deep = darkenHex(accent, 0.35); // 35% plus foncé pour gradient
+    const rgb = hexToRgb(accent);
+    document.documentElement.style.setProperty('--violet', accent);
+    document.documentElement.style.setProperty('--violet-deep', deep);
+    if (rgb) {
+      document.documentElement.style.setProperty('--violet-rgb', rgb.r+','+rgb.g+','+rgb.b);
+      // compat light variant (ex: #C79BFF était violet clair) → on génère un clair à partir de accent
+      const light = 'color-mix(in srgb, '+accent+' 60%, white)';
+      document.documentElement.style.setProperty('--violet-light', light);
+    }
   }
   if (c.velocity || c.equilibriumMPM !== undefined || c.velocityEnabled !== undefined) {
     if (window.velocityApplyConfig) window.velocityApplyConfig(c);
@@ -1328,15 +1368,49 @@ function showAlert(a) {
   // on re-probe rapidement pour capter upload panneau instantanément
   refreshPhotoFlag();
   const ts = Date.now();
-  const photoClass = usePhotoAlert ? ' alert--photo' : '';
+  const isPhoto = usePhotoAlert;
+  const photoClass = isPhoto ? ' alert--photo' : '';
   d.className = 'alert alert--' + t.kind + photoClass;
   const bg = document.createElement('div'); bg.className = 'alert__bg';
   // cache bust : force reload de la photo custom si elle vient d'être uploadée via panneau
-  // on met les 3 URLs avec timestamp, la première qui existe sera affichée (fallback chain)
   bg.style.backgroundImage = `url('assets/IMG_0607.jpg?v=${ts}'), url('assets/alert-photo.jpg?v=${ts}'), url('assets/alert-bg.png?v=${ts}')`;
-  bg.style.backgroundSize = 'cover';
-  bg.style.backgroundPosition = 'center';
-  bg.style.backgroundRepeat = 'no-repeat';
+  if (isPhoto) {
+    // V32 : image entière visible, ratio 4:5 par défaut, contain, pas de crop
+    bg.style.backgroundSize = 'contain';
+    bg.style.backgroundPosition = 'center center';
+    bg.style.backgroundRepeat = 'no-repeat';
+    bg.style.backgroundColor = '#000';
+    // detecte ratio réel de l'image uploadée pour adapter aspect-ratio de l'alerte
+    const probeImg = new Image();
+    probeImg.onload = () => {
+      try {
+        const w = probeImg.naturalWidth, h = probeImg.naturalHeight;
+        if (w && h) {
+          // ratio réel, mais on borne entre 3:4 et 5:4 pour rester lisible
+          const ratio = w / h;
+          // applique aspect-ratio dynamique
+          d.style.aspectRatio = w + ' / ' + h;
+          console.log('[alert] ratio photo detecte', w+'x'+h+' → '+ratio.toFixed(2));
+        }
+      } catch(e){}
+    };
+    // essaie IMG_0607 puis alert-photo
+    probeImg.src = 'assets/IMG_0607.jpg?v=' + ts;
+    probeImg.onerror = () => {
+      const fallback = new Image();
+      fallback.onload = () => {
+        try {
+          const w = fallback.naturalWidth, h = fallback.naturalHeight;
+          if (w && h) d.style.aspectRatio = w + ' / ' + h;
+        } catch(e){}
+      };
+      fallback.src = 'assets/alert-photo.jpg?v=' + ts;
+    };
+  } else {
+    bg.style.backgroundSize = 'cover';
+    bg.style.backgroundPosition = 'center';
+    bg.style.backgroundRepeat = 'no-repeat';
+  }
   d.appendChild(bg);
   const mk = document.createElement('span'); mk.className = 'mark7g';
   const mki = document.createElement('img'); mki.src = 'assets/logo-7g.png?v=30'; mki.alt = '7G';
