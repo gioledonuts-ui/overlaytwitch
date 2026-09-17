@@ -302,11 +302,23 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   z-index:20;opacity:1;visibility:visible;
   transition:left .45s var(--ease-out),transform .45s var(--ease-out),align-items .3s;
 }
+#alerts.has-photo{
+  /* photo : petite, à droite du milieu, avant le chat (chat = right 48 + 460) – sous le sondage pour ne pas le cacher */
+  left:58%;top:360px;transform:translateX(-50%);
+  align-items:center;
+}
 #card.is-live ~ #alerts{
   left:28px;top:28px;transform:none;align-items:flex-start;
 }
+#card.is-live ~ #alerts.has-photo{
+  left:56%;top:360px;transform:translateX(-50%);
+  align-items:center;
+}
 #card:not(.is-live) ~ #alerts{
   left:50%;top:80px;transform:translateX(-50%);align-items:center;
+}
+#card:not(.is-live) ~ #alerts.has-photo{
+  left:58%;top:140px;transform:translateX(-50%);
 }
 /* Composition CENTRÉE : icône / label à filets / pseudo / détail —
    hiérarchie typographique : label espacé violet, pseudo bleu énorme, détail italique */
@@ -322,13 +334,17 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   background:url('assets/alert-bg.png') center/cover no-repeat;
   opacity:0;animation:bgFade 1.2s ease-out .1s forwards}
 .alert--photo{
-  /* V32 : image entière visible, ratio 4:5 par défaut (3024x4032 ~ 3:4) mais adapté dynamiquement via JS */
-  min-width:480px;
-  width:560px;
+  /* V33 : petite, ne prend pas tout l'écran, à droite du milieu avant chat – 340px seulement */
+  min-width:300px;
+  width:340px;
+  max-width:360px;
   aspect-ratio:4 / 5;
-  padding:28px 36px;
+  padding:16px 18px 18px;
   background:#000;
   justify-content:center;
+  gap:6px;
+  border-radius:14px;
+  box-shadow:0 14px 32px rgba(0,0,0,.55);
 }
 .alert--photo .alert__bg{
   background-image:url('assets/IMG_0607.jpg'), url('assets/alert-photo.jpg'), url('assets/alert-bg.png');
@@ -336,31 +352,35 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   background-position:center center !important;
   background-repeat:no-repeat !important;
   background-color:#000;
-  filter:brightness(.92) contrast(1.08);
+  filter:brightness(.96) contrast(1.05);
 }
 .alert--photo::after{
   content:"";position:absolute;inset:0;z-index:0;
   background:linear-gradient(180deg,rgba(0,0,0,.15) 0%,rgba(0,0,0,.05) 35%,rgba(0,0,0,.35) 100%);
   pointer-events:none;
 }
-/* texte blanc contour noir épais pour photo */
+/* texte blanc contour noir épais pour photo – V33 : texte plus gros que image, ne rétrécit pas avec image */
 .alert--photo .alert__labeltxt,
 .alert--photo .alert__user{
   color:#fff;
-  -webkit-text-stroke:2.5px #000;
+  -webkit-text-stroke:3px #000;
   paint-order:stroke fill;
   text-shadow:
     0 1px 0 #000, 0 -1px 0 #000, 1px 0 0 #000, -1px 0 0 #000,
     1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000,
-    0 2px 6px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.8);
+    0 2px 8px rgba(0,0,0,.95), 0 0 22px rgba(0,0,0,.85);
   filter:none;
 }
-.alert--photo .alert__labeltxt{font-size:26px;letter-spacing:.18em}
-.alert--photo .alert__user{font-size:68px;line-height:.95;letter-spacing:.04em}
-.alert--photo .alert__sub{color:#fff;font-weight:700;font-style:normal;
-  -webkit-text-stroke:1.8px #000;paint-order:stroke fill;
-  text-shadow:0 1px 0 #000,0 -1px 0 #000,1px 0 0 #000,-1px 0 0 #000,0 2px 8px rgba(0,0,0,.9);
+.alert--photo .alert__labeltxt{font-size:26px;letter-spacing:.18em;line-height:1}
+.alert--photo .alert__user{font-size:72px;line-height:.90;letter-spacing:.02em;max-width:100%;word-break:break-word;text-align:center}
+.alert--photo .alert__sub{color:#fff;font-weight:800;font-style:normal;font-size:16px;letter-spacing:.02em;line-height:1.25;max-width:100%;text-align:center;
+  -webkit-text-stroke:2px #000;paint-order:stroke fill;
+  text-shadow:0 1px 0 #000,0 -1px 0 #000,1px 0 0 #000,-1px 0 0 #000,0 2px 10px rgba(0,0,0,.95);
 }
+.alert--photo .alert__icon{width:52px;height:52px}
+.alert--photo .alert__body{gap:5px;max-width:100%}
+.alert--photo .mark7g{width:24px;height:24px;top:8px;right:10px}
+.alert--photo .alert__msg{font-size:12px;max-width:300px}
 @keyframes bgFade{to{opacity:1}}
 .alert.out{animation:alertOut .35s var(--ease-in) forwards}
 @keyframes alertIn{from{opacity:0;transform:translateY(-34px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -1437,6 +1457,7 @@ function showAlert(a) {
     bd.append(dv, mg);
   }
   d.append(ic, bd);
+  if (isPhoto) alertsEl.classList.add('has-photo');
   alertsEl.appendChild(d);
   while (alertsEl.children.length > 1) alertsEl.removeChild(alertsEl.firstChild);
   // debloque l'audio pour OBS (pas de clic utilisateur) – tente resume AudioContext
@@ -1523,7 +1544,14 @@ function showAlert(a) {
       } catch(e){}
     }
   });
-  setTimeout(() => { d.classList.add('out'); setTimeout(() => d.remove(), 320); }, t.hold);
+  setTimeout(() => { 
+    d.classList.add('out'); 
+    setTimeout(() => { 
+      d.remove(); 
+      // si plus d'alerte photo, retire classe has-photo pour repositionner container
+      if (!alertsEl.querySelector('.alert--photo')) alertsEl.classList.remove('has-photo');
+    }, 320); 
+  }, t.hold);
 }
 function queueAlert(a) {
   alertQueue.push(a);
