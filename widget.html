@@ -323,21 +323,23 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 /* Composition CENTRÉE : icône / label à filets / pseudo / détail —
    hiérarchie typographique : label espacé violet, pseudo bleu énorme, détail italique */
 .alert{position:relative;display:flex;flex-direction:column;align-items:center;z-index:21;
-  gap:10px;overflow:hidden;min-width:560px;padding:34px 70px;border-radius:18px;
+  gap:10px;overflow:hidden;min-width:0;width:var(--alert-w,380px);padding:24px 40px;border-radius:18px;
   background:rgba(10,10,12,.9);
   border:1px solid rgba(255,255,255,.14);
   box-shadow:0 28px 70px rgba(0,0,0,.55);
-  animation:alertIn .55s var(--ease-out)}
+  animation:alertIn .55s var(--ease-out);
+  --alert-scale:1;
+}
 /* image de fond en calque séparé : elle FADE-IN sur ~1,2 s → plus de « pop » noir
    au premier chargement (et les assets sont préchargés à l'ouverture de la page) */
 .alert__bg{position:absolute;inset:0;z-index:0;pointer-events:none;
   background:url('assets/alert-bg.png') center/cover no-repeat;
   opacity:0;animation:bgFade 1.2s ease-out .1s forwards}
 .alert--photo{
-  /* V33 : petite, ne prend pas tout l'écran, à droite du milieu avant chat – 340px seulement */
-  min-width:300px;
-  width:340px;
-  max-width:360px;
+  /* V34 : petite, ne prend pas tout l'écran, à droite du milieu avant chat – 340px seulement, respecte config */
+  min-width:0;
+  width:var(--alert-photo-w,340px);
+  max-width:var(--alert-photo-w,340px);
   aspect-ratio:4 / 5;
   padding:16px 18px 18px;
   background:#000;
@@ -383,9 +385,9 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .alert--photo .alert__msg{font-size:12px;max-width:300px}
 @keyframes bgFade{to{opacity:1}}
 .alert.out{animation:alertOut .35s var(--ease-in) forwards}
-/* V34 : animation super simple – descend d'en haut */
-@keyframes alertIn{from{opacity:0;transform:translateY(-120px)}to{opacity:1;transform:translateY(0)}}
-@keyframes alertOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-80px)}}
+/* V34 : animation super simple – descend d'en haut, respecte scale via variable */
+@keyframes alertIn{from{opacity:0;transform:translateY(-120px) scale(var(--alert-scale,1))}to{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}}
+@keyframes alertOut{from{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}to{opacity:0;transform:translateY(-80px) scale(var(--alert-scale,1))}}
 .alert > .alert__icon,.alert > .alert__body{position:relative;z-index:1}
 .alert__icon{width:100px;height:100px;object-fit:contain}
 /* label : Bebas violet très espacé + filet de chaque côté (touch TV) */
@@ -410,10 +412,10 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 /* monogramme 7G : coin haut-droit, discret */
 .alert .mark7g{position:absolute;top:14px;right:16px;opacity:.85;z-index:2;width:32px;height:32px;border-radius:8px}
 /* FOLLOW : le plus simple */
-.alert--follow{min-width:540px}
+.alert--follow{min-width:0;width:var(--alert-w,380px)}
 .alert--follow .alert__user{font-size:52px}
-/* SUB : le plus imposant + lueur (l'écart se VOIT) */
-.alert--sub{min-width:700px;padding:38px 80px;border-color:rgba(145,70,255,.55);
+/* SUB : le plus imposant + lueur (l'écart se VOIT) – V34 taille reglable, plus petit par défaut */
+.alert--sub{min-width:0;width:var(--alert-w,380px);padding:24px 40px;border-color:rgba(145,70,255,.55);
   box-shadow:0 28px 70px rgba(0,0,0,.6),0 0 44px rgba(145,70,255,.35)}
 .alert--sub::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
   background:radial-gradient(ellipse at 50% 45%,rgba(145,70,255,.26),transparent 70%)}
@@ -422,7 +424,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .alert--sub .alert__user{font-size:72px;filter:drop-shadow(0 0 24px rgba(80,170,255,.7))}
 .alert--sub .alert__sub{color:#CFC4E8;font-size:15px}
 /* RAID : blanc net */
-.alert--raid{min-width:660px;border-color:rgba(255,255,255,.35)}
+.alert--raid{min-width:0;width:var(--alert-w,380px);border-color:rgba(255,255,255,.35)}
 .alert--raid .alert__icon{width:110px;height:110px}
 .alert--raid .alert__labeltxt{font-size:24px;color:#E7E9EE}
 .alert--raid .alert__labeltxt::before{background:linear-gradient(90deg,transparent,rgba(231,233,238,.6))}
@@ -1191,15 +1193,15 @@ function applyConfig(c) {
       const card = document.getElementById('card');
       const isLive = card && card.classList.contains('is-live');
       alertsEl.style.top = (isLive ? posYLive : posY) + 'px';
-      // taille via style sur les alertes existantes
+      // taille via style sur les alertes existantes – fix min-width gigantesque
       document.querySelectorAll('.alert').forEach(el=>{
-        if (el.classList.contains('alert--photo')) {
-          el.style.width = photoW + 'px';
-        } else {
-          el.style.width = w + 'px';
-        }
-        el.style.transform = 'scale('+(scale/100)+')';
-        el.style.transformOrigin = 'top center';
+        const isPh = el.classList.contains('alert--photo');
+        const targetW = isPh ? photoW : w;
+        el.style.width = targetW + 'px';
+        el.style.minWidth = '0';
+        el.style.maxWidth = targetW + 'px';
+        el.style.setProperty('--alert-scale', (scale/100).toString());
+        el.style.setProperty('--alert-w', targetW + 'px');
       });
     }
   }
@@ -1454,15 +1456,15 @@ function showAlert(a) {
   const isPhoto = usePhotoAlert;
   const photoClass = isPhoto ? ' alert--photo' : '';
   d.className = 'alert alert--' + t.kind + photoClass;
-  // applique taille depuis config panneau (tous au même endroit)
+  // V34 fix taille : override min-width gigantesque (sub 700, follow 540, raid 660) + applique config panneau
   const cfg = window._alertCfg || { width: 380, photoWidth: 340, scale: 100 };
-  if (isPhoto) {
-    d.style.width = (cfg.photoWidth||340) + 'px';
-  } else {
-    d.style.width = (cfg.width||380) + 'px';
-  }
-  d.style.transform = 'scale('+( (cfg.scale||100)/100 )+')';
-  d.style.transformOrigin = 'top center';
+  const targetW = isPhoto ? (cfg.photoWidth||340) : (cfg.width||380);
+  const scale = (cfg.scale||100)/100;
+  d.style.width = targetW + 'px';
+  d.style.minWidth = '0';
+  d.style.maxWidth = targetW + 'px';
+  d.style.setProperty('--alert-scale', scale.toString());
+  d.style.setProperty('--alert-w', targetW + 'px');
   const bg = document.createElement('div'); bg.className = 'alert__bg';
   bg.style.backgroundImage = `url('assets/IMG_0607.jpg?v=${ts}'), url('assets/alert-photo.jpg?v=${ts}'), url('assets/alert-bg.png?v=${ts}')`;
   if (isPhoto) {
