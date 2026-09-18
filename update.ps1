@@ -36,7 +36,7 @@ try {
   New-Item -ItemType Directory -Path $assetsBackup -Force | Out-Null
   $assetsDir = Join-Path $dir 'assets'
   if (Test-Path $assetsDir) {
-    Get-ChildItem $assetsDir -File | Where-Object { $_.Name -match '^(IMG_0607|alert-photo)\.(jpg|jpeg|png)$' } | ForEach-Object {
+    Get-ChildItem $assetsDir -File | Where-Object { $_.Name -match '^(IMG_0607|alert-photo|alert-.*-custom)\.(jpg|jpeg|png|gif|webp)$' } | ForEach-Object {
       Copy-Item $_.FullName (Join-Path $assetsBackup $_.Name) -Force
     }
   }

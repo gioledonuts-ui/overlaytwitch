@@ -91,6 +91,38 @@ const DEFAULT_CONFIG = {
   alertWidth: 380, // px largeur alerte normale
   alertPhotoWidth: 340, // px largeur alerte photo (4:5)
   alertScale: 100, // % echelle globale (100 = normal)
+  alertDuration: 6500,
+  alertDurations: { follow: 5200, sub: 6500, resub: 6500, gift: 6500, anon: 6500, community: 6500, prime: 6500, raid: 6500 },
+  alertTextDelay: 0,
+  alertDelay: 0,
+  alertImageSize: 100,
+  alertLayout: 'textOver',
+  alertAnimationIn: 'slideTop',
+  alertAnimationOut: 'slideTop',
+  alertAnimationDuration: 550,
+  alertFontLabel: 'Bebas Neue',
+  alertFontUser: 'Bebas Neue',
+  alertFontSub: 'Inter',
+  alertFontSizeLabel: 26,
+  alertFontSizeUser: 72,
+  alertFontSizeSub: 16,
+  alertColorLabel: '#B06CFF',
+  alertColorUser: '#7CC7FF',
+  alertColorSub: '#B9BEC9',
+  alertStroke: 2.5,
+  alertEnabled: { follow: true, sub: true, resub: true, gift: true, anon: true, community: true, prime: true, raid: true },
+  alertMessageTemplates: {
+    follow: '{name} vient de follow',
+    sub: '{name} – {months}',
+    resub: '{name} – {streak} mois consécutif, {total} total',
+    gift: '{name} a offert un sub à {viewer}',
+    anon: 'Anonyme a offert à {viewer}',
+    community: '{name} a offert {total} subs',
+    prime: '{name} – Prime',
+    raid: '{name} raid {viewers} viewers'
+  },
+  alertImages: { follow: '', sub: '', resub: '', gift: '', anon: '', community: '', prime: '', raid: '' },
+  alertSoundsVolume: { follow: 75, sub: 75, resub: 75, gift: 75, anon: 75, community: 75, prime: 75, raid: 75, default: 75 },
   // velocite V5 : seuil % + duree ajout + chrono verrou + fin prevue
   velocityEquilibrium: 20,
   velocityClimb: 0.65,
@@ -249,6 +281,29 @@ function velocityAlertFields(src) {
     alertScale: s.alertScale,
     alertGapMs: s.alertGapMs,
     alertTypes: s.alertTypes,
+    alertDuration: s.alertDuration,
+    alertDurations: s.alertDurations,
+    alertTextDelay: s.alertTextDelay,
+    alertDelay: s.alertDelay,
+    alertImageSize: s.alertImageSize,
+    alertLayout: s.alertLayout,
+    alertAnimationIn: s.alertAnimationIn,
+    alertAnimationOut: s.alertAnimationOut,
+    alertAnimationDuration: s.alertAnimationDuration,
+    alertFontLabel: s.alertFontLabel,
+    alertFontUser: s.alertFontUser,
+    alertFontSub: s.alertFontSub,
+    alertFontSizeLabel: s.alertFontSizeLabel,
+    alertFontSizeUser: s.alertFontSizeUser,
+    alertFontSizeSub: s.alertFontSizeSub,
+    alertColorLabel: s.alertColorLabel,
+    alertColorUser: s.alertColorUser,
+    alertColorSub: s.alertColorSub,
+    alertStroke: s.alertStroke,
+    alertEnabled: s.alertEnabled,
+    alertMessageTemplates: s.alertMessageTemplates,
+    alertImages: s.alertImages,
+    alertSoundsVolume: s.alertSoundsVolume,
     velocity: 1,
     equilibriumMPM: s.velocityEquilibrium,
     climbSensitivity: s.velocityClimb,
@@ -1499,6 +1554,68 @@ const server = http.createServer((req, res) => {
       return send(200, 'application/json', JSON.stringify({ ok: true }));
     }
 
+    /* — Alert images per type (custom image) — */
+    if (u.pathname === '/api/alert-images' && req.method === 'GET') {
+      const assetsDir = path.join(__dirname, 'assets');
+      try {
+        const files = fs.readdirSync(assetsDir).filter(f => /^alert-(follow|sub|resub|gift|anon|community|prime|raid|default)-custom\.(jpg|jpeg|png|gif|webp)$/i.test(f)).map(f => {
+          try { const st = fs.statSync(path.join(assetsDir, f)); return { file: f, size: st.size, mtime: st.mtime.toISOString() }; } catch(e){ return { file: f }; }
+        });
+        return send(200, 'application/json', JSON.stringify({ ok: true, files }));
+      } catch(e) { return send(200, 'application/json', JSON.stringify({ ok: true, files: [] })); }
+    }
+    if (u.pathname === '/api/alert-image' && req.method === 'POST') {
+      const type = (u.searchParams.get('type') || '').toLowerCase().replace(/[^a-z]/g,'');
+      const allowed = ['follow','sub','resub','gift','anon','community','prime','raid','default'];
+      const t = allowed.includes(type) ? type : 'default';
+      const chunks = [];
+      let total = 0;
+      req.on('data', c => { chunks.push(c); total += c.length; if (total > 12 * 1024 * 1024) req.destroy(); });
+      req.on('end', () => {
+        try {
+          const buf = Buffer.concat(chunks);
+          const ctype = (req.headers['content-type'] || '').toLowerCase();
+          let raw, ext = 'png';
+          if (ctype.includes('application/json')) {
+            const j = JSON.parse(buf.toString('utf8'));
+            if (!j.data) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'data manquant' }));
+            raw = Buffer.from(j.data, 'base64');
+            ext = String(j.ext || 'png').toLowerCase().replace(/[^a-z0-9]/g,'');
+            if (!['jpg','jpeg','png','gif','webp'].includes(ext)) ext = 'png';
+          } else {
+            raw = buf;
+            if (ctype.includes('jpeg')||ctype.includes('jpg')) ext='jpg';
+            else if (ctype.includes('png')) ext='png';
+            else if (ctype.includes('gif')) ext='gif';
+            else if (ctype.includes('webp')) ext='webp';
+          }
+          if (raw.length < 200) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'fichier trop petit' }));
+          const out = path.join(__dirname, 'assets', `alert-${t}-custom.${ext}`);
+          try { fs.readdirSync(path.join(__dirname, 'assets')).forEach(f => { if (f.startsWith(`alert-${t}-custom.`) && f !== `alert-${t}-custom.${ext}`) fs.unlinkSync(path.join(__dirname, 'assets', f)); }); } catch(e){}
+          fs.writeFileSync(out, raw);
+          if (!appConfig.alertImages) appConfig.alertImages = {};
+          appConfig.alertImages[t] = `alert-${t}-custom.${ext}`;
+          saveConfig();
+          console.log(`[alert-image] custom ${t} ${raw.length/1024|0} Ko → ${out}`);
+          const payload = 'data: ' + JSON.stringify({ cfg:1, alert:1, alertImages: appConfig.alertImages }) + '\n\n';
+          for (const res of sse) res.write(payload);
+          return send(200, 'application/json', JSON.stringify({ ok: true, file: `alert-${t}-custom.${ext}` }));
+        } catch(e) {
+          return send(400, 'application/json', JSON.stringify({ ok: false, err: e.message }));
+        }
+      });
+      return;
+    }
+    if (u.pathname === '/api/alert-image' && req.method === 'DELETE') {
+      const type = (u.searchParams.get('type') || '').toLowerCase().replace(/[^a-z]/g,'');
+      try {
+        const assetsDir = path.join(__dirname, 'assets');
+        fs.readdirSync(assetsDir).forEach(f => { if (f.startsWith(`alert-${type}-custom.`)) fs.unlinkSync(path.join(assetsDir, f)); });
+        if (appConfig.alertImages) { delete appConfig.alertImages[type]; saveConfig(); }
+      } catch(e){}
+      return send(200, 'application/json', JSON.stringify({ ok: true }));
+    }
+
     if (u.pathname === '/api/vote' && req.method === 'POST') {
       readBody().then(d => {
         try {
@@ -1697,6 +1814,29 @@ const server = http.createServer((req, res) => {
               alertPhotoWidth: p.alertPhotoWidth !== undefined ? Math.max(180, Math.min(600, Math.round(+p.alertPhotoWidth))) : appConfig.alertPhotoWidth,
               alertScale: p.alertScale !== undefined ? Math.max(50, Math.min(150, Math.round(+p.alertScale))) : appConfig.alertScale,
               alertGapMs: p.alertGapMs !== undefined ? Math.max(0, Math.min(5000, Math.round(+p.alertGapMs))) : appConfig.alertGapMs,
+              alertDuration: p.alertDuration !== undefined ? Math.max(1000, Math.min(15000, Math.round(+p.alertDuration))) : appConfig.alertDuration,
+              alertDurations: p.alertDurations || appConfig.alertDurations,
+              alertTextDelay: p.alertTextDelay !== undefined ? Math.max(0, Math.min(5000, Math.round(+p.alertTextDelay))) : appConfig.alertTextDelay,
+              alertDelay: p.alertDelay !== undefined ? Math.max(0, Math.min(10, +p.alertDelay)) : appConfig.alertDelay,
+              alertImageSize: p.alertImageSize !== undefined ? Math.max(20, Math.min(200, Math.round(+p.alertImageSize))) : appConfig.alertImageSize,
+              alertLayout: p.alertLayout || appConfig.alertLayout,
+              alertAnimationIn: p.alertAnimationIn || appConfig.alertAnimationIn,
+              alertAnimationOut: p.alertAnimationOut || appConfig.alertAnimationOut,
+              alertAnimationDuration: p.alertAnimationDuration !== undefined ? Math.max(100, Math.min(2000, Math.round(+p.alertAnimationDuration))) : appConfig.alertAnimationDuration,
+              alertFontLabel: p.alertFontLabel || appConfig.alertFontLabel,
+              alertFontUser: p.alertFontUser || appConfig.alertFontUser,
+              alertFontSub: p.alertFontSub || appConfig.alertFontSub,
+              alertFontSizeLabel: p.alertFontSizeLabel !== undefined ? Math.max(8, Math.min(80, Math.round(+p.alertFontSizeLabel))) : appConfig.alertFontSizeLabel,
+              alertFontSizeUser: p.alertFontSizeUser !== undefined ? Math.max(12, Math.min(120, Math.round(+p.alertFontSizeUser))) : appConfig.alertFontSizeUser,
+              alertFontSizeSub: p.alertFontSizeSub !== undefined ? Math.max(8, Math.min(60, Math.round(+p.alertFontSizeSub))) : appConfig.alertFontSizeSub,
+              alertColorLabel: p.alertColorLabel || appConfig.alertColorLabel,
+              alertColorUser: p.alertColorUser || appConfig.alertColorUser,
+              alertColorSub: p.alertColorSub || appConfig.alertColorSub,
+              alertStroke: p.alertStroke !== undefined ? Math.max(0, Math.min(10, +p.alertStroke)) : appConfig.alertStroke,
+              alertEnabled: p.alertEnabled || appConfig.alertEnabled,
+              alertMessageTemplates: p.alertMessageTemplates || appConfig.alertMessageTemplates,
+              alertImages: p.alertImages || appConfig.alertImages,
+              alertSoundsVolume: p.alertSoundsVolume || appConfig.alertSoundsVolume,
               velocityEquilibrium: p.equilibriumMPM !== undefined ? Math.max(1, Math.round(+p.equilibriumMPM)) : appConfig.velocityEquilibrium,
               velocityClimb: p.climbSensitivity !== undefined ? +p.climbSensitivity : appConfig.velocityClimb,
               velocityDecay: p.decayRate !== undefined ? +p.decayRate : appConfig.velocityDecay,
@@ -1786,6 +1926,29 @@ const server = http.createServer((req, res) => {
           if (p.alertPhotoWidth !== undefined) appConfig.alertPhotoWidth = Math.max(180, Math.min(600, Math.round(+p.alertPhotoWidth)));
           if (p.alertScale !== undefined) appConfig.alertScale = Math.max(50, Math.min(150, Math.round(+p.alertScale)));
           if (p.alertGapMs !== undefined) appConfig.alertGapMs = Math.max(0, Math.min(5000, Math.round(+p.alertGapMs || 0)));
+          if (p.alertDuration !== undefined) appConfig.alertDuration = Math.max(1000, Math.min(15000, Math.round(+p.alertDuration)));
+          if (p.alertDurations !== undefined && typeof p.alertDurations === 'object') appConfig.alertDurations = Object.assign({}, appConfig.alertDurations, p.alertDurations);
+          if (p.alertTextDelay !== undefined) appConfig.alertTextDelay = Math.max(0, Math.min(5000, Math.round(+p.alertTextDelay)));
+          if (p.alertDelay !== undefined) appConfig.alertDelay = Math.max(0, Math.min(10, +p.alertDelay));
+          if (p.alertImageSize !== undefined) appConfig.alertImageSize = Math.max(20, Math.min(200, Math.round(+p.alertImageSize)));
+          if (p.alertLayout !== undefined) appConfig.alertLayout = String(p.alertLayout).slice(0,20);
+          if (p.alertAnimationIn !== undefined) appConfig.alertAnimationIn = String(p.alertAnimationIn).slice(0,20);
+          if (p.alertAnimationOut !== undefined) appConfig.alertAnimationOut = String(p.alertAnimationOut).slice(0,20);
+          if (p.alertAnimationDuration !== undefined) appConfig.alertAnimationDuration = Math.max(100, Math.min(2000, Math.round(+p.alertAnimationDuration)));
+          if (p.alertFontLabel !== undefined) appConfig.alertFontLabel = String(p.alertFontLabel).slice(0,40);
+          if (p.alertFontUser !== undefined) appConfig.alertFontUser = String(p.alertFontUser).slice(0,40);
+          if (p.alertFontSub !== undefined) appConfig.alertFontSub = String(p.alertFontSub).slice(0,40);
+          if (p.alertFontSizeLabel !== undefined) appConfig.alertFontSizeLabel = Math.max(8, Math.min(80, Math.round(+p.alertFontSizeLabel)));
+          if (p.alertFontSizeUser !== undefined) appConfig.alertFontSizeUser = Math.max(12, Math.min(120, Math.round(+p.alertFontSizeUser)));
+          if (p.alertFontSizeSub !== undefined) appConfig.alertFontSizeSub = Math.max(8, Math.min(60, Math.round(+p.alertFontSizeSub)));
+          if (p.alertColorLabel !== undefined) appConfig.alertColorLabel = String(p.alertColorLabel).slice(0,16);
+          if (p.alertColorUser !== undefined) appConfig.alertColorUser = String(p.alertColorUser).slice(0,16);
+          if (p.alertColorSub !== undefined) appConfig.alertColorSub = String(p.alertColorSub).slice(0,16);
+          if (p.alertStroke !== undefined) appConfig.alertStroke = Math.max(0, Math.min(10, +p.alertStroke));
+          if (p.alertEnabled !== undefined && typeof p.alertEnabled === 'object') appConfig.alertEnabled = Object.assign({}, appConfig.alertEnabled, p.alertEnabled);
+          if (p.alertMessageTemplates !== undefined && typeof p.alertMessageTemplates === 'object') appConfig.alertMessageTemplates = Object.assign({}, appConfig.alertMessageTemplates, p.alertMessageTemplates);
+          if (p.alertImages !== undefined && typeof p.alertImages === 'object') appConfig.alertImages = Object.assign({}, appConfig.alertImages || {}, p.alertImages);
+          if (p.alertSoundsVolume !== undefined && typeof p.alertSoundsVolume === 'object') appConfig.alertSoundsVolume = Object.assign({}, appConfig.alertSoundsVolume, p.alertSoundsVolume);
           if (p.velocityAntiSpam !== undefined) appConfig.velocityAntiSpam = !!p.velocityAntiSpam;
           if (p.antiSpam !== undefined) appConfig.velocityAntiSpam = !!p.antiSpam;
           if (p.velocityCooldownSeconds !== undefined) appConfig.velocityCooldownSeconds = Math.max(0, Math.min(120, Math.round(+p.velocityCooldownSeconds || 0)));

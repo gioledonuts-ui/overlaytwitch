@@ -384,8 +384,35 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .alert--photo .mark7g{width:24px;height:24px;top:8px;right:10px}
 .alert--photo .alert__msg{font-size:12px;max-width:300px}
 @keyframes bgFade{to{opacity:1}}
-.alert.out{animation:alertOut .35s var(--ease-in) forwards}
-/* V34 : animation super simple – descend d'en haut, respecte scale via variable */
+/* V35 animations configurables Streamlabs-like – simple descente par défaut, mais fade/slide/bounce disponibles */
+.alert{ --alert-anim-dur:550ms; animation-duration:var(--alert-anim-dur); animation-timing-function:var(--ease-out); animation-fill-mode:both; animation-name:alertIn-slideTop; }
+.alert.out{ animation-duration:350ms; animation-timing-function:var(--ease-in); animation-fill-mode:forwards; animation-name:alertOut-slideTop; }
+.alert[data-anim-in="slideTop"]{ animation-name:alertIn-slideTop; }
+.alert[data-anim-in="fade"]{ animation-name:alertIn-fade; }
+.alert[data-anim-in="slideLeft"]{ animation-name:alertIn-slideLeft; }
+.alert[data-anim-in="slideRight"]{ animation-name:alertIn-slideRight; }
+.alert[data-anim-in="slideBottom"]{ animation-name:alertIn-slideBottom; }
+.alert[data-anim-in="bounce"]{ animation-name:alertIn-bounce; }
+.alert.out[data-anim-out="slideTop"]{ animation-name:alertOut-slideTop; }
+.alert.out[data-anim-out="fade"]{ animation-name:alertOut-fade; }
+.alert.out[data-anim-out="slideLeft"]{ animation-name:alertOut-slideLeft; }
+.alert.out[data-anim-out="slideRight"]{ animation-name:alertOut-slideRight; }
+.alert.out[data-anim-out="slideBottom"]{ animation-name:alertOut-slideBottom; }
+.alert.out[data-anim-out="bounce"]{ animation-name:alertOut-bounce; }
+
+@keyframes alertIn-slideTop{from{opacity:0;transform:translateY(-120px) scale(var(--alert-scale,1))}to{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}}
+@keyframes alertOut-slideTop{from{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}to{opacity:0;transform:translateY(-80px) scale(var(--alert-scale,1))}}
+@keyframes alertIn-fade{from{opacity:0;transform:scale(var(--alert-scale,1))}to{opacity:1;transform:scale(var(--alert-scale,1))}}
+@keyframes alertOut-fade{from{opacity:1;transform:scale(var(--alert-scale,1))}to{opacity:0;transform:scale(var(--alert-scale,1))}}
+@keyframes alertIn-slideLeft{from{opacity:0;transform:translateX(-120px) scale(var(--alert-scale,1))}to{opacity:1;transform:translateX(0) scale(var(--alert-scale,1))}}
+@keyframes alertOut-slideLeft{from{opacity:1;transform:translateX(0) scale(var(--alert-scale,1))}to{opacity:0;transform:translateX(-120px) scale(var(--alert-scale,1))}}
+@keyframes alertIn-slideRight{from{opacity:0;transform:translateX(120px) scale(var(--alert-scale,1))}to{opacity:1;transform:translateX(0) scale(var(--alert-scale,1))}}
+@keyframes alertOut-slideRight{from{opacity:1;transform:translateX(0) scale(var(--alert-scale,1))}to{opacity:0;transform:translateX(120px) scale(var(--alert-scale,1))}}
+@keyframes alertIn-slideBottom{from{opacity:0;transform:translateY(120px) scale(var(--alert-scale,1))}to{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}}
+@keyframes alertOut-slideBottom{from{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}to{opacity:0;transform:translateY(120px) scale(var(--alert-scale,1))}}
+@keyframes alertIn-bounce{0%{opacity:0;transform:translateY(-120px) scale(var(--alert-scale,1))}60%{opacity:1;transform:translateY(10px) scale(var(--alert-scale,1))}80%{transform:translateY(-5px) scale(var(--alert-scale,1))}100%{transform:translateY(0) scale(var(--alert-scale,1))}}
+@keyframes alertOut-bounce{0%{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}100%{opacity:0;transform:translateY(-60px) scale(.9)}}
+/* compat old names */
 @keyframes alertIn{from{opacity:0;transform:translateY(-120px) scale(var(--alert-scale,1))}to{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}}
 @keyframes alertOut{from{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}to{opacity:0;transform:translateY(-80px) scale(var(--alert-scale,1))}}
 .alert > .alert__icon,.alert > .alert__body{position:relative;z-index:1}
@@ -411,6 +438,13 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 /* monogramme 7G : coin haut-droit, discret */
 .alert .mark7g{position:absolute;top:14px;right:16px;opacity:.85;z-index:2;width:32px;height:32px;border-radius:8px}
+/* Layouts Streamlabs-like */
+.alert[data-layout="side"]{ flex-direction:row; align-items:center; gap:18px; text-align:left; }
+.alert[data-layout="side"] .alert__body{ align-items:flex-start; text-align:left; }
+.alert[data-layout="textUnder"]{ flex-direction:column-reverse; }
+.alert[data-layout="middle"]{ justify-content:center; text-align:center; padding:32px 44px; }
+.alert[data-layout="middle"] .alert__body{ align-items:center; }
+
 /* FOLLOW : le plus simple */
 .alert--follow{min-width:0;width:var(--alert-w,380px)}
 .alert--follow .alert__user{font-size:52px}
@@ -1208,34 +1242,63 @@ function applyConfig(c) {
       document.documentElement.style.setProperty('--violet-light', light);
     }
   }
-  // alertes position/taille V34 – tous au même endroit, sauvegarde comme son
-  if (c.alert || c.alertPosX !== undefined) {
+  // alertes V35 – personnalisation complète type Streamlabs (position, taille, fonts, couleurs, animations, templates)
+  if (c.alert || c.alertPosX !== undefined || c.alertDuration !== undefined) {
     const alertsEl = document.getElementById('alerts');
+    const def = { posX:58, posY:140, posYLive:360, width:380, photoWidth:340, scale:100, duration:6500, textDelay:0, delay:0, imgSize:100, layout:'textOver', animIn:'slideTop', animOut:'slideTop', animDur:550, fontLabel:'Bebas Neue', fontUser:'Bebas Neue', fontSub:'Inter', sizeLabel:26, sizeUser:72, sizeSub:16, colorLabel:'#B06CFF', colorUser:'#7CC7FF', colorSub:'#B9BEC9', stroke:2.5 };
+    const cur = window._alertCfg || def;
+    const posX = c.alertPosX != null ? c.alertPosX : cur.posX;
+    const posY = c.alertPosY != null ? c.alertPosY : cur.posY;
+    const posYLive = c.alertPosYLive != null ? c.alertPosYLive : cur.posYLive;
+    const w = c.alertWidth != null ? c.alertWidth : cur.width;
+    const photoW = c.alertPhotoWidth != null ? c.alertPhotoWidth : cur.photoWidth;
+    const scale = c.alertScale != null ? c.alertScale : cur.scale;
+    const duration = c.alertDuration != null ? c.alertDuration : (cur.duration||6500);
+    const durations = c.alertDurations || window._alertDurations || cur.durations || { follow:5200, sub:6500, raid:6500 };
+    const textDelay = c.alertTextDelay != null ? c.alertTextDelay : (cur.textDelay||0);
+    const delay = c.alertDelay != null ? c.alertDelay : (cur.delay||0);
+    const imgSize = c.alertImageSize != null ? c.alertImageSize : (cur.imgSize||100);
+    const layout = c.alertLayout || cur.layout || 'textOver';
+    const animIn = c.alertAnimationIn || cur.animIn || 'slideTop';
+    const animOut = c.alertAnimationOut || cur.animOut || 'slideTop';
+    const animDur = c.alertAnimationDuration != null ? c.alertAnimationDuration : (cur.animDur||550);
+    const fontLabel = c.alertFontLabel || cur.fontLabel || 'Bebas Neue';
+    const fontUser = c.alertFontUser || cur.fontUser || 'Bebas Neue';
+    const fontSub = c.alertFontSub || cur.fontSub || 'Inter';
+    const sizeLabel = c.alertFontSizeLabel != null ? c.alertFontSizeLabel : (cur.sizeLabel||26);
+    const sizeUser = c.alertFontSizeUser != null ? c.alertFontSizeUser : (cur.sizeUser||72);
+    const sizeSub = c.alertFontSizeSub != null ? c.alertFontSizeSub : (cur.sizeSub||16);
+    const colorLabel = c.alertColorLabel || cur.colorLabel || '#B06CFF';
+    const colorUser = c.alertColorUser || cur.colorUser || '#7CC7FF';
+    const colorSub = c.alertColorSub || cur.colorSub || '#B9BEC9';
+    const stroke = c.alertStroke != null ? c.alertStroke : (cur.stroke||2.5);
+    const enabled = c.alertEnabled || window._alertEnabled || cur.enabled || { follow:true, sub:true, gift:true, raid:true };
+    const templates = c.alertMessageTemplates || window._alertTemplates || cur.templates || {};
+    const images = c.alertImages || window._alertImages || cur.images || {};
+    const volumes = c.alertSoundsVolume || window._alertVolumes || cur.volumes || {};
+
+    window._alertCfg = { posX, posY, posYLive, width:w, photoWidth:photoW, scale, duration, textDelay, delay, imgSize, layout, animIn, animOut, animDur, fontLabel, fontUser, fontSub, sizeLabel, sizeUser, sizeSub, colorLabel, colorUser, colorSub, stroke, enabled, templates, images, volumes };
+    window._alertDurations = durations;
+    window._alertEnabled = enabled;
+    window._alertTemplates = templates;
+    window._alertImages = images;
+    window._alertVolumes = volumes;
+
     if (alertsEl) {
-      const posX = c.alertPosX != null ? c.alertPosX : (window._alertCfg ? window._alertCfg.posX : 58);
-      const posY = c.alertPosY != null ? c.alertPosY : (window._alertCfg ? window._alertCfg.posY : 140);
-      const posYLive = c.alertPosYLive != null ? c.alertPosYLive : (window._alertCfg ? window._alertCfg.posYLive : 360);
-      const w = c.alertWidth != null ? c.alertWidth : (window._alertCfg ? window._alertCfg.width : 380);
-      const photoW = c.alertPhotoWidth != null ? c.alertPhotoWidth : (window._alertCfg ? window._alertCfg.photoWidth : 340);
-      const scale = c.alertScale != null ? c.alertScale : (window._alertCfg ? window._alertCfg.scale : 100);
-      window._alertCfg = { posX, posY, posYLive, width: w, photoWidth: photoW, scale };
-      // applique au container
       alertsEl.style.left = posX + '%';
-      // si live, on utilisera posYLive via CSS override, mais on stocke en data attr
       alertsEl.dataset.posY = posY;
       alertsEl.dataset.posYLive = posYLive;
-      // on met à jour CSS custom properties pour les règles :has
       document.documentElement.style.setProperty('--alert-x', posX + '%');
       document.documentElement.style.setProperty('--alert-y', posY + 'px');
       document.documentElement.style.setProperty('--alert-y-live', posYLive + 'px');
       document.documentElement.style.setProperty('--alert-w', w + 'px');
       document.documentElement.style.setProperty('--alert-photo-w', photoW + 'px');
       document.documentElement.style.setProperty('--alert-scale', (scale/100).toString());
-      // applique directement top si pas de sondage live (logique simple)
+      document.documentElement.style.setProperty('--alert-img-size', imgSize + '%');
+      document.documentElement.style.setProperty('--alert-anim-dur', animDur + 'ms');
       const card = document.getElementById('card');
       const isLive = card && card.classList.contains('is-live');
       alertsEl.style.top = (isLive ? posYLive : posY) + 'px';
-      // taille via style sur les alertes existantes – fix min-width gigantesque
       document.querySelectorAll('.alert').forEach(el=>{
         const isPh = el.classList.contains('alert--photo');
         const targetW = isPh ? photoW : w;
@@ -1243,9 +1306,19 @@ function applyConfig(c) {
         el.style.minWidth = '0';
         el.style.maxWidth = targetW + 'px';
         el.style.setProperty('--alert-scale', (scale/100).toString());
-        el.style.setProperty('--alert-w', targetW + 'px');
+        // fonts live update
+        const lbl = el.querySelector('.alert__labeltxt');
+        const usr = el.querySelector('.alert__user');
+        const sub = el.querySelector('.alert__sub');
+        if (lbl) { lbl.style.fontFamily = fontLabel; lbl.style.fontSize = sizeLabel + 'px'; lbl.style.color = colorLabel; }
+        if (usr) { usr.style.fontFamily = fontUser; usr.style.fontSize = sizeUser + 'px'; usr.style.color = colorUser; usr.style.webkitTextStrokeWidth = stroke + 'px'; }
+        if (sub) { sub.style.fontFamily = fontSub; sub.style.fontSize = sizeSub + 'px'; sub.style.color = colorSub; }
       });
     }
+    // applique layout global
+    document.documentElement.dataset.alertLayout = layout;
+    document.documentElement.dataset.alertAnimIn = animIn;
+    document.documentElement.dataset.alertAnimOut = animOut;
   }
   if (c.alertTypes) window._alertTypes = c.alertTypes;
   if (c.alertGapMs !== undefined) window._alertGapMs = Math.max(0, Math.min(5000, +c.alertGapMs || 0));
@@ -1503,43 +1576,96 @@ function fillAlertTemplate(tpl, a) {
     .replace(/\{months\}/gi, String(total))
     .replace(/\{streak\}/gi, String(streak))
     .replace(/\{total\}/gi, String(total))
-    .replace(/\{message\}/gi, a.message || '');
+    .replace(/\{message\}/gi, a.message || '');}
+function renderAlertTemplate(tmpl, vars){
+  try{
+    let s = String(tmpl||'');
+    for(const [k,v] of Object.entries(vars||{})){
+      s = s.split('{'+k+'}').join(String(v!=null?v:''));
+    }
+    return s;
+  }catch(e){ return String(tmpl||''); }
 }
 function alertText(a) {
   const SUB_ICON = 'assets/icon-sub.png';
+  const cfg = window._alertCfg || {};
+  const templates = window._alertTemplates || {};
+  const durations = window._alertDurations || {};
+  const enabled = window._alertEnabled || {};
+  // si désactivé, on ignore
+  if (enabled && enabled[a.alert] === false) return null;
+  const getHold = (type, def) => {
+    const d = durations[type];
+    if (d != null) return Math.max(1000, Math.round(+d));
+    const gd = window._alertCfg ? window._alertCfg.duration : null;
+    return gd != null ? Math.max(1000, Math.round(+gd)) : def;
+  };
   switch (a.alert) {
-    case 'follow':    return { kind: 'follow', icon: 'assets/icon-follow.png', labelTxt: 'NOUVEAU FOLLOW', user: a.user, subText: 'Bienvenue dans le chat !', hold: 5200 };
-    case 'sub':       return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subText: '1 mois', subMsg: a.message || undefined, hold: 6500 };
-    case 'resub':     {
+    case 'follow': {
+      const vars = { name: a.user||'Viewer', viewer: a.viewer||'', viewers: a.viewers||'', count: a.viewers||1 };
+      const tmpl = templates.follow || '{name} vient de follow';
+      const txt = renderAlertTemplate(tmpl, vars);
+      return { kind: 'follow', icon: 'assets/icon-follow.png', labelTxt: 'NOUVEAU FOLLOW', user: a.user, subText: txt.includes('{') ? 'Bienvenue dans le chat !' : (txt || 'Bienvenue dans le chat !'), hold: getHold('follow',5200) };
+    }
+    case 'sub': {
+      const vars = { name: a.user||'Viewer', months:'1 mois', total: a.total||1, viewer: a.viewer||'' };
+      const tmpl = templates.sub || '{name} – {months}';
+      const txt = renderAlertTemplate(tmpl, vars);
+      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subText: txt, subMsg: a.message || undefined, hold: getHold('sub',6500) };
+    }
+    case 'resub': {
       const streak = (a.stints || 0) + 1;
       const total = a.total || streak;
-      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user,
-        subText: streak >= 2 ? streak + ' mois consécutif — ' + total + ' mois total' : total + ' mois',
-        subMsg: a.message || undefined, hold: 6500 };
+      const vars = { name: a.user||'Viewer', streak, total, months: total+' mois', viewer: a.viewer||'' };
+      const tmpl = templates.resub || '{name} – {streak} mois consécutif, {total} total';
+      const txt = renderAlertTemplate(tmpl, vars);
+      const fallback = streak >= 2 ? streak + ' mois consécutif — ' + total + ' mois total' : total + ' mois';
+      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subText: txt || fallback, subMsg: a.message || undefined, hold: getHold('resub',6500) };
     }
-    case 'gift':      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subPre: 'a offert un abonnement à ', subHl: a.viewer || 'un spectateur', subMsg: a.message || undefined, hold: 6500 };
-    case 'anon':      {
-      // anonyme : si viewer contient "subs" (ex: "5 subs") on affiche en subText, sinon subPre
-      const v = a.viewer || '';
+    case 'gift': {
+      const vars = { name: a.user||'Viewer', viewer: a.viewer||'un spectateur', viewers: a.viewers||1, count: a.viewers||1, total: a.total||1 };
+      const tmpl = templates.gift || '{name} a offert un sub à {viewer}';
+      const txt = renderAlertTemplate(tmpl, vars);
+      // si template contient à, on l'utilise en subText, sinon on garde pre/hl pour compat
+      if (txt && txt !== tmpl) return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subText: txt, subMsg: a.message || undefined, hold: getHold('gift',6500) };
+      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subPre: 'a offert un abonnement à ', subHl: a.viewer || 'un spectateur', subMsg: a.message || undefined, hold: getHold('gift',6500) };
+    }
+    case 'anon': {
+      const v = a.viewer || 'un spectateur';
+      const vars = { name: 'UN ANONYME', viewer: v, viewers: a.viewers||a.total||1, total: a.total||1 };
+      const tmpl = templates.anon || 'Anonyme a offert à {viewer}';
+      const txt = renderAlertTemplate(tmpl, vars);
       if (String(v).toLowerCase().includes('sub')) {
-        return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: 'UN ANONYME', subText: 'a offert ' + v, subMsg: a.message || undefined, hold: 6500 };
+        return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: 'UN ANONYME', subText: txt || ('a offert ' + v), subMsg: a.message || undefined, hold: getHold('anon',6500) };
       }
-      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: 'UN ANONYME', subPre: 'a offert un abonnement à ', subHl: v || 'un spectateur', subMsg: a.message || undefined, hold: 6500 };
+      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: 'UN ANONYME', subPre: 'a offert un abonnement à ', subHl: v, subMsg: a.message || undefined, hold: getHold('anon',6500) };
     }
     case 'community': {
       const tot = a.total || a.viewers || 0;
-      const txt = tot ? 'a offert ' + tot + ' abonnements à tout le chat' : 'a offert des abonnements à tout le chat';
-      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subText: txt, subMsg: a.message || undefined, hold: 6500 };
+      const vars = { name: a.user||'Viewer', total: tot, viewers: tot, count: tot, viewer: a.viewer||'' };
+      const tmpl = templates.community || '{name} a offert {total} subs';
+      const txt = renderAlertTemplate(tmpl, vars);
+      const fallback = tot ? 'a offert ' + tot + ' abonnements à tout le chat' : 'a offert des abonnements à tout le chat';
+      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subText: txt || fallback, subMsg: a.message || undefined, hold: getHold('community',6500) };
     }
-    case 'prime':     return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subText: 'a offert un abonnement Prime', subMsg: a.message || undefined, hold: 6500 };
-    case 'raid':      {
+    case 'prime': {
+      const vars = { name: a.user||'Viewer', viewer: a.viewer||'' };
+      const tmpl = templates.prime || '{name} – Prime';
+      const txt = renderAlertTemplate(tmpl, vars);
+      return { kind: 'sub', icon: SUB_ICON, labelTxt: 'NOUVEAU SUB', user: a.user, subText: txt || 'a offert un abonnement Prime', subMsg: a.message || undefined, hold: getHold('prime',6500) };
+    }
+    case 'raid': {
       const viewers = a.viewers != null ? a.viewers : '?';
       const who = a.user || 'UN STREAMER';
-      return { kind: 'raid', icon: 'assets/icon-raid.png', labelTxt: 'RAID', user: who, subText: 'arrive avec ' + viewers + ' spectateurs', subMsg: a.message || undefined, hold: 6500 };
+      const vars = { name: who, viewers, viewer: who, count: viewers };
+      const tmpl = templates.raid || '{name} raid {viewers} viewers';
+      const txt = renderAlertTemplate(tmpl, vars);
+      return { kind: 'raid', icon: 'assets/icon-raid.png', labelTxt: 'RAID', user: who, subText: txt || ('arrive avec ' + viewers + ' spectateurs'), subMsg: a.message || undefined, hold: getHold('raid',6500) };
     }
   }
   return null;
 }
+
 function showAlert(a) {
   const t = alertText(a);
   if (!t) return;
@@ -1572,17 +1698,31 @@ function showAlert(a) {
   const isPhoto = usePhotoAlert;
   const photoClass = isPhoto ? ' alert--photo' : '';
   d.className = 'alert alert--' + t.kind + photoClass + ' alert--layout-' + layout + ' anim-in-' + animIn;
-  // V34 fix taille : override min-width gigantesque (sub 700, follow 540, raid 660) + applique config panneau
-  const cfg = window._alertCfg || { width: 380, photoWidth: 340, scale: 100 };
+  const cfg = window._alertCfg || { width: 380, photoWidth: 340, scale: 100, imgSize:100, fontLabel:'Bebas Neue', fontUser:'Bebas Neue', fontSub:'Inter', sizeLabel:26, sizeUser:72, sizeSub:16, colorLabel:'#B06CFF', colorUser:'#7CC7FF', colorSub:'#B9BEC9', stroke:2.5, animIn:'slideTop', animOut:'slideTop', animDur:550, textDelay:0, delay:0, layout:'textOver' };
   const targetW = isPhoto ? (cfg.photoWidth||340) : (cfg.width||380);
   const scale = (cfg.scale||100)/100;
+  const imgSize = cfg.imgSize||100;
+  const animDur = cfg.animDur||550;
+  const textDelay = cfg.textDelay||0;
+  const delaySec = cfg.delay||0;
   d.style.width = targetW + 'px';
   d.style.minWidth = '0';
   d.style.maxWidth = targetW + 'px';
   d.style.setProperty('--alert-scale', scale.toString());
   d.style.setProperty('--alert-w', targetW + 'px');
+  d.style.setProperty('--alert-img-size', imgSize + '%');
+  d.style.setProperty('--alert-anim-dur', animDur + 'ms');
+  d.dataset.animIn = animIn;
+  d.dataset.animOut = animOut;
+  d.dataset.layout = cfg.layout||'textOver';
   const bg = document.createElement('div'); bg.className = 'alert__bg';
-  bg.style.backgroundImage = `url('assets/IMG_0607.jpg?v=${ts}'), url('assets/alert-photo.jpg?v=${ts}'), url('assets/alert-bg.png?v=${ts}')`;
+  const images = window._alertImages || {};
+  const customImg = images[a.alert] || images[a.type] || '';
+  if (customImg) {
+    bg.style.backgroundImage = `url('assets/${customImg}?v=${ts}'), url('assets/IMG_0607.jpg?v=${ts}'), url('assets/alert-photo.jpg?v=${ts}'), url('assets/alert-bg.png?v=${ts}')`;
+  } else {
+    bg.style.backgroundImage = `url('assets/IMG_0607.jpg?v=${ts}'), url('assets/alert-photo.jpg?v=${ts}'), url('assets/alert-bg.png?v=${ts}')`;
+  }
   if (isPhoto) {
     bg.style.backgroundSize = 'contain';
     bg.style.backgroundPosition = 'center center';
@@ -1590,23 +1730,12 @@ function showAlert(a) {
     bg.style.backgroundColor = '#000';
     const probeImg = new Image();
     probeImg.onload = () => {
-      try {
-        const w = probeImg.naturalWidth, h = probeImg.naturalHeight;
-        if (w && h) {
-          d.style.aspectRatio = w + ' / ' + h;
-          console.log('[alert] ratio photo detecte', w+'x'+h);
-        }
-      } catch(e){}
+      try { const w = probeImg.naturalWidth, h = probeImg.naturalHeight; if (w && h) d.style.aspectRatio = w + ' / ' + h; } catch(e){}
     };
-    probeImg.src = 'assets/IMG_0607.jpg?v=' + ts;
+    probeImg.src = customImg ? `assets/${customImg}?v=${ts}` : 'assets/IMG_0607.jpg?v=' + ts;
     probeImg.onerror = () => {
       const fallback = new Image();
-      fallback.onload = () => {
-        try {
-          const w = fallback.naturalWidth, h = fallback.naturalHeight;
-          if (w && h) d.style.aspectRatio = w + ' / ' + h;
-        } catch(e){}
-      };
+      fallback.onload = () => { try { const w = fallback.naturalWidth, h = fallback.naturalHeight; if (w && h) d.style.aspectRatio = w + ' / ' + h; } catch(e){} };
       fallback.src = 'assets/alert-photo.jpg?v=' + ts;
     };
   } else {
@@ -1643,15 +1772,25 @@ function showAlert(a) {
     ic.className = 'alert__icon'; ic.src = t.icon; ic.alt = '';
     ic.style.transform = 'scale(' + imgScale + ')';
     ic.onerror = () => ic.remove();
-  }
-  const bd = document.createElement('span'); bd.className = 'alert__body';
+  }  const bd = document.createElement('span'); bd.className = 'alert__body';
+  if (textDelay) bd.style.animationDelay = textDelay + 'ms';
   const lb = document.createElement('span'); lb.className = 'alert__labeltxt'; lb.textContent = t.labelTxt;
+  lb.style.fontFamily = cfg.fontLabel||'Bebas Neue';
+  lb.style.fontSize = (cfg.sizeLabel||26) + 'px';
+  lb.style.color = cfg.colorLabel||'#B06CFF';
   if (tc.labelColor) lb.style.color = tc.labelColor;
   const us = document.createElement('span'); us.className = 'alert__user'; us.textContent = t.user || '???';
+  us.style.fontFamily = cfg.fontUser||'Bebas Neue';
+  us.style.fontSize = (cfg.sizeUser||72) + 'px';
+  us.style.color = cfg.colorUser||'#7CC7FF';
+  us.style.webkitTextStrokeWidth = (cfg.stroke||2.5) + 'px';
   if (tc.fontSize) us.style.fontSize = Math.round(+tc.fontSize) + 'px';
   if (tc.fontColor) { us.style.color = tc.fontColor; us.style.filter = 'drop-shadow(0 0 16px ' + tc.fontColor + '88)'; }
   if (textAnim !== 'none') us.classList.add('tanim-' + textAnim);
   const sb = document.createElement('span'); sb.className = 'alert__sub';
+  sb.style.fontFamily = cfg.fontSub||'Inter';
+  sb.style.fontSize = (cfg.sizeSub||16) + 'px';
+  sb.style.color = cfg.colorSub||'#B9BEC9';
   if (t.subText) sb.textContent = t.subText;
   else {
     if (t.subPre) sb.appendChild(document.createTextNode(t.subPre));
@@ -1660,10 +1799,11 @@ function showAlert(a) {
     sb.appendChild(h);
   }
   bd.append(lb, us, sb);
-  if (t.subMsg) {   /* message personnalisé du sub : slot dédié, sous la ligne de détail */
+  if (t.subMsg) {
     const dv = document.createElement('span'); dv.className = 'alert__divider';
     const mg = document.createElement('span'); mg.className = 'alert__msg';
     mg.textContent = '« ' + t.subMsg + ' »';
+    mg.style.fontFamily = cfg.fontSub||'Inter';
     bd.append(dv, mg);
   }
   if (ic) d.appendChild(ic);
@@ -1684,11 +1824,9 @@ function showAlert(a) {
   }catch(e){}
   // son : single playback, volume 0.75 pour éviter craquement
   // on essaie un seul fichier, pas de double lecture
-  let played = false;
-  const playSingle = async () => {
+  let played = false;  const playSingle = async () => {
     if (MUTE) return true;
     const tryUrls = [];
-    // type exact d'abord (gift/resub...)
     for (const ext of ['mp3','wav','ogg','m4a']) {
       tryUrls.push('sounds/alert-' + a.alert + '.' + ext);
       tryUrls.push('sounds/' + a.alert + '.' + ext);
@@ -1698,7 +1836,6 @@ function showAlert(a) {
       tryUrls.push('sounds/' + t.kind + '.' + ext);
     }
     tryUrls.push('sounds/alert-default.mp3', 'sounds/alert-sub.mp3');
-    // d'abord via HTML Audio preloaded si dispo
     const auExact = alertAudio[a.alert];
     const auKind = alertAudio[t.kind];
     const auDef = alertAudio['default'] || alertAudio['sub'];
@@ -1719,10 +1856,8 @@ function showAlert(a) {
           setTimeout(()=>{ try{ au.muted=false; au.volume=vol; }catch(e){} }, 150);
           played = true;
           return true;
-        } catch(e2) { continue; }
-      }
+        } catch(e2) { continue; }      }
     }
-    // sinon fetch + WebAudio decode (single)
     const c = audio();
     if (!c) return false;
     for (const u of tryUrls) {
@@ -1737,9 +1872,8 @@ function showAlert(a) {
         g.gain.value = vol;
         src.connect(g).connect(c.destination);
         src.start();
-        played = true;
-        return true;
-      } catch(e) { continue; }
+        played = true;        return true;
+      } catch(e){ continue; }
     }
     return false;
   };
@@ -1774,8 +1908,7 @@ function showAlert(a) {
 }
 function queueAlert(a) {
   const tc = typeCfgOf(a.alert);
-  if (tc && tc.enabled === false) return;
-  alertQueue.push(a);
+  if (tc && tc.enabled === false) return;  alertQueue.push(a);
   processAlerts();
 }
 function processAlerts() {

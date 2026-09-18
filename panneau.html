@@ -815,6 +815,99 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
             <div class="note" style="margin-top:8px">Animation: descente simple d'en haut (slide -120px → 0, 0.55s). Taille photo conseillée 280-340px pour ne pas cacher le streamer. Sauvegardé dans config-perso.json comme les sons.</div>
           </div>
 
+          <div class="card" style="margin-top:12px;background:#14141e;border-color:var(--line2)">
+            <h2>🎨 PERSONNALISATION AVANCÉE (STYLE STREAMLABS)</h2>
+            <p class="sub">Tout comme Streamlabs Alert Box : image par type, son volume, durée, template message avec {name}{viewers}{count}{months}, fonts, couleurs, layout, animations in/out, enable/disable.</p>
+            
+            <h3 style="font-size:11px;margin-top:14px;letter-spacing:.08em;color:var(--accent)">✅ ACTIVER / DÉSACTIVER PAR TYPE</h3>
+            <div class="row grow" style="gap:8px;margin-top:6px;flex-wrap:wrap">
+              <label class="switchRow" style="flex:1;min-width:120px"><input type="checkbox" id="alertEn_follow" checked> <span>Follow</span></label>
+              <label class="switchRow" style="flex:1;min-width:120px"><input type="checkbox" id="alertEn_sub" checked> <span>Sub</span></label>
+              <label class="switchRow" style="flex:1;min-width:120px"><input type="checkbox" id="alertEn_resub" checked> <span>Resub</span></label>
+              <label class="switchRow" style="flex:1;min-width:120px"><input type="checkbox" id="alertEn_gift" checked> <span>Gift</span></label>
+              <label class="switchRow" style="flex:1;min-width:120px"><input type="checkbox" id="alertEn_raid" checked> <span>Raid</span></label>
+              <label class="switchRow" style="flex:1;min-width:120px"><input type="checkbox" id="alertEn_community" checked> <span>Community</span></label>
+            </div>
+
+            <h3 style="font-size:11px;margin-top:14px;letter-spacing:.08em;color:var(--accent)">⏱ DURÉES & DÉLAIS</h3>
+            <div class="row grow" style="gap:10px;margin-top:6px">
+              <div class="field" style="flex:1"><label>Durée globale (ms)</label><input id="alertDuration" type="number" min="1000" max="15000" step="100"></div>
+              <div class="field" style="flex:1"><label>Delay avant alerte (sec)</label><input id="alertDelay" type="number" min="0" max="10" step="0.5"></div>
+              <div class="field" style="flex:1"><label>Text delay (ms)</label><input id="alertTextDelay" type="number" min="0" max="5000" step="100"></div>
+              <div class="field" style="flex:1"><label>Anim durée (ms)</label><input id="alertAnimDur" type="number" min="100" max="2000" step="50"></div>
+            </div>
+            <div class="row grow" style="gap:10px;margin-top:8px">
+              <div class="field" style="flex:1"><label>Durée Follow (ms)</label><input id="alertDur_follow" type="number" min="1000" max="15000" step="100"></div>
+              <div class="field" style="flex:1"><label>Durée Sub (ms)</label><input id="alertDur_sub" type="number" min="1000" max="15000" step="100"></div>
+              <div class="field" style="flex:1"><label>Durée Gift (ms)</label><input id="alertDur_gift" type="number" min="1000" max="15000" step="100"></div>
+              <div class="field" style="flex:1"><label>Durée Raid (ms)</label><input id="alertDur_raid" type="number" min="1000" max="15000" step="100"></div>
+            </div>
+
+            <h3 style="font-size:11px;margin-top:14px;letter-spacing:.08em;color:var(--accent)">🖼 LAYOUT & ANIMATIONS (STREAMLABS)</h3>
+            <div class="row grow" style="gap:10px;margin-top:6px">
+              <div class="field" style="flex:1"><label>Layout</label><select id="alertLayout" style="width:100%;padding:6px"><option value="textOver">Text over image (defaut)</option><option value="textUnder">Text under image</option><option value="side">Image à côté</option><option value="middle">Middle box</option></select></div>
+              <div class="field" style="flex:1"><label>Animation In</label><select id="alertAnimIn" style="width:100%;padding:6px"><option value="slideTop">Slide Top (simple descente)</option><option value="fade">Fade</option><option value="slideLeft">Slide Left</option><option value="slideRight">Slide Right</option><option value="slideBottom">Slide Bottom</option><option value="bounce">Bounce</option></select></div>
+              <div class="field" style="flex:1"><label>Animation Out</label><select id="alertAnimOut" style="width:100%;padding:6px"><option value="slideTop">Slide Top</option><option value="fade">Fade</option><option value="slideLeft">Slide Left</option><option value="slideRight">Slide Right</option><option value="bounce">Bounce</option></select></div>
+              <div class="field" style="flex:1"><label>Taille image (%)</label><input id="alertImgSize" type="range" min="20" max="200" step="5" style="width:100%"><div class="note" style="font-size:10px"><span id="alertImgSizeVal">100%</span></div></div>
+            </div>
+
+            <h3 style="font-size:11px;margin-top:14px;letter-spacing:.08em;color:var(--accent)">🔤 FONTS & COULEURS</h3>
+            <div class="row grow" style="gap:10px;margin-top:6px">
+              <div class="field" style="flex:1"><label>Font Label</label><input id="alertFontLabel" type="text" placeholder="Bebas Neue" style="width:100%"></div>
+              <div class="field" style="flex:1"><label>Font User</label><input id="alertFontUser" type="text" placeholder="Bebas Neue" style="width:100%"></div>
+              <div class="field" style="flex:1"><label>Font Sub</label><input id="alertFontSub" type="text" placeholder="Inter" style="width:100%"></div>
+            </div>
+            <div class="row grow" style="gap:10px;margin-top:8px">
+              <div class="field" style="flex:1"><label>Taille Label (px)</label><input id="alertFontSizeLabel" type="number" min="8" max="80" step="1"></div>
+              <div class="field" style="flex:1"><label>Taille User (px)</label><input id="alertFontSizeUser" type="number" min="12" max="120" step="1"></div>
+              <div class="field" style="flex:1"><label>Taille Sub (px)</label><input id="alertFontSizeSub" type="number" min="8" max="60" step="1"></div>
+              <div class="field" style="flex:1"><label>Stroke (px)</label><input id="alertStroke" type="number" min="0" max="10" step="0.5"></div>
+            </div>
+            <div class="row grow" style="gap:10px;margin-top:8px">
+              <div class="field" style="flex:1"><label>Couleur Label</label><input id="alertColorLabel" type="color" style="width:100%;height:32px"></div>
+              <div class="field" style="flex:1"><label>Couleur User</label><input id="alertColorUser" type="color" style="width:100%;height:32px"></div>
+              <div class="field" style="flex:1"><label>Couleur Sub</label><input id="alertColorSub" type="color" style="width:100%;height:32px"></div>
+            </div>
+
+            <h3 style="font-size:11px;margin-top:14px;letter-spacing:.08em;color:var(--accent)">💬 TEMPLATES MESSAGE (variables {name} {viewer} {viewers} {count} {months} {streak} {total})</h3>
+            <div class="row grow" style="gap:10px;margin-top:6px">
+              <div class="field" style="flex:1"><label>Follow</label><input id="alertTpl_follow" type="text" placeholder="{name} vient de follow" style="width:100%"></div>
+              <div class="field" style="flex:1"><label>Sub</label><input id="alertTpl_sub" type="text" placeholder="{name} – {months}" style="width:100%"></div>
+            </div>
+            <div class="row grow" style="gap:10px;margin-top:6px">
+              <div class="field" style="flex:1"><label>Resub</label><input id="alertTpl_resub" type="text" placeholder="{name} – {streak} mois, {total} total" style="width:100%"></div>
+              <div class="field" style="flex:1"><label>Gift</label><input id="alertTpl_gift" type="text" placeholder="{name} a offert à {viewer}" style="width:100%"></div>
+            </div>
+            <div class="row grow" style="gap:10px;margin-top:6px">
+              <div class="field" style="flex:1"><label>Community</label><input id="alertTpl_community" type="text" placeholder="{name} a offert {total} subs" style="width:100%"></div>
+              <div class="field" style="flex:1"><label>Raid</label><input id="alertTpl_raid" type="text" placeholder="{name} raid {viewers} viewers" style="width:100%"></div>
+            </div>
+
+            <h3 style="font-size:11px;margin-top:14px;letter-spacing:.08em;color:var(--accent)">🔊 VOLUME PAR TYPE</h3>
+            <div class="row grow" style="gap:10px;margin-top:6px">
+              <div class="field" style="flex:1"><label>Vol Follow %</label><input id="alertVol_follow" type="range" min="0" max="100" step="5" style="width:100%"><div class="note" style="font-size:10px"><span id="alertVol_followVal">75%</span></div></div>
+              <div class="field" style="flex:1"><label>Vol Sub %</label><input id="alertVol_sub" type="range" min="0" max="100" step="5" style="width:100%"><div class="note" style="font-size:10px"><span id="alertVol_subVal">75%</span></div></div>
+              <div class="field" style="flex:1"><label>Vol Gift %</label><input id="alertVol_gift" type="range" min="0" max="100" step="5" style="width:100%"><div class="note" style="font-size:10px"><span id="alertVol_giftVal">75%</span></div></div>
+              <div class="field" style="flex:1"><label>Vol Raid %</label><input id="alertVol_raid" type="range" min="0" max="100" step="5" style="width:100%"><div class="note" style="font-size:10px"><span id="alertVol_raidVal">75%</span></div></div>
+            </div>
+
+            <h3 style="font-size:11px;margin-top:14px;letter-spacing:.08em;color:var(--accent)">🖼️ IMAGES PAR TYPE (upload comme son, sauvegardé)</h3>
+            <div class="note" style="margin-bottom:8px">Upload une image custom par type d'alerte (follow/sub/gift/raid). Comme Streamlabs image/video upload. Stocké dans assets/alert-{type}-custom.png</div>
+            <div class="row grow" style="gap:10px">
+              <div class="field" style="flex:1"><label>Follow image</label><input type="file" accept=".jpg,.jpeg,.png,.gif,.webp" id="alertImg_follow" style="font-size:10px"><button class="btn ghost small" id="btnDelImg_follow" style="margin-top:4px">SUPPRIMER</button><div id="alertImgStatus_follow" class="note" style="font-size:9px"></div></div>
+              <div class="field" style="flex:1"><label>Sub image</label><input type="file" accept=".jpg,.jpeg,.png,.gif,.webp" id="alertImg_sub" style="font-size:10px"><button class="btn ghost small" id="btnDelImg_sub" style="margin-top:4px">SUPPRIMER</button><div id="alertImgStatus_sub" class="note" style="font-size:9px"></div></div>
+              <div class="field" style="flex:1"><label>Gift image</label><input type="file" accept=".jpg,.jpeg,.png,.gif,.webp" id="alertImg_gift" style="font-size:10px"><button class="btn ghost small" id="btnDelImg_gift" style="margin-top:4px">SUPPRIMER</button><div id="alertImgStatus_gift" class="note" style="font-size:9px"></div></div>
+              <div class="field" style="flex:1"><label>Raid image</label><input type="file" accept=".jpg,.jpeg,.png,.gif,.webp" id="alertImg_raid" style="font-size:10px"><button class="btn ghost small" id="btnDelImg_raid" style="margin-top:4px">SUPPRIMER</button><div id="alertImgStatus_raid" class="note" style="font-size:9px"></div></div>
+            </div>
+
+            <div class="row" style="margin-top:14px;gap:8px">
+              <button class="btn primary" id="btnSaveAlertAdvanced">ENREGISTRER PERSONNALISATION AVANCÉE</button>
+              <button class="btn ghost small" id="btnPreviewAlertAdvanced">APERÇU</button>
+              <button class="btn ghost small" id="btnResetAlertAdvanced">RÉINITIALISER DÉFAUT</button>
+            </div>
+            <div class="note" style="margin-top:8px">Toutes options sauvegardées dans config-perso.json, comme les sons. Preview envoie au widget en temps réel.</div>
+          </div>
+
           <p class="note" style="margin-top:12px">Fichiers sons stockés dans <span class="mono" style="display:inline;padding:2px 6px">sounds/alert-{type}.mp3</span>. Upload = remplacement instantané, re-détecté par OBS toutes les 15s.</p>
           <div class="card" style="margin-top:12px;background:#0f0f1a;border-color:var(--line2)">
             <h2 style="font-size:11px">🔊 SON DANS OBS – REGLAGE OBLIGATOIRE</h2>
@@ -1582,6 +1675,242 @@ if(btnResetAlertPos) btnResetAlertPos.addEventListener('click', async()=>{
   toast('Position alertes réinitialisée – aperçu envoyé');
 });
 
+/* ═══ ALERTES AVANCÉES V35 – Streamlabs parity ═══ */
+const alertAdvDef = {
+  alertDuration: 6500,
+  alertDurations: { follow:5200, sub:6500, resub:6500, gift:6500, anon:6500, community:6500, prime:6500, raid:6500 },
+  alertDelay: 0,
+  alertTextDelay: 0,
+  alertImageSize: 100,
+  alertLayout: 'textOver',
+  alertAnimationIn: 'slideTop',
+  alertAnimationOut: 'slideTop',
+  alertAnimationDuration: 550,
+  alertFontLabel: 'Bebas Neue',
+  alertFontUser: 'Bebas Neue',
+  alertFontSub: 'Inter',
+  alertFontSizeLabel: 26,
+  alertFontSizeUser: 72,
+  alertFontSizeSub: 16,
+  alertColorLabel: '#B06CFF',
+  alertColorUser: '#7CC7FF',
+  alertColorSub: '#B9BEC9',
+  alertStroke: 2.5,
+  alertEnabled: { follow:true, sub:true, resub:true, gift:true, anon:true, community:true, prime:true, raid:true },
+  alertMessageTemplates: { follow:'{name} vient de follow', sub:'{name} – {months}', resub:'{name} – {streak} mois, {total} total', gift:'{name} a offert un sub à {viewer}', anon:'Anonyme a offert à {viewer}', community:'{name} a offert {total} subs', prime:'{name} – Prime', raid:'{name} raid {viewers} viewers' },
+  alertSoundsVolume: { follow:75, sub:75, gift:75, raid:75, default:75 },
+  alertImages: {}
+};
+let alertAdvSaved = JSON.parse(JSON.stringify(alertAdvDef));
+
+function setAlertAdvancedForm(c){
+  const s = c||{};
+  const dur = s.alertDuration!=null?s.alertDuration:alertAdvDef.alertDuration;
+  const durs = s.alertDurations||alertAdvDef.alertDurations;
+  const delay = s.alertDelay!=null?s.alertDelay:alertAdvDef.alertDelay;
+  const textDelay = s.alertTextDelay!=null?s.alertTextDelay:alertAdvDef.alertTextDelay;
+  const imgSize = s.alertImageSize!=null?s.alertImageSize:alertAdvDef.alertImageSize;
+  const layout = s.alertLayout||alertAdvDef.alertLayout;
+  const animIn = s.alertAnimationIn||alertAdvDef.alertAnimationIn;
+  const animOut = s.alertAnimationOut||alertAdvDef.alertAnimationOut;
+  const animDur = s.alertAnimationDuration!=null?s.alertAnimationDuration:alertAdvDef.alertAnimationDuration;
+  const fLabel = s.alertFontLabel||alertAdvDef.alertFontLabel;
+  const fUser = s.alertFontUser||alertAdvDef.alertFontUser;
+  const fSub = s.alertFontSub||alertAdvDef.alertFontSub;
+  const fsLabel = s.alertFontSizeLabel!=null?s.alertFontSizeLabel:alertAdvDef.alertFontSizeLabel;
+  const fsUser = s.alertFontSizeUser!=null?s.alertFontSizeUser:alertAdvDef.alertFontSizeUser;
+  const fsSub = s.alertFontSizeSub!=null?s.alertFontSizeSub:alertAdvDef.alertFontSizeSub;
+  const cLabel = s.alertColorLabel||alertAdvDef.alertColorLabel;
+  const cUser = s.alertColorUser||alertAdvDef.alertColorUser;
+  const cSub = s.alertColorSub||alertAdvDef.alertColorSub;
+  const stroke = s.alertStroke!=null?s.alertStroke:alertAdvDef.alertStroke;
+  const en = s.alertEnabled||alertAdvDef.alertEnabled;
+  const tpl = s.alertMessageTemplates||alertAdvDef.alertMessageTemplates;
+  const vol = s.alertSoundsVolume||alertAdvDef.alertSoundsVolume;
+  const imgs = s.alertImages||{};
+
+  if($('alertDuration')) $('alertDuration').value=dur;
+  if($('alertDelay')) $('alertDelay').value=delay;
+  if($('alertTextDelay')) $('alertTextDelay').value=textDelay;
+  if($('alertImgSize')) $('alertImgSize').value=imgSize;
+  if($('alertImgSizeVal')) $('alertImgSizeVal').textContent=imgSize+'%';
+  if($('alertLayout')) $('alertLayout').value=layout;
+  if($('alertAnimIn')) $('alertAnimIn').value=animIn;
+  if($('alertAnimOut')) $('alertAnimOut').value=animOut;
+  if($('alertAnimDur')) $('alertAnimDur').value=animDur;
+  if($('alertFontLabel')) $('alertFontLabel').value=fLabel;
+  if($('alertFontUser')) $('alertFontUser').value=fUser;
+  if($('alertFontSub')) $('alertFontSub').value=fSub;
+  if($('alertFontSizeLabel')) $('alertFontSizeLabel').value=fsLabel;
+  if($('alertFontSizeUser')) $('alertFontSizeUser').value=fsUser;
+  if($('alertFontSizeSub')) $('alertFontSizeSub').value=fsSub;
+  if($('alertColorLabel')) $('alertColorLabel').value=cLabel;
+  if($('alertColorUser')) $('alertColorUser').value=cUser;
+  if($('alertColorSub')) $('alertColorSub').value=cSub;
+  if($('alertStroke')) $('alertStroke').value=stroke;
+  if($('alertEn_follow')) $('alertEn_follow').checked = en.follow!==false;
+  if($('alertEn_sub')) $('alertEn_sub').checked = en.sub!==false;
+  if($('alertEn_resub')) $('alertEn_resub').checked = en.resub!==false;
+  if($('alertEn_gift')) $('alertEn_gift').checked = en.gift!==false;
+  if($('alertEn_raid')) $('alertEn_raid').checked = en.raid!==false;
+  if($('alertEn_community')) $('alertEn_community').checked = en.community!==false;
+  if($('alertDur_follow')) $('alertDur_follow').value = durs.follow!=null?durs.follow:alertAdvDef.alertDurations.follow;
+  if($('alertDur_sub')) $('alertDur_sub').value = durs.sub!=null?durs.sub:alertAdvDef.alertDurations.sub;
+  if($('alertDur_gift')) $('alertDur_gift').value = durs.gift!=null?durs.gift:alertAdvDef.alertDurations.gift;
+  if($('alertDur_raid')) $('alertDur_raid').value = durs.raid!=null?durs.raid:alertAdvDef.alertDurations.raid;
+  if($('alertTpl_follow')) $('alertTpl_follow').value = tpl.follow||'';
+  if($('alertTpl_sub')) $('alertTpl_sub').value = tpl.sub||'';
+  if($('alertTpl_resub')) $('alertTpl_resub').value = tpl.resub||'';
+  if($('alertTpl_gift')) $('alertTpl_gift').value = tpl.gift||'';
+  if($('alertTpl_community')) $('alertTpl_community').value = tpl.community||'';
+  if($('alertTpl_raid')) $('alertTpl_raid').value = tpl.raid||'';
+  if($('alertVol_follow')) { $('alertVol_follow').value = vol.follow!=null?vol.follow:75; if($('alertVol_followVal')) $('alertVol_followVal').textContent=(vol.follow!=null?vol.follow:75)+'%'; }
+  if($('alertVol_sub')) { $('alertVol_sub').value = vol.sub!=null?vol.sub:75; if($('alertVol_subVal')) $('alertVol_subVal').textContent=(vol.sub!=null?vol.sub:75)+'%'; }
+  if($('alertVol_gift')) { $('alertVol_gift').value = vol.gift!=null?vol.gift:75; if($('alertVol_giftVal')) $('alertVol_giftVal').textContent=(vol.gift!=null?vol.gift:75)+'%'; }
+  if($('alertVol_raid')) { $('alertVol_raid').value = vol.raid!=null?vol.raid:75; if($('alertVol_raidVal')) $('alertVol_raidVal').textContent=(vol.raid!=null?vol.raid:75)+'%'; }
+  // images status
+  ['follow','sub','gift','raid'].forEach(tp=>{
+    const st = $('alertImgStatus_'+tp);
+    if(st) st.textContent = imgs[tp] ? 'Custom: '+imgs[tp] : 'Défaut';
+  });
+  alertAdvSaved = { alertDuration:dur, alertDurations:{...durs}, alertDelay:delay, alertTextDelay:textDelay, alertImageSize:imgSize, alertLayout:layout, alertAnimationIn:animIn, alertAnimationOut:animOut, alertAnimationDuration:animDur, alertFontLabel:fLabel, alertFontUser:fUser, alertFontSub:fSub, alertFontSizeLabel:fsLabel, alertFontSizeUser:fsUser, alertFontSizeSub:fsSub, alertColorLabel:cLabel, alertColorUser:cUser, alertColorSub:cSub, alertStroke:stroke, alertEnabled:{...en}, alertMessageTemplates:{...tpl}, alertSoundsVolume:{...vol}, alertImages:{...imgs} };
+}
+
+function getAlertAdvancedForm(){
+  const durs = {};
+  if($('alertDur_follow')) durs.follow = Math.max(1000, Math.min(15000, Math.round(+$('alertDur_follow').value||5200)));
+  if($('alertDur_sub')) durs.sub = Math.max(1000, Math.min(15000, Math.round(+$('alertDur_sub').value||6500)));
+  if($('alertDur_gift')) durs.gift = Math.max(1000, Math.min(15000, Math.round(+$('alertDur_gift').value||6500)));
+  if($('alertDur_raid')) durs.raid = Math.max(1000, Math.min(15000, Math.round(+$('alertDur_raid').value||6500)));
+  const en = {
+    follow: $('alertEn_follow') ? $('alertEn_follow').checked : true,
+    sub: $('alertEn_sub') ? $('alertEn_sub').checked : true,
+    resub: $('alertEn_resub') ? $('alertEn_resub').checked : true,
+    gift: $('alertEn_gift') ? $('alertEn_gift').checked : true,
+    raid: $('alertEn_raid') ? $('alertEn_raid').checked : true,
+    community: $('alertEn_community') ? $('alertEn_community').checked : true,
+    anon: true, prime: true
+  };
+  const tpl = {
+    follow: $('alertTpl_follow') ? $('alertTpl_follow').value.trim() : '',
+    sub: $('alertTpl_sub') ? $('alertTpl_sub').value.trim() : '',
+    resub: $('alertTpl_resub') ? $('alertTpl_resub').value.trim() : '',
+    gift: $('alertTpl_gift') ? $('alertTpl_gift').value.trim() : '',
+    community: $('alertTpl_community') ? $('alertTpl_community').value.trim() : '',
+    raid: $('alertTpl_raid') ? $('alertTpl_raid').value.trim() : '',
+    anon: '{name} a offert à {viewer}',
+    prime: '{name} – Prime'
+  };
+  const vol = {
+    follow: $('alertVol_follow') ? Math.max(0, Math.min(100, +$('alertVol_follow').value)) : 75,
+    sub: $('alertVol_sub') ? Math.max(0, Math.min(100, +$('alertVol_sub').value)) : 75,
+    gift: $('alertVol_gift') ? Math.max(0, Math.min(100, +$('alertVol_gift').value)) : 75,
+    raid: $('alertVol_raid') ? Math.max(0, Math.min(100, +$('alertVol_raid').value)) : 75,
+    default: 75
+  };
+  return {
+    alertDuration: Math.max(1000, Math.min(15000, Math.round(+($('alertDuration')?$('alertDuration').value:6500)))),
+    alertDurations: durs,
+    alertDelay: Math.max(0, Math.min(10, +($('alertDelay')?$('alertDelay').value:0))),
+    alertTextDelay: Math.max(0, Math.min(5000, Math.round(+($('alertTextDelay')?$('alertTextDelay').value:0)))),
+    alertImageSize: Math.max(20, Math.min(200, Math.round(+($('alertImgSize')?$('alertImgSize').value:100)))),
+    alertLayout: $('alertLayout')?$('alertLayout').value:'textOver',
+    alertAnimationIn: $('alertAnimIn')?$('alertAnimIn').value:'slideTop',
+    alertAnimationOut: $('alertAnimOut')?$('alertAnimOut').value:'slideTop',
+    alertAnimationDuration: Math.max(100, Math.min(2000, Math.round(+($('alertAnimDur')?$('alertAnimDur').value:550)))),
+    alertFontLabel: $('alertFontLabel')?$('alertFontLabel').value.trim()||'Bebas Neue':'Bebas Neue',
+    alertFontUser: $('alertFontUser')?$('alertFontUser').value.trim()||'Bebas Neue':'Bebas Neue',
+    alertFontSub: $('alertFontSub')?$('alertFontSub').value.trim()||'Inter':'Inter',
+    alertFontSizeLabel: Math.max(8, Math.min(80, Math.round(+($('alertFontSizeLabel')?$('alertFontSizeLabel').value:26)))),
+    alertFontSizeUser: Math.max(12, Math.min(120, Math.round(+($('alertFontSizeUser')?$('alertFontSizeUser').value:72)))),
+    alertFontSizeSub: Math.max(8, Math.min(60, Math.round(+($('alertFontSizeSub')?$('alertFontSizeSub').value:16)))),
+    alertColorLabel: $('alertColorLabel')?$('alertColorLabel').value:'#B06CFF',
+    alertColorUser: $('alertColorUser')?$('alertColorUser').value:'#7CC7FF',
+    alertColorSub: $('alertColorSub')?$('alertColorSub').value:'#B9BEC9',
+    alertStroke: Math.max(0, Math.min(10, +($('alertStroke')?$('alertStroke').value:2.5))),
+    alertEnabled: en,
+    alertMessageTemplates: tpl,
+    alertSoundsVolume: vol
+  };
+}
+
+function previewAlertAdvanced(){
+  const f = getAlertAdvancedForm();
+  if($('alertImgSizeVal')) $('alertImgSizeVal').textContent=f.alertImageSize+'%';
+  ['follow','sub','gift','raid'].forEach(tp=>{
+    const el=$('alertVol_'+tp);
+    const val=$('alertVol_'+tp+'Val');
+    if(el && val) val.textContent=el.value+'%';
+  });
+  post(API+'/api/config',{...f, preview:true}).catch(()=>{});
+}
+
+['alertImgSize','alertVol_follow','alertVol_sub','alertVol_gift','alertVol_raid'].forEach(id=>{
+  const el=$(id);
+  if(el) el.addEventListener('input', previewAlertAdvanced);
+});
+['alertDuration','alertDelay','alertTextDelay','alertAnimDur','alertFontSizeLabel','alertFontSizeUser','alertFontSizeSub','alertStroke','alertDur_follow','alertDur_sub','alertDur_gift','alertDur_raid'].forEach(id=>{
+  const el=$(id);
+  if(el) el.addEventListener('input', ()=>{ clearTimeout(window._advPrevT); window._advPrevT=setTimeout(previewAlertAdvanced, 250); });
+});
+['alertLayout','alertAnimIn','alertAnimOut','alertFontLabel','alertFontUser','alertFontSub','alertColorLabel','alertColorUser','alertColorSub','alertTpl_follow','alertTpl_sub','alertTpl_resub','alertTpl_gift','alertTpl_community','alertTpl_raid'].forEach(id=>{
+  const el=$(id);
+  if(el) el.addEventListener('input', ()=>{ clearTimeout(window._advPrevT); window._advPrevT=setTimeout(previewAlertAdvanced, 300); });
+  if(el && el.tagName==='SELECT') el.addEventListener('change', previewAlertAdvanced);
+});
+['alertEn_follow','alertEn_sub','alertEn_resub','alertEn_gift','alertEn_raid','alertEn_community'].forEach(id=>{
+  const el=$(id);
+  if(el) el.addEventListener('change', previewAlertAdvanced);
+});
+
+const btnSaveAlertAdvanced=$('btnSaveAlertAdvanced');
+if(btnSaveAlertAdvanced) btnSaveAlertAdvanced.addEventListener('click', async()=>{
+  const f=getAlertAdvancedForm();
+  const r=await post(API+'/api/config', f);
+  if(r.ok){ alertAdvSaved={...f, alertDurations:{...f.alertDurations}, alertEnabled:{...f.alertEnabled}, alertMessageTemplates:{...f.alertMessageTemplates}, alertSoundsVolume:{...f.alertSoundsVolume}}; toast('Personnalisation avancée enregistrée ✔'); }
+});
+const btnPreviewAlertAdvanced=$('btnPreviewAlertAdvanced');
+if(btnPreviewAlertAdvanced) btnPreviewAlertAdvanced.addEventListener('click', async()=>{
+  previewAlertAdvanced();
+  const data={type:'sub', user:'KEVIN', viewer:'TEST', total:12, stints:2};
+  await fetch(API+'/api/alert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).catch(()=>{});
+  toast('Aperçu avancé envoyé – regarde OBS');
+});
+const btnResetAlertAdvanced=$('btnResetAlertAdvanced');
+if(btnResetAlertAdvanced) btnResetAlertAdvanced.addEventListener('click', async()=>{
+  setAlertAdvancedForm(alertAdvDef);
+  previewAlertAdvanced();
+  toast('Personnalisation avancée réinitialisée – aperçu envoyé');
+});
+
+// upload images per type
+['follow','sub','gift','raid'].forEach(tp=>{
+  const input=$('alertImg_'+tp);
+  if(input) input.addEventListener('change', async(e)=>{
+    const file=e.target.files[0];
+    if(!file) return;
+    if(file.size>12*1024*1024){ toast('Fichier trop gros >12 Mo'); return; }
+    const reader=new FileReader();
+    reader.onload=async()=>{
+      try{
+        const base64=reader.result.split(',')[1];
+        const ext=file.name.split('.').pop().toLowerCase();
+        const r=await fetch(API+'/api/alert-image?type='+tp,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:base64, ext})});
+        const j=await r.json();
+        if(j.ok){ toast('Image '+tp+' uploadée ✔'); const st=$('alertImgStatus_'+tp); if(st) st.textContent='Custom: '+j.file; }
+        else toast('Erreur upload '+tp);
+      }catch(err){ toast('Erreur upload '+tp); }
+    };
+    reader.readAsDataURL(file);
+  });
+  const delBtn=$('btnDelImg_'+tp);
+  if(delBtn) delBtn.addEventListener('click', async()=>{
+    const r=await fetch(API+'/api/alert-image?type='+tp,{method:'DELETE'});
+    const j=await r.json();
+    if(j.ok){ toast('Image '+tp+' supprimée'); const st=$('alertImgStatus_'+tp); if(st) st.textContent='Défaut'; }
+  });
+});
+
 
 
 const btnVelocityValidate=$('btnVelocityValidate');
@@ -2230,6 +2559,7 @@ async function init(){
       setVelocityForm(s.config);
       setAlertForm(s.config);
       applyAlertTypesFromConfig(s.config);
+      setAlertAdvancedForm(s.config);
       const et=$('velocityEtat');
       if(et) et.innerHTML='<span class=\"note\">Config chargée – équilibre '+esc(velocitySaved.equilibriumMPM+' MPM')+'</span>';
     }
