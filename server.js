@@ -84,20 +84,20 @@ const DEFAULT_CONFIG = {
   subGoalHistory: [], // [{label,target,completedAt,currentAtCompletion}]
   chatTitle: 'CHAT DE 7GIONNY',
   accent: '#9146FF',
-  // alertes V34-V35 : personnalisation complète type Streamlabs
+  // alertes V33 : position & taille reglables depuis panneau, sauvegarde comme sons
   alertPosX: 58, // % left (0-100)
-  alertPosY: 140, // px top sans sondage
-  alertPosYLive: 360, // px top quand sondage live
-  alertWidth: 380,
-  alertPhotoWidth: 340,
-  alertScale: 100,
-  alertDuration: 6500, // ms global
+  alertPosY: 140, // px top
+  alertPosYLive: 360, // px top quand sondage live (sous sondage)
+  alertWidth: 380, // px largeur alerte normale
+  alertPhotoWidth: 340, // px largeur alerte photo (4:5)
+  alertScale: 100, // % echelle globale (100 = normal)
+  alertDuration: 6500,
   alertDurations: { follow: 5200, sub: 6500, resub: 6500, gift: 6500, anon: 6500, community: 6500, prime: 6500, raid: 6500 },
-  alertTextDelay: 0, // ms avant texte
-  alertDelay: 0, // sec delai avant affichage
-  alertImageSize: 100, // % taille image
-  alertLayout: 'textOver', // textOver, textUnder, side
-  alertAnimationIn: 'slideTop', // slideTop, fade, bounce, slideLeft, slideRight, slideBottom
+  alertTextDelay: 0,
+  alertDelay: 0,
+  alertImageSize: 100,
+  alertLayout: 'textOver',
+  alertAnimationIn: 'slideTop',
   alertAnimationOut: 'slideTop',
   alertAnimationDuration: 550,
   alertFontLabel: 'Bebas Neue',
@@ -137,17 +137,198 @@ const DEFAULT_CONFIG = {
   velocityHoldDurationSeconds: 120,
   velocityFinHour: 21,
   velocityFinMinute: 30,
-  velocityFinEnabled: true
+  velocityFinEnabled: true,
+  // velocite anti-spam V35 : 1 viewer ne peut pas gonfler la barre tout seul
+  velocityAntiSpam: true,
+  velocityCooldownSeconds: 15,
+  velocityMaxPerMinute: 2,
+  velocityExemptStaff: false,
+  velocityExcludedUsers: ['wisebots'],
+  // alertes V35 : perso type Streamlabs (duree, layout, anim, volume, template, media)
+  alertGapMs: 400,
+  alertTypes: {}
 };
+
+const ALERT_TYPE_IDS = ['follow', 'sub', 'resub', 'gift', 'raid'];
+const ALERT_LAYOUTS = ['above', 'below', 'left', 'right', 'overlay', 'banner'];
+const ALERT_ANIMS = ['fade', 'slide', 'bounce', 'zoom', 'flip'];
+const ALERT_TEXT_ANIMS = ['none', 'pulse', 'bounce'];
+
+function defaultAlertType(type) {
+  const labels = {
+    follow: 'NOUVEAU FOLLOW',
+    sub: 'NOUVEAU SUB',
+    resub: 'NOUVEAU SUB',
+    gift: 'NOUVEAU SUB',
+    raid: 'RAID'
+  };
+  const subs = {
+    follow: 'Bienvenue dans le chat !',
+    sub: '1 mois',
+    resub: '{streak} mois consécutif — {total} mois total',
+    gift: 'a offert un abonnement à {viewer}',
+    raid: 'arrive avec {amount} spectateurs'
+  };
+  const fontSize = (type === 'sub' || type === 'resub') ? 72 : (type === 'raid' ? 62 : 52);
+  return {
+    enabled: true,
+    duration: type === 'follow' ? 5.2 : 6.5,
+    layout: 'above',
+    animationIn: 'slide',
+    animationOut: 'fade',
+    textAnimation: 'none',
+    soundVolume: 75,
+    imageScale: 100,
+    fontSize,
+    fontColor: '#7CC7FF',
+    highlightColor: '#7CC7FF',
+    labelColor: type === 'raid' ? '#E7E9EE' : '#B06CFF',
+    label: labels[type] || 'ALERTE',
+    template: '{name}',
+    subTemplate: subs[type] || '',
+    showMessage: true,
+    showIcon: true,
+    textDelay: 0,
+    minAmount: 0,
+    videoMuted: true
+  };
+}
+
+function clampNum(n, min, max, d) {
+  const v = +n;
+  if (!isFinite(v)) return d;
+  return Math.max(min, Math.min(max, v));
+}
+
+function sanitizeAlertType(type, p) {
+  const d = defaultAlertType(type);
+  const src = p && typeof p === 'object' ? p : {};
+  const hex = (v, fb) => {
+    const s = String(v == null ? fb : v).trim();
+    return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(s) ? s : fb;
+  };
+  return {
+    enabled: src.enabled !== undefined ? !!src.enabled : d.enabled,
+    duration: clampNum(src.duration, 1, 30, d.duration),
+    layout: ALERT_LAYOUTS.includes(src.layout) ? src.layout : d.layout,
+    animationIn: ALERT_ANIMS.includes(src.animationIn) ? src.animationIn : d.animationIn,
+    animationOut: ALERT_ANIMS.includes(src.animationOut) ? src.animationOut : d.animationOut,
+    textAnimation: ALERT_TEXT_ANIMS.includes(src.textAnimation) ? src.textAnimation : d.textAnimation,
+    soundVolume: clampNum(src.soundVolume, 0, 100, d.soundVolume),
+    imageScale: clampNum(src.imageScale, 0, 200, d.imageScale),
+    fontSize: clampNum(src.fontSize, 18, 140, d.fontSize),
+    fontColor: hex(src.fontColor, d.fontColor),
+    highlightColor: hex(src.highlightColor, d.highlightColor),
+    labelColor: hex(src.labelColor, d.labelColor),
+    label: String(src.label != null ? src.label : d.label).slice(0, 48),
+    template: String(src.template != null ? src.template : d.template).slice(0, 80),
+    subTemplate: String(src.subTemplate != null ? src.subTemplate : d.subTemplate).slice(0, 140),
+    showMessage: src.showMessage !== undefined ? !!src.showMessage : d.showMessage,
+    showIcon: src.showIcon !== undefined ? !!src.showIcon : d.showIcon,
+    textDelay: clampNum(src.textDelay, 0, 10, d.textDelay),
+    minAmount: clampNum(src.minAmount, 0, 100000, d.minAmount),
+    videoMuted: src.videoMuted !== undefined ? !!src.videoMuted : d.videoMuted
+  };
+}
+
+function mergeAlertTypes(saved) {
+  const out = {};
+  const src = saved && typeof saved === 'object' ? saved : {};
+  for (const t of ALERT_TYPE_IDS) out[t] = sanitizeAlertType(t, src[t]);
+  return out;
+}
+
+DEFAULT_CONFIG.alertTypes = mergeAlertTypes(null);
+
+function normalizeExcludedUsers(v) {
+  const raw = Array.isArray(v) ? v.join(',') : String(v == null ? '' : v);
+  const list = raw.split(/[,;\s]+/).map(s => String(s).toLowerCase().trim().slice(0, 32)).filter(Boolean);
+  if (!list.includes('wisebots')) list.unshift('wisebots');
+  const seen = new Set();
+  const out = [];
+  for (const n of list) { if (!seen.has(n)) { seen.add(n); out.push(n); } }
+  return out.slice(0, 40);
+}
+
 let appConfig = Object.assign({}, DEFAULT_CONFIG);
 try {
   if (fs.existsSync(PERSIST_FILE)) {
     const saved = JSON.parse(fs.readFileSync(PERSIST_FILE, 'utf8')) || {};
     appConfig = Object.assign({}, DEFAULT_CONFIG, saved);
+    appConfig.alertTypes = mergeAlertTypes(saved.alertTypes);
   }
 } catch (e) { console.warn('[config] config-perso.json illisible :', e.message); }
+if (!appConfig.alertTypes || typeof appConfig.alertTypes !== 'object') {
+  appConfig.alertTypes = mergeAlertTypes(null);
+} else {
+  appConfig.alertTypes = mergeAlertTypes(appConfig.alertTypes);
+}
+appConfig.velocityExemptStaff = false;
+appConfig.velocityExcludedUsers = normalizeExcludedUsers(appConfig.velocityExcludedUsers);
 function saveConfig() {
   try { fs.writeFileSync(PERSIST_FILE, JSON.stringify(appConfig, null, 2)); } catch (e) {}
+}
+
+function velocityAlertFields(src) {
+  const s = src || appConfig;
+  return {
+    alert: 1,
+    alertPosX: s.alertPosX,
+    alertPosY: s.alertPosY,
+    alertPosYLive: s.alertPosYLive,
+    alertWidth: s.alertWidth,
+    alertPhotoWidth: s.alertPhotoWidth,
+    alertScale: s.alertScale,
+    alertGapMs: s.alertGapMs,
+    alertTypes: s.alertTypes,
+    alertDuration: s.alertDuration,
+    alertDurations: s.alertDurations,
+    alertTextDelay: s.alertTextDelay,
+    alertDelay: s.alertDelay,
+    alertImageSize: s.alertImageSize,
+    alertLayout: s.alertLayout,
+    alertAnimationIn: s.alertAnimationIn,
+    alertAnimationOut: s.alertAnimationOut,
+    alertAnimationDuration: s.alertAnimationDuration,
+    alertFontLabel: s.alertFontLabel,
+    alertFontUser: s.alertFontUser,
+    alertFontSub: s.alertFontSub,
+    alertFontSizeLabel: s.alertFontSizeLabel,
+    alertFontSizeUser: s.alertFontSizeUser,
+    alertFontSizeSub: s.alertFontSizeSub,
+    alertColorLabel: s.alertColorLabel,
+    alertColorUser: s.alertColorUser,
+    alertColorSub: s.alertColorSub,
+    alertStroke: s.alertStroke,
+    alertEnabled: s.alertEnabled,
+    alertMessageTemplates: s.alertMessageTemplates,
+    alertImages: s.alertImages,
+    alertSoundsVolume: s.alertSoundsVolume,
+    velocity: 1,
+    equilibriumMPM: s.velocityEquilibrium,
+    climbSensitivity: s.velocityClimb,
+    decayRate: s.velocityDecay,
+    holdDurationSeconds: s.velocityHold,
+    barWidth: s.velocityBarWidth,
+    barHeight: s.velocityBarHeight,
+    showMetrics: s.velocityShowMetrics,
+    velocityEnabled: s.velocityEnabled,
+    goalThreshold: s.velocityGoalThreshold,
+    goalDurationMinutes: s.velocityGoalDurationMinutes,
+    finHour: s.velocityFinHour,
+    finMinute: s.velocityFinMinute,
+    finEnabled: s.velocityFinEnabled,
+    velocityAntiSpam: s.velocityAntiSpam,
+    velocityCooldownSeconds: s.velocityCooldownSeconds,
+    velocityMaxPerMinute: s.velocityMaxPerMinute,
+    velocityExemptStaff: s.velocityExemptStaff,
+    velocityExcludedUsers: s.velocityExcludedUsers,
+    antiSpam: s.velocityAntiSpam,
+    cooldownSeconds: s.velocityCooldownSeconds,
+    maxPerMinute: s.velocityMaxPerMinute,
+    exemptStaff: s.velocityExemptStaff,
+    excludedUsers: s.velocityExcludedUsers
+  };
 }
 
 /* ═══ VERSIONING & HISTORIQUE DES MISES À JOUR ══════════════════
@@ -1092,8 +1273,15 @@ const server = http.createServer((req, res) => {
         if (!f.startsWith(path.join(__dirname, dir))) return send(403, 'text/plain', 'nope');
         fs.readFile(f, (e, b) => {
           if (e) return send(404, 'text/plain', 'introuvable');
-          send(200, f.endsWith('.gif') ? 'image/gif' : f.endsWith('.png') ? 'image/png' : 'application/octet-stream', b,
-               { 'Cache-Control': 'no-store' });
+          const ext = path.extname(f).toLowerCase();
+          const mime = ext === '.gif' ? 'image/gif'
+            : ext === '.png' ? 'image/png'
+            : (ext === '.jpg' || ext === '.jpeg') ? 'image/jpeg'
+            : ext === '.webp' ? 'image/webp'
+            : ext === '.webm' ? 'video/webm'
+            : ext === '.mp4' ? 'video/mp4'
+            : 'application/octet-stream';
+          send(200, mime, b, { 'Cache-Control': 'no-store' });
         });
         return;
       }
@@ -1305,7 +1493,68 @@ const server = http.createServer((req, res) => {
       return send(200, 'application/json', JSON.stringify({ ok: true }));
     }
 
-    /* — Alert images per type (custom image for each alert type) — Streamlabs-like */
+    /* — Media custom par type d'alerte (image / gif / video) — Streamlabs-like — */
+    const MEDIA_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'webm', 'mp4'];
+    function listAlertMedia() {
+      const assetsDir = path.join(__dirname, 'assets');
+      const files = [];
+      try {
+        for (const f of fs.readdirSync(assetsDir)) {
+          const m = f.match(/^alert-media-([a-z]+)\.([a-z0-9]+)$/i);
+          if (!m) continue;
+          const type = m[1].toLowerCase();
+          const ext = m[2].toLowerCase();
+          if (!ALERT_TYPE_IDS.includes(type) || !MEDIA_EXTS.includes(ext)) continue;
+          const st = fs.statSync(path.join(assetsDir, f));
+          const kind = (ext === 'webm' || ext === 'mp4') ? 'video' : (ext === 'gif' || ext === 'webp' ? 'gif' : 'image');
+          files.push({ type, file: f, ext, kind, size: st.size, url: '/assets/' + f });
+        }
+      } catch (e) {}
+      return files;
+    }
+    if (u.pathname === '/api/alert-media' && req.method === 'GET') {
+      return send(200, 'application/json', JSON.stringify({ ok: true, files: listAlertMedia() }));
+    }
+    if (u.pathname === '/api/alert-media' && req.method === 'POST') {
+      const chunks = [];
+      let total = 0;
+      req.on('data', c => { chunks.push(c); total += c.length; if (total > 16 * 1024 * 1024) req.destroy(); });
+      req.on('end', () => {
+        try {
+          const buf = Buffer.concat(chunks);
+          const ctype = (req.headers['content-type'] || '').toLowerCase();
+          if (!ctype.includes('application/json')) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'json requis' }));
+          const j = JSON.parse(buf.toString('utf8'));
+          let type = String(j.type || '').toLowerCase().replace(/[^a-z]/g, '');
+          if (!ALERT_TYPE_IDS.includes(type)) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'type invalide' }));
+          if (!j.data) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'data manquant' }));
+          const raw = Buffer.from(j.data, 'base64');
+          if (raw.length < 80) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'fichier trop petit' }));
+          let ext = String(j.ext || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (!MEDIA_EXTS.includes(ext)) ext = 'png';
+          const assetsDir = path.join(__dirname, 'assets');
+          try { fs.readdirSync(assetsDir).forEach(f => { if (f.toLowerCase().startsWith('alert-media-' + type + '.')) fs.unlinkSync(path.join(assetsDir, f)); }); } catch (e) {}
+          const outName = `alert-media-${type}.${ext}`;
+          fs.writeFileSync(path.join(assetsDir, outName), raw);
+          console.log(`[alert-media] ${outName} (${(raw.length / 1024).toFixed(1)} Ko)`);
+          return send(200, 'application/json', JSON.stringify({ ok: true, file: outName, type, ext }));
+        } catch (e) {
+          return send(400, 'application/json', JSON.stringify({ ok: false, err: e.message }));
+        }
+      });
+      return;
+    }
+    if (u.pathname === '/api/alert-media' && req.method === 'DELETE') {
+      const type = (u.searchParams.get('type') || '').toLowerCase().replace(/[^a-z]/g, '');
+      if (!ALERT_TYPE_IDS.includes(type)) return send(400, 'application/json', JSON.stringify({ ok: false }));
+      try {
+        const assetsDir = path.join(__dirname, 'assets');
+        fs.readdirSync(assetsDir).forEach(f => { if (f.toLowerCase().startsWith('alert-media-' + type + '.')) fs.unlinkSync(path.join(assetsDir, f)); });
+      } catch (e) {}
+      return send(200, 'application/json', JSON.stringify({ ok: true }));
+    }
+
+    /* — Alert images per type (custom image) — */
     if (u.pathname === '/api/alert-images' && req.method === 'GET') {
       const assetsDir = path.join(__dirname, 'assets');
       try {
@@ -1342,9 +1591,9 @@ const server = http.createServer((req, res) => {
           }
           if (raw.length < 200) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'fichier trop petit' }));
           const out = path.join(__dirname, 'assets', `alert-${t}-custom.${ext}`);
-          // remove other ext for same type
           try { fs.readdirSync(path.join(__dirname, 'assets')).forEach(f => { if (f.startsWith(`alert-${t}-custom.`) && f !== `alert-${t}-custom.${ext}`) fs.unlinkSync(path.join(__dirname, 'assets', f)); }); } catch(e){}
           fs.writeFileSync(out, raw);
+          if (!appConfig.alertImages) appConfig.alertImages = {};
           appConfig.alertImages[t] = `alert-${t}-custom.${ext}`;
           saveConfig();
           console.log(`[alert-image] custom ${t} ${raw.length/1024|0} Ko → ${out}`);
@@ -1555,17 +1804,16 @@ const server = http.createServer((req, res) => {
              mais NI enregistré NI persisté (Enregistrer le fera, Annuler
              renverra l'ancienne valeur de la même manière). */
           if (p.preview === true) {
-            const payload = 'data: ' + JSON.stringify({
-              cfg: 1,
+            const previewCfg = Object.assign({}, appConfig, {
               chatTitle: p.chatTitle !== undefined ? String(p.chatTitle).slice(0, 40) : appConfig.chatTitle,
               accent: p.accent !== undefined ? String(p.accent).slice(0, 16) : appConfig.accent,
-              alert: 1,
               alertPosX: p.alertPosX !== undefined ? Math.max(0, Math.min(100, +p.alertPosX)) : appConfig.alertPosX,
               alertPosY: p.alertPosY !== undefined ? Math.max(0, Math.min(900, Math.round(+p.alertPosY))) : appConfig.alertPosY,
               alertPosYLive: p.alertPosYLive !== undefined ? Math.max(0, Math.min(900, Math.round(+p.alertPosYLive))) : appConfig.alertPosYLive,
               alertWidth: p.alertWidth !== undefined ? Math.max(200, Math.min(800, Math.round(+p.alertWidth))) : appConfig.alertWidth,
               alertPhotoWidth: p.alertPhotoWidth !== undefined ? Math.max(180, Math.min(600, Math.round(+p.alertPhotoWidth))) : appConfig.alertPhotoWidth,
               alertScale: p.alertScale !== undefined ? Math.max(50, Math.min(150, Math.round(+p.alertScale))) : appConfig.alertScale,
+              alertGapMs: p.alertGapMs !== undefined ? Math.max(0, Math.min(5000, Math.round(+p.alertGapMs))) : appConfig.alertGapMs,
               alertDuration: p.alertDuration !== undefined ? Math.max(1000, Math.min(15000, Math.round(+p.alertDuration))) : appConfig.alertDuration,
               alertDurations: p.alertDurations || appConfig.alertDurations,
               alertTextDelay: p.alertTextDelay !== undefined ? Math.max(0, Math.min(5000, Math.round(+p.alertTextDelay))) : appConfig.alertTextDelay,
@@ -1589,21 +1837,33 @@ const server = http.createServer((req, res) => {
               alertMessageTemplates: p.alertMessageTemplates || appConfig.alertMessageTemplates,
               alertImages: p.alertImages || appConfig.alertImages,
               alertSoundsVolume: p.alertSoundsVolume || appConfig.alertSoundsVolume,
-              velocity: 1,
-              equilibriumMPM: p.equilibriumMPM !== undefined ? Math.max(1, Math.round(+p.equilibriumMPM)) : appConfig.velocityEquilibrium,
-              climbSensitivity: p.climbSensitivity !== undefined ? +p.climbSensitivity : appConfig.velocityClimb,
-              decayRate: p.decayRate !== undefined ? +p.decayRate : appConfig.velocityDecay,
-              holdDurationSeconds: p.holdDurationSeconds !== undefined ? Math.round(+p.holdDurationSeconds) : appConfig.velocityHold,
-              barWidth: p.barWidth !== undefined ? Math.round(+p.barWidth) : appConfig.velocityBarWidth,
-              barHeight: p.barHeight !== undefined ? Math.round(+p.barHeight) : appConfig.velocityBarHeight,
-              showMetrics: p.showMetrics !== undefined ? !!p.showMetrics : appConfig.velocityShowMetrics,
+              velocityEquilibrium: p.equilibriumMPM !== undefined ? Math.max(1, Math.round(+p.equilibriumMPM)) : appConfig.velocityEquilibrium,
+              velocityClimb: p.climbSensitivity !== undefined ? +p.climbSensitivity : appConfig.velocityClimb,
+              velocityDecay: p.decayRate !== undefined ? +p.decayRate : appConfig.velocityDecay,
+              velocityHold: p.holdDurationSeconds !== undefined ? Math.round(+p.holdDurationSeconds) : appConfig.velocityHold,
+              velocityBarWidth: p.barWidth !== undefined ? Math.round(+p.barWidth) : appConfig.velocityBarWidth,
+              velocityBarHeight: p.barHeight !== undefined ? Math.round(+p.barHeight) : appConfig.velocityBarHeight,
+              velocityShowMetrics: p.showMetrics !== undefined ? !!p.showMetrics : appConfig.velocityShowMetrics,
               velocityEnabled: p.velocityEnabled !== undefined ? !!p.velocityEnabled : appConfig.velocityEnabled,
-              goalThreshold: p.goalThreshold !== undefined ? Math.round(+p.goalThreshold) : appConfig.velocityGoalThreshold,
-              goalDurationMinutes: p.goalDurationMinutes !== undefined ? Math.round(+p.goalDurationMinutes) : appConfig.velocityGoalDurationMinutes,
-              finHour: p.finHour !== undefined ? Math.round(+p.finHour) : appConfig.velocityFinHour,
-              finMinute: p.finMinute !== undefined ? Math.round(+p.finMinute) : appConfig.velocityFinMinute,
-              finEnabled: p.finEnabled !== undefined ? !!p.finEnabled : appConfig.velocityFinEnabled
-            }) + '\n\n';
+              velocityGoalThreshold: p.goalThreshold !== undefined ? Math.round(+p.goalThreshold) : appConfig.velocityGoalThreshold,
+              velocityGoalDurationMinutes: p.goalDurationMinutes !== undefined ? Math.round(+p.goalDurationMinutes) : appConfig.velocityGoalDurationMinutes,
+              velocityFinHour: p.finHour !== undefined ? Math.round(+p.finHour) : appConfig.velocityFinHour,
+              velocityFinMinute: p.finMinute !== undefined ? Math.round(+p.finMinute) : appConfig.velocityFinMinute,
+              velocityFinEnabled: p.finEnabled !== undefined ? !!p.finEnabled : appConfig.velocityFinEnabled,
+              velocityAntiSpam: p.velocityAntiSpam !== undefined ? !!p.velocityAntiSpam : (p.antiSpam !== undefined ? !!p.antiSpam : appConfig.velocityAntiSpam),
+              velocityCooldownSeconds: p.velocityCooldownSeconds !== undefined ? Math.round(+p.velocityCooldownSeconds) : (p.cooldownSeconds !== undefined ? Math.round(+p.cooldownSeconds) : appConfig.velocityCooldownSeconds),
+              velocityMaxPerMinute: p.velocityMaxPerMinute !== undefined ? Math.round(+p.velocityMaxPerMinute) : (p.maxPerMinute !== undefined ? Math.round(+p.maxPerMinute) : appConfig.velocityMaxPerMinute),
+              velocityExemptStaff: false,
+              velocityExcludedUsers: (p.velocityExcludedUsers !== undefined || p.excludedUsers !== undefined)
+                ? normalizeExcludedUsers(p.velocityExcludedUsers !== undefined ? p.velocityExcludedUsers : p.excludedUsers)
+                : appConfig.velocityExcludedUsers,
+              alertTypes: p.alertTypes ? mergeAlertTypes(Object.assign({}, appConfig.alertTypes, p.alertTypes)) : appConfig.alertTypes
+            });
+            const payload = 'data: ' + JSON.stringify(Object.assign({
+              cfg: 1,
+              chatTitle: previewCfg.chatTitle,
+              accent: previewCfg.accent
+            }, velocityAlertFields(previewCfg))) + '\n\n';
             for (const res of sse) res.write(payload);
             return send(200, 'application/json', JSON.stringify({ ok: true, preview: true }));
           }
@@ -1665,6 +1925,7 @@ const server = http.createServer((req, res) => {
           if (p.alertWidth !== undefined) appConfig.alertWidth = Math.max(200, Math.min(800, Math.round(+p.alertWidth)));
           if (p.alertPhotoWidth !== undefined) appConfig.alertPhotoWidth = Math.max(180, Math.min(600, Math.round(+p.alertPhotoWidth)));
           if (p.alertScale !== undefined) appConfig.alertScale = Math.max(50, Math.min(150, Math.round(+p.alertScale)));
+          if (p.alertGapMs !== undefined) appConfig.alertGapMs = Math.max(0, Math.min(5000, Math.round(+p.alertGapMs || 0)));
           if (p.alertDuration !== undefined) appConfig.alertDuration = Math.max(1000, Math.min(15000, Math.round(+p.alertDuration)));
           if (p.alertDurations !== undefined && typeof p.alertDurations === 'object') appConfig.alertDurations = Object.assign({}, appConfig.alertDurations, p.alertDurations);
           if (p.alertTextDelay !== undefined) appConfig.alertTextDelay = Math.max(0, Math.min(5000, Math.round(+p.alertTextDelay)));
@@ -1686,8 +1947,26 @@ const server = http.createServer((req, res) => {
           if (p.alertStroke !== undefined) appConfig.alertStroke = Math.max(0, Math.min(10, +p.alertStroke));
           if (p.alertEnabled !== undefined && typeof p.alertEnabled === 'object') appConfig.alertEnabled = Object.assign({}, appConfig.alertEnabled, p.alertEnabled);
           if (p.alertMessageTemplates !== undefined && typeof p.alertMessageTemplates === 'object') appConfig.alertMessageTemplates = Object.assign({}, appConfig.alertMessageTemplates, p.alertMessageTemplates);
-          if (p.alertImages !== undefined && typeof p.alertImages === 'object') appConfig.alertImages = Object.assign({}, appConfig.alertImages, p.alertImages);
+          if (p.alertImages !== undefined && typeof p.alertImages === 'object') appConfig.alertImages = Object.assign({}, appConfig.alertImages || {}, p.alertImages);
           if (p.alertSoundsVolume !== undefined && typeof p.alertSoundsVolume === 'object') appConfig.alertSoundsVolume = Object.assign({}, appConfig.alertSoundsVolume, p.alertSoundsVolume);
+          if (p.velocityAntiSpam !== undefined) appConfig.velocityAntiSpam = !!p.velocityAntiSpam;
+          if (p.antiSpam !== undefined) appConfig.velocityAntiSpam = !!p.antiSpam;
+          if (p.velocityCooldownSeconds !== undefined) appConfig.velocityCooldownSeconds = Math.max(0, Math.min(120, Math.round(+p.velocityCooldownSeconds || 0)));
+          if (p.cooldownSeconds !== undefined) appConfig.velocityCooldownSeconds = Math.max(0, Math.min(120, Math.round(+p.cooldownSeconds || 0)));
+          if (p.velocityMaxPerMinute !== undefined) appConfig.velocityMaxPerMinute = Math.max(1, Math.min(30, Math.round(+p.velocityMaxPerMinute || 2)));
+          if (p.maxPerMinute !== undefined) appConfig.velocityMaxPerMinute = Math.max(1, Math.min(30, Math.round(+p.maxPerMinute || 2)));
+          appConfig.velocityExemptStaff = false;
+          if (p.velocityExemptStaff !== undefined) appConfig.velocityExemptStaff = false;
+          if (p.exemptStaff !== undefined) appConfig.velocityExemptStaff = false;
+          if (p.velocityExcludedUsers !== undefined) appConfig.velocityExcludedUsers = normalizeExcludedUsers(p.velocityExcludedUsers);
+          if (p.excludedUsers !== undefined) appConfig.velocityExcludedUsers = normalizeExcludedUsers(p.excludedUsers);
+          if (p.alertTypes && typeof p.alertTypes === 'object') {
+            const merged = Object.assign({}, appConfig.alertTypes);
+            for (const t of ALERT_TYPE_IDS) {
+              if (p.alertTypes[t]) merged[t] = Object.assign({}, merged[t] || defaultAlertType(t), p.alertTypes[t]);
+            }
+            appConfig.alertTypes = mergeAlertTypes(merged);
+          }
           saveConfig();
 
           // met à jour le sub goal V32 avec queue + gestion auto/manuel
@@ -1717,56 +1996,11 @@ const server = http.createServer((req, res) => {
             try { await syncSubGoal(); } catch(e){}
           }
 
-          // diffuse au widget : sub goal + titre du chat + accent + velocite V5 + alertes complète
-          const payload = 'data: ' + JSON.stringify({
+          // diffuse au widget : sub goal + titre du chat + accent + velocite V5 + alertes V35
+          const payload = 'data: ' + JSON.stringify(Object.assign({
             goal: 1, ...goalState,
-            cfg: 1, chatTitle: appConfig.chatTitle, accent: appConfig.accent,
-            alert: 1,
-            alertPosX: appConfig.alertPosX,
-            alertPosY: appConfig.alertPosY,
-            alertPosYLive: appConfig.alertPosYLive,
-            alertWidth: appConfig.alertWidth,
-            alertPhotoWidth: appConfig.alertPhotoWidth,
-            alertScale: appConfig.alertScale,
-            alertDuration: appConfig.alertDuration,
-            alertDurations: appConfig.alertDurations,
-            alertTextDelay: appConfig.alertTextDelay,
-            alertDelay: appConfig.alertDelay,
-            alertImageSize: appConfig.alertImageSize,
-            alertLayout: appConfig.alertLayout,
-            alertAnimationIn: appConfig.alertAnimationIn,
-            alertAnimationOut: appConfig.alertAnimationOut,
-            alertAnimationDuration: appConfig.alertAnimationDuration,
-            alertFontLabel: appConfig.alertFontLabel,
-            alertFontUser: appConfig.alertFontUser,
-            alertFontSub: appConfig.alertFontSub,
-            alertFontSizeLabel: appConfig.alertFontSizeLabel,
-            alertFontSizeUser: appConfig.alertFontSizeUser,
-            alertFontSizeSub: appConfig.alertFontSizeSub,
-            alertColorLabel: appConfig.alertColorLabel,
-            alertColorUser: appConfig.alertColorUser,
-            alertColorSub: appConfig.alertColorSub,
-            alertStroke: appConfig.alertStroke,
-            alertEnabled: appConfig.alertEnabled,
-            alertMessageTemplates: appConfig.alertMessageTemplates,
-            alertImages: appConfig.alertImages,
-            alertSoundsVolume: appConfig.alertSoundsVolume,
-            velocity: 1,
-            equilibriumMPM: appConfig.velocityEquilibrium,
-            climbSensitivity: appConfig.velocityClimb,
-            decayRate: appConfig.velocityDecay,
-            holdDurationSeconds: appConfig.velocityHold,
-            barWidth: appConfig.velocityBarWidth,
-            barHeight: appConfig.velocityBarHeight,
-            showMetrics: appConfig.velocityShowMetrics,
-            velocityEnabled: appConfig.velocityEnabled,
-            goalThreshold: appConfig.velocityGoalThreshold,
-            goalDurationMinutes: appConfig.velocityGoalDurationMinutes,
-            holdDurationSeconds: appConfig.velocityHold,
-            finHour: appConfig.velocityFinHour,
-            finMinute: appConfig.velocityFinMinute,
-            finEnabled: appConfig.velocityFinEnabled
-          }) + '\n\n';
+            cfg: 1, chatTitle: appConfig.chatTitle, accent: appConfig.accent
+          }, velocityAlertFields(appConfig))) + '\n\n';
           for (const res of sse) res.write(payload);
           send(200, 'application/json', JSON.stringify({ ok: true, config: appConfig, goal: goalState }));
         } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false })); }
