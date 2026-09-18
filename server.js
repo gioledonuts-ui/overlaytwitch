@@ -110,7 +110,8 @@ const DEFAULT_CONFIG = {
   velocityAntiSpam: true,
   velocityCooldownSeconds: 15,
   velocityMaxPerMinute: 2,
-  velocityExemptStaff: true,
+  velocityExemptStaff: false,
+  velocityExcludedUsers: ['wisebots'],
   // alertes V35 : perso type Streamlabs (duree, layout, anim, volume, template, media)
   alertGapMs: 400,
   alertTypes: {}
@@ -207,6 +208,16 @@ function mergeAlertTypes(saved) {
 
 DEFAULT_CONFIG.alertTypes = mergeAlertTypes(null);
 
+function normalizeExcludedUsers(v) {
+  const raw = Array.isArray(v) ? v.join(',') : String(v == null ? '' : v);
+  const list = raw.split(/[,;\s]+/).map(s => String(s).toLowerCase().trim().slice(0, 32)).filter(Boolean);
+  if (!list.includes('wisebots')) list.unshift('wisebots');
+  const seen = new Set();
+  const out = [];
+  for (const n of list) { if (!seen.has(n)) { seen.add(n); out.push(n); } }
+  return out.slice(0, 40);
+}
+
 let appConfig = Object.assign({}, DEFAULT_CONFIG);
 try {
   if (fs.existsSync(PERSIST_FILE)) {
@@ -220,6 +231,8 @@ if (!appConfig.alertTypes || typeof appConfig.alertTypes !== 'object') {
 } else {
   appConfig.alertTypes = mergeAlertTypes(appConfig.alertTypes);
 }
+appConfig.velocityExemptStaff = false;
+appConfig.velocityExcludedUsers = normalizeExcludedUsers(appConfig.velocityExcludedUsers);
 function saveConfig() {
   try { fs.writeFileSync(PERSIST_FILE, JSON.stringify(appConfig, null, 2)); } catch (e) {}
 }
@@ -254,10 +267,12 @@ function velocityAlertFields(src) {
     velocityCooldownSeconds: s.velocityCooldownSeconds,
     velocityMaxPerMinute: s.velocityMaxPerMinute,
     velocityExemptStaff: s.velocityExemptStaff,
+    velocityExcludedUsers: s.velocityExcludedUsers,
     antiSpam: s.velocityAntiSpam,
     cooldownSeconds: s.velocityCooldownSeconds,
     maxPerMinute: s.velocityMaxPerMinute,
-    exemptStaff: s.velocityExemptStaff
+    exemptStaff: s.velocityExemptStaff,
+    excludedUsers: s.velocityExcludedUsers
   };
 }
 
@@ -1698,7 +1713,10 @@ const server = http.createServer((req, res) => {
               velocityAntiSpam: p.velocityAntiSpam !== undefined ? !!p.velocityAntiSpam : (p.antiSpam !== undefined ? !!p.antiSpam : appConfig.velocityAntiSpam),
               velocityCooldownSeconds: p.velocityCooldownSeconds !== undefined ? Math.round(+p.velocityCooldownSeconds) : (p.cooldownSeconds !== undefined ? Math.round(+p.cooldownSeconds) : appConfig.velocityCooldownSeconds),
               velocityMaxPerMinute: p.velocityMaxPerMinute !== undefined ? Math.round(+p.velocityMaxPerMinute) : (p.maxPerMinute !== undefined ? Math.round(+p.maxPerMinute) : appConfig.velocityMaxPerMinute),
-              velocityExemptStaff: p.velocityExemptStaff !== undefined ? !!p.velocityExemptStaff : (p.exemptStaff !== undefined ? !!p.exemptStaff : appConfig.velocityExemptStaff),
+              velocityExemptStaff: false,
+              velocityExcludedUsers: (p.velocityExcludedUsers !== undefined || p.excludedUsers !== undefined)
+                ? normalizeExcludedUsers(p.velocityExcludedUsers !== undefined ? p.velocityExcludedUsers : p.excludedUsers)
+                : appConfig.velocityExcludedUsers,
               alertTypes: p.alertTypes ? mergeAlertTypes(Object.assign({}, appConfig.alertTypes, p.alertTypes)) : appConfig.alertTypes
             });
             const payload = 'data: ' + JSON.stringify(Object.assign({
@@ -1774,8 +1792,11 @@ const server = http.createServer((req, res) => {
           if (p.cooldownSeconds !== undefined) appConfig.velocityCooldownSeconds = Math.max(0, Math.min(120, Math.round(+p.cooldownSeconds || 0)));
           if (p.velocityMaxPerMinute !== undefined) appConfig.velocityMaxPerMinute = Math.max(1, Math.min(30, Math.round(+p.velocityMaxPerMinute || 2)));
           if (p.maxPerMinute !== undefined) appConfig.velocityMaxPerMinute = Math.max(1, Math.min(30, Math.round(+p.maxPerMinute || 2)));
-          if (p.velocityExemptStaff !== undefined) appConfig.velocityExemptStaff = !!p.velocityExemptStaff;
-          if (p.exemptStaff !== undefined) appConfig.velocityExemptStaff = !!p.exemptStaff;
+          appConfig.velocityExemptStaff = false;
+          if (p.velocityExemptStaff !== undefined) appConfig.velocityExemptStaff = false;
+          if (p.exemptStaff !== undefined) appConfig.velocityExemptStaff = false;
+          if (p.velocityExcludedUsers !== undefined) appConfig.velocityExcludedUsers = normalizeExcludedUsers(p.velocityExcludedUsers);
+          if (p.excludedUsers !== undefined) appConfig.velocityExcludedUsers = normalizeExcludedUsers(p.excludedUsers);
           if (p.alertTypes && typeof p.alertTypes === 'object') {
             const merged = Object.assign({}, appConfig.alertTypes);
             for (const t of ALERT_TYPE_IDS) {

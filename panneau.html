@@ -956,14 +956,12 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
                 <div class="note" style="margin-top:4px">2 = le 3e message de la même personne dans la minute est ignoré pour le %.</div>
               </div>
             </div>
-            <div class="switchRow" style="margin-top:8px">
-              <label class="switch">
-                <input type="checkbox" id="velocityExemptStaff">
-                <span class="switch__track"><span class="switch__thumb"></span></span>
-              </label>
-              <span class="switch__label">Streamer + mods ne comptent pas (recommandé)</span>
+            <div class="field" style="margin-top:10px">
+              <label>Pseudos exclus (bots) – jamais comptés</label>
+              <input id="velocityExcludedUsers" type="text" placeholder="wisebots">
+              <div class="note" style="margin-top:4px">Séparés par virgule. <b>wisebots</b> est toujours exclu. Streamer et mods <b>comptent</b> comme tout le monde.</div>
             </div>
-            <div class="note" style="margin-top:8px;line-height:1.5">Combo viable par défaut : cooldown 15s <b>et</b> max 2 / minute. Exemple : t=0 compte, t=5 ignoré (cooldown), t=16 compte (2e), t=32 ignoré (plafond), t=61 recompte. Les commandes <span class="tok">!</span> sont toujours exclues.</div>
+            <div class="note" style="margin-top:8px;line-height:1.5">Combo viable par défaut : cooldown 15s <b>et</b> max 2 / minute. Exemple : t=0 compte, t=5 ignoré (cooldown), t=16 compte (2e), t=32 ignoré (plafond), t=61 recompte. Les commandes <span class="tok">!</span> et <span class="tok">wisebots</span> sont toujours exclus.</div>
           </div>
           <div class="row" style="margin-top:14px">
             <button class="btn primary" id="btnSauverVelocity">ENREGISTRER</button>
@@ -1380,7 +1378,8 @@ if(btnAnnulerTitre)btnAnnulerTitre.addEventListener('click',async()=>{
 const velocityDef={
   equilibriumMPM:20,climbSensitivity:0.65,decayRate:0.14,holdDurationSeconds:120,
   barWidth:30,barHeight:700,showMetrics:true,velocityEnabled:true,
-  goalThreshold:90,goalDurationMinutes:15,finHour:21,finMinute:30,finEnabled:true
+  goalThreshold:90,goalDurationMinutes:15,finHour:21,finMinute:30,finEnabled:true,
+  antiSpam:true,cooldownSeconds:15,maxPerMinute:2,exemptStaff:false,excludedUsers:'wisebots'
 };
 let velocitySaved={...velocityDef};
 let _velPrevT=null;
@@ -1402,7 +1401,8 @@ function getVelocityForm(){
     antiSpam: $('velocityAntiSpam') ? !!$('velocityAntiSpam').checked : true,
     cooldownSeconds: Math.max(0, Math.min(120, Math.round($('velocityCooldown') ? +$('velocityCooldown').value : velocityDef.cooldownSeconds) || 0)),
     maxPerMinute: Math.max(1, Math.min(30, Math.round($('velocityMaxPerMin') ? +$('velocityMaxPerMin').value : velocityDef.maxPerMinute) || 2)),
-    exemptStaff: $('velocityExemptStaff') ? !!$('velocityExemptStaff').checked : true
+    exemptStaff: false,
+    excludedUsers: $('velocityExcludedUsers') ? $('velocityExcludedUsers').value : 'wisebots'
   };
 }
 function setVelocityForm(c){
@@ -1436,12 +1436,13 @@ function setVelocityForm(c){
   const spam=s.velocityAntiSpam!=null?s.velocityAntiSpam:(s.antiSpam!=null?s.antiSpam:velocityDef.antiSpam);
   const cd=s.velocityCooldownSeconds!=null?s.velocityCooldownSeconds:(s.cooldownSeconds!=null?s.cooldownSeconds:velocityDef.cooldownSeconds);
   const mx=s.velocityMaxPerMinute!=null?s.velocityMaxPerMinute:(s.maxPerMinute!=null?s.maxPerMinute:velocityDef.maxPerMinute);
-  const ex=s.velocityExemptStaff!=null?s.velocityExemptStaff:(s.exemptStaff!=null?s.exemptStaff:velocityDef.exemptStaff);
+  const excl=s.velocityExcludedUsers!=null?s.velocityExcludedUsers:(s.excludedUsers!=null?s.excludedUsers:velocityDef.excludedUsers);
+  const exclStr=Array.isArray(excl)?excl.join(', '):String(excl||'wisebots');
   if($('velocityAntiSpam'))$('velocityAntiSpam').checked=!!spam;
   if($('velocityCooldown'))$('velocityCooldown').value=cd;
   if($('velocityMaxPerMin'))$('velocityMaxPerMin').value=mx;
-  if($('velocityExemptStaff'))$('velocityExemptStaff').checked=!!ex;
-  velocitySaved={equilibriumMPM:eq,climbSensitivity:climb,decayRate:decay,holdDurationSeconds:hold,barWidth:bw,barHeight:bh,showMetrics:!!sm,velocityEnabled:!!en,goalThreshold:gth,goalDurationMinutes:gdur,finHour:finH,finMinute:finM,finEnabled:!!finEn,antiSpam:!!spam,cooldownSeconds:cd,maxPerMinute:mx,exemptStaff:!!ex};
+  if($('velocityExcludedUsers'))$('velocityExcludedUsers').value=exclStr;
+  velocitySaved={equilibriumMPM:eq,climbSensitivity:climb,decayRate:decay,holdDurationSeconds:hold,barWidth:bw,barHeight:bh,showMetrics:!!sm,velocityEnabled:!!en,goalThreshold:gth,goalDurationMinutes:gdur,finHour:finH,finMinute:finM,finEnabled:!!finEn,antiSpam:!!spam,cooldownSeconds:cd,maxPerMinute:mx,exemptStaff:false,excludedUsers:exclStr};
 }
 function apercuVelocity(){
   clearTimeout(_velPrevT);
@@ -1465,11 +1466,11 @@ function sauverVelocityImmediate() {
     }
   }).catch(()=>{});
 }
-['velocityEquilibrium','velocityClimb','velocityDecay','velocityHold','velocityBarWidth','velocityBarHeight','velocityGoalThreshold','velocityGoalDuration','velocityFinHour','velocityFinMinute','velocityCooldown','velocityMaxPerMin'].forEach(id=>{
+['velocityEquilibrium','velocityClimb','velocityDecay','velocityHold','velocityBarWidth','velocityBarHeight','velocityGoalThreshold','velocityGoalDuration','velocityFinHour','velocityFinMinute','velocityCooldown','velocityMaxPerMin','velocityExcludedUsers'].forEach(id=>{
   const el=$(id);
   if(el) el.addEventListener('input',apercuVelocity);
 });
-['velocityShowMetrics','velocityFinEnabled','velocityAntiSpam','velocityExemptStaff'].forEach(id=>{
+['velocityShowMetrics','velocityFinEnabled','velocityAntiSpam'].forEach(id=>{
   const el=$(id);
   if(el) el.addEventListener('change',apercuVelocity);
 });

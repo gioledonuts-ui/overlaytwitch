@@ -1249,7 +1249,7 @@ function applyConfig(c) {
   }
   if (c.alertTypes) window._alertTypes = c.alertTypes;
   if (c.alertGapMs !== undefined) window._alertGapMs = Math.max(0, Math.min(5000, +c.alertGapMs || 0));
-  if (c.velocity || c.equilibriumMPM !== undefined || c.velocityEnabled !== undefined || c.velocityAntiSpam !== undefined || c.antiSpam !== undefined) {
+  if (c.velocity || c.equilibriumMPM !== undefined || c.velocityEnabled !== undefined || c.velocityAntiSpam !== undefined || c.antiSpam !== undefined || c.excludedUsers !== undefined || c.velocityExcludedUsers !== undefined) {
     if (window.velocityApplyConfig) window.velocityApplyConfig(c);
   }
 }
@@ -1903,7 +1903,8 @@ function setGoal(g) {
     antiSpam: true,
     cooldownSeconds: 15,
     maxPerMinute: 2,
-    exemptStaff: true
+    exemptStaff: false,
+    excludedUsers: ['wisebots']
   };
   const userHits = new Map(); // user -> { last, times[] }
 
@@ -1950,7 +1951,40 @@ function setGoal(g) {
     }
   }
 
-  function pushTimestamp() { mpmScore += 1; }
+  function parseExcluded(v) {
+    const raw = Array.isArray(v) ? v.join(',') : String(v == null ? '' : v);
+    const list = raw.split(/[,;\s]+/).map(s => s.toLowerCase().trim()).filter(Boolean);
+    if (!list.includes('wisebots')) list.push('wisebots');
+    return list;
+  }
+  function shouldCountVelocity(m) {
+    if (!cfg.antiSpam) return true;
+    if (!m) return false;
+    const text = String(m.msg || '').trim();
+    if (!text) return false;
+    if (text.startsWith('!')) return false;
+    const user = String(m.user || '').toLowerCase().slice(0, 64);
+    if (!user) return false;
+    const excluded = parseExcluded(cfg.excludedUsers);
+    if (excluded.includes(user)) return false;
+    if (cfg.exemptStaff && (m.role === 'me' || m.role === 'mod')) return false;
+    const now = Date.now();
+    let rec = userHits.get(user);
+    if (!rec) rec = { last: 0, times: [] };
+    rec.times = rec.times.filter(t => now - t < 60000);
+    const cooldownMs = Math.max(0, (cfg.cooldownSeconds || 0) * 1000);
+    if (cooldownMs > 0 && rec.last && (now - rec.last) < cooldownMs) return false;
+    const maxN = Math.max(1, cfg.maxPerMinute || 2);
+    if (rec.times.length >= maxN) return false;
+    rec.last = now;
+    rec.times.push(now);
+    userHits.set(user, rec);
+    return true;
+  }
+  function pushTimestamp(m) {
+    if (!shouldCountVelocity(m)) return;
+    mpmScore += 1;
+  }
   window.__velocityPush = pushTimestamp;
 
   function resetVelocity(full) {
@@ -2034,6 +2068,8 @@ function setGoal(g) {
     if (src.velocityMaxPerMinute !== undefined) cfg.maxPerMinute = Math.max(1, Math.min(30, Math.round(toNum(src.velocityMaxPerMinute, 2))));
     if (src.exemptStaff !== undefined) cfg.exemptStaff = !!src.exemptStaff;
     if (src.velocityExemptStaff !== undefined) cfg.exemptStaff = !!src.velocityExemptStaff;
+    if (src.excludedUsers !== undefined) cfg.excludedUsers = parseExcluded(src.excludedUsers);
+    if (src.velocityExcludedUsers !== undefined) cfg.excludedUsers = parseExcluded(src.velocityExcludedUsers);
     // debug
     try { console.log('[velocite] config appliquee', cfg); } catch(e){}
     applyVisualConfig();
@@ -2273,26 +2309,6 @@ function clickVote(choice) {
   if (DEMO && demoVotes) {
     demoVotes[choice]++;
     setState({ mode: 'live', question: cur.question, a: cur.a, b: cur.b, c: cur.c, d: cur.d,
-               startsAt: cur.startsAt, va: demoVotes.A, vb: demoVotes.B, vc: demoVotes.C, vd: demoVotes.D, endsAt: cur.endsAt, source: 'demo' });
-  } else vote(choice);
-}
-E.optA.addEventListener('click', () => clickVote('A'));
-E.optB.addEventListener('click', () => clickVote('B'));
-if (E.optC) E.optC.addEventListener('click', () => clickVote('C'));
-if (E.optD) E.optD.addEventListener('click', () => clickVote('D'));
-
-/* ── Boucle d'affichage (timer) + démarrage ──────────────────── */
-setInterval(() => { if (mode !== 'idle') render(); }, 250);
-if (DEMO) { demoStart(); fakeChatLoop(); demoChatExtras(); demoAlerts(); } else {
-  connect();
-  fetch('api/goal').then(r => r.json()).then(setGoal).catch(() => {});
-  fetch('api/config').then(r => r.json()).then(d => { if (d && d.config) applyConfig(d.config); }).catch(() => {});
-}
-})();
-</script>
-</body>
-</html>
-a: cur.a, b: cur.b, c: cur.c, d: cur.d,
                startsAt: cur.startsAt, va: demoVotes.A, vb: demoVotes.B, vc: demoVotes.C, vd: demoVotes.D, endsAt: cur.endsAt, source: 'demo' });
   } else vote(choice);
 }
