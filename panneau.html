@@ -470,7 +470,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
       <div class="brand__txt">
         <div class="brand__name">7GIONNY</div>
         <div class="brand__sub">STUDIO</div>
-        <div id="verPill">V41</div>
+        <div id="verPill">V42</div>
       </div>
     </div>
     <nav class="nav">
@@ -764,7 +764,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
 
         <div class="card">
           <h2>SON DES ALERTES</h2>
-          <p class="sub">Les sons se rangent dans <span class="mono" style="display:inline;padding:2px 6px">sounds/alert-{type}.mp3</span> (mp3, wav, ogg ou m4a). OBS les re-détecte toutes les 15 s, pas besoin de relancer.</p>
+          <p class="sub">Un son par type, indépendant : l'onglet du type → « Son de ce type » → choisis ton fichier. Ça s'écrit dans <span class="mono" style="display:inline;padding:2px 6px">sounds/alert-{type}.mp3</span> (mp3, wav, ogg, m4a, aac, flac — max 12 Mo). <b>L'overlay le prend tout de suite</b>, sans relancer OBS ; re-détection de secours toutes les 10 s. Bouton <b>▶ ÉCOUTER LE SON</b> pour vérifier, et « SUPPRIMER LE SON » pour revenir au bruitage court de l'overlay.</p>
           <div class="switchRow" style="margin-top:4px">
             <label class="switch">
               <input type="checkbox" id="alertLocalPC">
@@ -985,6 +985,18 @@ function setPanneauAccent(hex){
 }
 function toast(msg){const t=$('toast'),tt=$('toastTxt');if(!t||!tt)return;tt.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2600);}
 async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return r.json();}
+async function postFile(url,body){
+  // V41 : meme si le pont repond n'importe quoi (fichier trop gros, pont arrete), on a un
+  // message a l'ecran. Avant, l'erreur partait dans le vide : « je clique, ca fait rien ».
+  let r;
+  try { r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); }
+  catch (e) { throw new Error('pont injoignable (le pont tourne ?)'); }
+  const txt = await r.text().catch(() => '');
+  let j = null; try { j = JSON.parse(txt); } catch (e) {}
+  if (!j) throw new Error(r.status >= 400 ? 'le pont a refuse (' + r.status + ')' : 'reponse illisible du pont');
+  if (!j.ok && r.status >= 400) throw new Error(j.err || ('refuse (' + r.status + ')'));
+  return j;
+}
 function copier(txt){if(navigator.clipboard&&navigator.clipboard.writeText)return navigator.clipboard.writeText(txt);return new Promise((res,rej)=>{try{const ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();if(document.execCommand('copy'))res();else rej(new Error('copy'));ta.remove();}catch(e){rej(e);}});}
 function rendCopiable(el,nom){if(!el)return;el.addEventListener('click',async()=>{try{await copier(el.textContent);el.classList.add('copied');clearTimeout(el._h);el._h=setTimeout(()=>el.classList.remove('copied'),1400);toast(nom+' copie');}catch(e){toast('Copie impossible');}});}
 rendCopiable($('urlObs'),'Lien OBS');
@@ -1579,7 +1591,7 @@ function renderAlertTypeBody() {
     '</div>' +
     '<div class="aH"><h3>Son de ce type</h3></div>' +
     '<div class="row" style="gap:12px;align-items:center;margin-top:6px">' +
-      '<div style="flex:1;min-width:230px"><input type="file" accept=".mp3,.wav,.ogg,.m4a" class="aFile soundInput" data-type="' + t + '"><div class="note" data-sstatus></div></div>' +
+      '<div style="flex:1;min-width:230px"><input type="file" accept=".mp3,.wav,.ogg,.m4a,.aac,.flac" class="aFile soundInput" data-type="' + t + '"><div class="note" data-sstatus></div></div>' +
       '<button class="btn small ghost soundDel" type="button" style="display:none">SUPPRIMER LE SON</button>' +
     '</div>' +
     '<div class="row" style="gap:10px;align-items:center;margin-top:14px">' +
@@ -1726,8 +1738,8 @@ function paintAlertAssetStatus() {
   const s = _soundsMap[t];
   const st = body.querySelector('[data-sstatus]');
   if (st) {
-    if (s) st.innerHTML = '<span class="ok">Son custom : ' + esc(s.file) + ' ✔</span>';
-    else st.textContent = (t === 'resub' || t === 'gift') ? 'Aucun son propre ici → celui du SUB est joué' : 'Aucun son propre → bruitage par défaut de l\'overlay';
+    if (s) st.innerHTML = '<span class="ok">Son custom : ' + esc(s.file) + (s.size ? ' (' + Math.max(1, Math.round(s.size / 1024)) + ' Ko)' : '') + ' ✔ — joué dès la prochaine alerte</span>';
+    else st.textContent = (t === 'resub' || t === 'gift') ? 'Aucun son propre ici → celui du SUB est joué' : 'Aucun son propre → petit bruitage par défaut de l\'overlay (envoie un .mp3 ou .wav ci-dessus pour le remplacer)';
   }
   const sd = body.querySelector('.soundDel'); if (sd) sd.style.display = s ? 'inline-flex' : 'none';
   const m = _mediaMap && _mediaMap[t];
@@ -1760,9 +1772,14 @@ async function sendTestAlert(type) {
 }
 function playSoundPreview(type) {
   const urls = [];
-  ['mp3', 'wav', 'ogg', 'm4a'].forEach(ext => urls.push(API + '/sounds/alert-' + type + '.' + ext + '?v=' + Date.now()));
-  if (type === 'resub' || type === 'gift' || type === 'raid') urls.push(API + '/sounds/alert-sub.mp3?v=' + Date.now());
-  urls.push(API + '/sounds/alert-follow.mp3?v=' + Date.now());
+  const known = (_soundsMap && _soundsMap[type] && _soundsMap[type].file) ? [ _soundsMap[type].file ] : [];
+  known.forEach(f => urls.push(API + '/sounds/' + f + '?v=' + Date.now()));   // V41 : le fichier réellement en stock
+  ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].forEach(ext => urls.push(API + '/sounds/alert-' + type + '.' + ext + '?v=' + Date.now()));
+  ['resub','gift','raid','follow'].forEach(() => {});
+  if (type !== 'sub' && type !== 'follow') {
+    const fb = (_soundsMap && _soundsMap.sub && _soundsMap.sub.file) ? _soundsMap.sub.file : null;
+    urls.push(API + '/sounds/' + (fb || 'alert-sub.mp3') + '?v=' + Date.now());
+  }
   let i = 0;
   const next = () => {
     if (i >= urls.length) { toast('Aucun son ' + type + ' — uploade-le d\'abord'); return; }
@@ -1774,15 +1791,23 @@ function playSoundPreview(type) {
   next();
 }
 async function uploadFileTo(url, type, file, maxMo, okMsg) {
-  if (file.size > maxMo * 1024 * 1024) { toast('Fichier trop gros (max ' + maxMo + ' Mo)'); return false; }
-  const ext = String(file.name).split('.').pop().toLowerCase();
-  const b64 = await fileToBase64(file);
-  const body = { data: b64, ext };
-  if (type) body.type = type;
-  const j = await post(url, body);
-  if (j && j.ok) { toast(okMsg); return true; }
-  toast('Échec : ' + ((j && j.err) || 'format non reconnu'));
-  return false;
+  if (!file) { toast('Aucun fichier choisi'); return false; }
+  if (file.size > maxMo * 1024 * 1024) { toast('Fichier trop gros : ' + (file.size/1048576).toFixed(1) + ' Mo (max ' + maxMo + ' Mo) — coupe-le ou baisse la qualite'); return false; }
+  if (file.size < 200) { toast('Fichier vide ou illisible : ' + file.name); return false; }
+  try {
+    const ext = String(file.name).split('.').pop().toLowerCase();
+    toast('Envoi de ' + file.name + ' (' + (file.size/1024).toFixed(0) + ' Ko)…');
+    const b64 = await fileToBase64(file);
+    const body = { data: b64, ext };
+    if (type) body.type = type;
+    const j = await postFile(url, body);
+    if (j && j.ok) { toast(okMsg); return true; }
+    toast('Échec : ' + ((j && j.err) || 'format non reconnu'));
+    return false;
+  } catch (e) {
+    toast('Échec de l’envoi : ' + (e && e.message || e));
+    return false;
+  }
 }
 /* — événements (tout est délégué, le panneau par type est généré) — */
 if (alertTabEl) {
@@ -1799,7 +1824,7 @@ if (alertTabEl) {
       const type = el.dataset.type, file = el.files && el.files[0];
       el.value = '';
       if (!file) return;
-      if (await uploadFileTo(API + '/api/sounds', type, file, 6, 'Son ' + ALERT_LABEL[type] + ' enregistré ✔')) loadAlertAssets();
+      if (await uploadFileTo(API + '/api/sounds', type, file, 12, 'Son ' + ALERT_LABEL[type] + ' enregistré ✔ — OBS le joue immédiatement')) loadAlertAssets(); else loadAlertAssets();
       return;
     }
     if (el.classList.contains('mediaInput')) {

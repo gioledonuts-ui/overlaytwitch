@@ -1181,6 +1181,7 @@ let lastMsg = 0, es = null, pollTimer = null;
 function apply(m) {
   if (!m) return;
   lastMsg = Date.now();
+  if (m.sound) { try { if (window.__refreshAlertSounds) window.__refreshAlertSounds(true); } catch (e) {} return; }   // V41 : son change dans le panneau
   if (m.chat) { pushChat(m); return; }      // message du vrai chat (via le pont)
   if (m.badgeMap) { badgeMap = m.badgeMap; return; }   // vrais badges Twitch (images)
   if (m.pin) { m.pin === 0 ? clearPin() : setPin(m); return; }   // message épinglé
@@ -1476,47 +1477,82 @@ setInterval(refreshPhotoFlag, 3000);
    Le panneau upload directement ici via /api/sounds. */
 const ALERT_SOUNDS = { follow: 0.75, sub: 0.75, gift: 0.75, resub: 0.75, raid: 0.75, prime: 0.75, anon: 0.75, community: 0.75, default: 0.75 };
 const alertAudio = {};
+const alertAudioStamp = {};
 let alertAudioReady = false;
-(function initAlertSounds() {
-  const probe = url => new Promise(res => {
+const SOUND_KINDS = ['follow','sub','resub','gift','anon','community','prime','raid','default'];
+/* — Sons d'alerte : la LISTE vient du pont (1 requête), plus de tempête de 404.
+   V41 : l'ancien code faisait `if (alertAudio[kind]) break;` a l'interieur de la boucle
+   des types → des qu'un type avait un son, TOUS les types suivants n'etaient jamais
+   charges (impossible de changer/ajouter le son d'un sub, d'un raid…). Corrige +
+   le remplacement d'un fichier est detecte (mtime) et le pont previent en direct. — */
+function alertProbe(url) {
+  return new Promise(res => {
     const a = new Audio();
+    let done = false;
+    const ok = () => { if (done) return; done = true; clearTimeout(t); try { a.removeEventListener('error', fail); } catch (e) {} res(a); };
+    const fail = () => { if (done) return; done = true; try { a.removeEventListener('canplaythrough', ok); } catch (e) {} res(null); };
+    const t = setTimeout(fail, 5000);
     a.preload = 'auto';
-    a.volume = 0.75;
-    a.src = url;
-    const ok = () => { a.removeEventListener('error', fail); res(a); };
-    const fail = () => { a.removeEventListener('canplaythrough', ok); res(null); };
     a.addEventListener('canplaythrough', ok, { once: true });
+    a.addEventListener('loadeddata', ok, { once: true });
     a.addEventListener('error', fail, { once: true });
-    setTimeout(() => res(null), 2500);
+    a.src = url;                       // mis en dernier : c'est la ce qui declenche le chargement
   });
-  async function loadAll() {
-    for (const kind of ['follow','sub','gift','resub','raid','prime','anon','community','default']) {
-      for (const ext of ['mp3','wav','ogg','m4a']) {
-        // essaie alert-kind.ext et aussi kind.ext (sans prefix)
-        const urls = ['sounds/alert-' + kind + '.' + ext, 'sounds/' + kind + '.' + ext];
-        for (const u of urls) {
-          const a = await probe(u + '?v=' + Date.now());
-          if (a) { a.volume = ALERT_SOUNDS[kind] || 0.75; alertAudio[kind] = a; break; }
-        }
-        if (alertAudio[kind]) break;
-      }
+}
+async function refreshAlertSounds(force) {
+  let list = null;
+  try {
+    const r = await fetch('api/sounds', { cache: 'no-store' });
+    const j = await r.json();
+    if (j && Array.isArray(j.files)) list = j.files;
+  } catch (e) {}
+  const byKind = {};
+  if (list) {
+    for (const f of list) {
+      const kind = String(f.type || '').toLowerCase();
+      if (SOUND_KINDS.indexOf(kind) === -1 || byKind[kind]) continue;
+      byKind[kind] = ['sounds/' + f.file + '?v=' + (f.mtime || f.size || Date.now())];
     }
-    alertAudioReady = true;
+  } else {
+    // pont injoignable / ancienne version : on sonde les noms habituels, en parallele
+    for (const kind of SOUND_KINDS) {
+      const urls = [];
+      for (const ext of ['mp3','wav','ogg','m4a']) { urls.push('sounds/alert-' + kind + '.' + ext); urls.push('sounds/' + kind + '.' + ext); }
+      byKind[kind] = urls.map(u => u + '?v=' + Date.now());
+    }
   }
-  loadAll();
-  // re-probe toutes les 15s pour capter un upload custom sans reload OBS
-  setInterval(async()=>{
-    for (const kind of ['follow','sub','gift','resub','raid','prime','default']) {
-      for (const ext of ['mp3','wav','ogg','m4a']) {
-        const urls = ['sounds/alert-' + kind + '.' + ext, 'sounds/' + kind + '.' + ext];
-        for (const u of urls) {
-          const a = await probe(u + '?v=' + Date.now());
-          if (a) { a.volume = ALERT_SOUNDS[kind] || 0.75; alertAudio[kind] = a; break; }
-        }
-        if (alertAudio[kind]) break;
-      }
+  // on parcourt AUSSI les types déjà chargés : un son supprimé du disque doit être oublié
+  // (sinon l'overlay continue à jouer le fichier qui n'existe plus jusqu'au rechargement d'OBS)
+  const kinds = Object.keys(byKind).concat(Object.keys(alertAudio).filter(k => !byKind[k]));
+  await Promise.all(kinds.map(async kind => {
+    const urls = byKind[kind];
+    if (!urls) { delete alertAudio[kind]; delete alertAudioStamp[kind]; console.log('[son] ' + kind + ' → retiré (plus de fichier)'); return; }
+    const stamp = urls[0].split('/').pop().split('?')[0] + '|' + (list ? (list.find(f => String(f.type).toLowerCase() === kind) || {}).mtime || (list.find(f => String(f.type).toLowerCase() === kind) || {}).size || '' : '');
+    if (!force && alertAudio[kind] && alertAudioStamp[kind] === stamp) return;   // rien n'a change
+    let found = null;
+    for (const u of urls) {
+      const a = await alertProbe(u);
+      if (a) { found = { a, u }; break; }
     }
-  }, 15000);
+    if (found) {
+      try { found.a.volume = ALERT_SOUNDS[kind] || 0.75; } catch (e) {}
+      alertAudio[kind] = found.a;
+      alertAudioStamp[kind] = stamp;
+      console.log('[son] ' + kind + ' → ' + found.u.split('/').pop().split('?')[0]);
+    } else if (alertAudio[kind] && !list) {
+      // sonde ratee alors qu'un son est deja charge (API hors service) : on le garde
+    } else {
+      delete alertAudio[kind]; delete alertAudioStamp[kind];
+    }
+  }));
+  alertAudioReady = true;
+}
+(function initAlertSounds() {
+  const boot = refreshAlertSounds(false);
+  window.__alertAudioBoot = boot;   // V42 : la 1re alerte attend le chargement (max ~0,9 s) au lieu de sortir sans son
+  boot.catch(() => {});
+  window.__refreshAlertSounds = refreshAlertSounds;
+  setInterval(() => refreshAlertSounds(false), 10000);   // filet de securite (upload fait a la main)
 })();
 const alertsEl = $('alerts');
 const alertQueue = [];
@@ -2047,6 +2083,11 @@ function showAlert(a) {
   // on essaie un seul fichier, pas de double lecture
   let played = false;  const playSingle = async () => {
     if (MUTE) return true;
+    // V42 : les sons ne sont pas encore prêts (tout juste lancé dans OBS) → on laisse le
+    // chargement finir, sinon la premiere alerte de la session partait sans son.
+    if (!alertAudioReady && window.__alertAudioBoot) {
+      try { await Promise.race([window.__alertAudioBoot, new Promise(r => setTimeout(r, 900))]); } catch (e) {}
+    }
     const tryUrls = [];
     for (const ext of ['mp3','wav','ogg','m4a']) {
       tryUrls.push('sounds/alert-' + a.alert + '.' + ext);

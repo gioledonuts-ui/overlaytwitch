@@ -1472,7 +1472,9 @@ const server = http.createServer((req, res) => {
           // normalise
           type = type.replace(/[^a-z]/g,'');
           if (!known.includes(type)) continue;
-          list.push({ file: f, type });
+          let extra = {};
+          try { const st = fs.statSync(path.join(soundsDir, f)); extra = { size: st.size, mtime: Math.round(st.mtimeMs) }; } catch (e) {}
+          list.push(Object.assign({ file: f, type, url: '/sounds/' + f }, extra));   // V41 : + taille/date → l'overlay voit un remplacement
         }
         // dedup par type (garde premier)
         const seen = new Set();
@@ -1487,9 +1489,14 @@ const server = http.createServer((req, res) => {
     if (u.pathname === '/api/sounds' && req.method === 'POST') {
       // Accepte JSON {type, data: base64, ext} ou raw upload via FormData simplifié (on parse en buffer)
       const chunks = [];
-      let total = 0;
-      req.on('data', c => { chunks.push(c); total += c.length; if (total > 8 * 1024 * 1024) req.destroy(); });
+      let total = 0, tooBig = false;
+      // V41 : on repond 413 en JSON lisible au lieu de couper la connexion en silence
+      // (le panneau n'affichait AUCUN message sur un fichier un peu lourd).
+      req.on('data', ch => { chunks.push(ch); total += ch.length;
+        if (total > 42 * 1024 * 1024 && !tooBig) { tooBig = true; try { send(413, 'application/json', JSON.stringify({ ok: false, err: 'fichier trop gros (max 30 Mo)' })); } catch (e) {} req.resume(); }
+      });
       req.on('end', () => {
+        if (tooBig) return;
         try {
           const buf = Buffer.concat(chunks);
           const ctype = (req.headers['content-type'] || '').toLowerCase();
@@ -1502,12 +1509,13 @@ const server = http.createServer((req, res) => {
             const raw = Buffer.from(j.data, 'base64');
             if (raw.length < 100) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'fichier trop petit' }));
             let ext = String(j.ext || 'mp3').toLowerCase().replace(/[^a-z0-9]/g, '');
-            if (!['mp3','wav','ogg','m4a','mp4','webm'].includes(ext)) ext = 'mp3';
+            if (!['mp3','wav','ogg','m4a','aac','flac','opus','mp4','webm'].includes(ext)) ext = 'mp3';   // V41 : flac/aac/opus acceptes
             const outPath = path.join(__dirname, 'sounds', `alert-${type}.${ext}`);
             // remove other ext for same type
             try { fs.readdirSync(path.join(__dirname, 'sounds')).forEach(f => { if (f.startsWith(`alert-${type}.`) && f !== `alert-${type}.${ext}`) fs.unlinkSync(path.join(__dirname, 'sounds', f)); }); } catch(e){}
             fs.writeFileSync(outPath, raw);
             console.log(`[sons] custom upload alert-${type}.${ext} (${(raw.length/1024).toFixed(1)} Ko)`);
+            try { for (const res of sse) res.write('data: ' + JSON.stringify({ sound: 1, type }) + '\n\n'); } catch (err) {}   // V41 : l'overlay recharge le son aussitot
             return send(200, 'application/json', JSON.stringify({ ok: true, file: `alert-${type}.${ext}` }));
           } else {
             // multipart minimal: on cherche type en query ?type=
@@ -1532,6 +1540,7 @@ const server = http.createServer((req, res) => {
             try { fs.readdirSync(path.join(__dirname, 'sounds')).forEach(f => { if (f.startsWith(`alert-${type}.`) && f !== `alert-${type}.${ext}`) fs.unlinkSync(path.join(__dirname, 'sounds', f)); }); } catch(e){}
             fs.writeFileSync(outPath, raw);
             console.log(`[sons] custom upload alert-${type}.${ext} (${(raw.length/1024).toFixed(1)} Ko) raw`);
+            try { for (const res of sse) res.write('data: ' + JSON.stringify({ sound: 1, type }) + '\n\n'); } catch (err) {}   // V41 : l'overlay recharge le son aussitot
             return send(200, 'application/json', JSON.stringify({ ok: true, file: `alert-${type}.${ext}` }));
           }
         } catch (e) {
@@ -1547,6 +1556,7 @@ const server = http.createServer((req, res) => {
       try {
         fs.readdirSync(path.join(__dirname, 'sounds')).forEach(f => { if (f.startsWith(`alert-${type}.`)) fs.unlinkSync(path.join(__dirname, 'sounds', f)); });
       } catch(e){}
+      try { for (const res of sse) res.write('data: ' + JSON.stringify({ sound: 1, type, removed: 1 }) + '\n\n'); } catch (err) {}   // V41 : l'overlay l'oublie aussitot
       return send(200, 'application/json', JSON.stringify({ ok: true }));
     }
 
