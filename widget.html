@@ -1777,6 +1777,7 @@ function ttsEnqueue(a) {
   const why = ttsCheck(a);
   if (why) { console.log('[tts] ignoré (' + why + ')'); return; }
   const job = TTS.job; TTS.job = null;
+  if (!job) return;                      // V41 : jamais de plantage si ttsCheck n'a rien préparé
   const now = Date.now();
   TTS.said.set(job.h, now); TTS.byUser.set(job.user, now);
   TTS.queue.push(job);
@@ -1839,12 +1840,15 @@ function ttsSpeak(text, done) {
   ttsBridge(text, finish);
 }
 function ttsBridge(text, done) {
+  // V41 : le rappel s'appelle `done` ici (l'ancien code appelait `finish`, une variable de
+  // ttsSpeak → ReferenceError → l'alerte restait figée et son son ne jouait jamais).
+  const fin = () => { try { if (done) done(); } catch (e) {} };
   try {
     fetch('api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })
       .catch(() => {});
     console.log('[tts] lu par le pont : ' + text.slice(0, 46));
   } catch (e) {}
-  setTimeout(finish, 1400);
+  setTimeout(fin, 1400);   // le pont met ~0,5 s a demarrer : on libere la file apres coup
 }
 try {
   if (window.speechSynthesis) {
@@ -1854,6 +1858,31 @@ try {
   }
 } catch (e) {}
 
+let _whooshUrl = null, _whooshTry = 0;
+function alertWhooshUrl() {
+  // petit « whoosh » synthétisé à la volée (aucun fichier à livrer dans le dépôt)
+  if (_whooshUrl || _whooshTry > 1) return _whooshUrl;
+  _whooshTry++;
+  try {
+    const sr = 22050, dur = 0.45, n = Math.round(sr * dur);
+    const ab = new ArrayBuffer(44 + n * 2), dv = new DataView(ab);
+    const ws = (o, str) => { for (let i = 0; i < str.length; i++) dv.setUint8(o + i, str.charCodeAt(i)); };
+    ws(0, 'RIFF'); dv.setUint32(4, 36 + n * 2, true); ws(8, 'WAVE'); ws(12, 'fmt ');
+    dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+    dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+    ws(36, 'data'); dv.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) {
+      const t = i / sr, k = t / dur, env = Math.exp(-t * 7);
+      const f = 900 - 520 * k;                                  // descente courte
+      let v = Math.sin(2 * Math.PI * f * t) * 0.55 * env
+            + (Math.random() * 2 - 1) * 0.10 * (1 - k) * env;   // souffle
+      v = Math.max(-1, Math.min(1, v * 0.9));
+      dv.setInt16(44 + i * 2, v * 30000, true);
+    }
+    _whooshUrl = URL.createObjectURL(new Blob([ab], { type: 'audio/wav' }));
+  } catch (e) { _whooshUrl = null; }
+  return _whooshUrl;
+}
 function showAlert(a) {
   const t = alertText(a);
   if (!t) return;
@@ -2003,7 +2032,10 @@ function showAlert(a) {
   alertsEl.appendChild(d);
   fitAlertLines(d);
   // le message du sub est lu à voix haute (même tempo que l'affichage du message)
-  if (textDelayMs > 0) setTimeout(() => ttsEnqueue(a), textDelayMs); else ttsEnqueue(a);
+  // la voix part APRÈS le son/la fermeture programmés, et un bug de voix ne doit JAMAIS
+  // empêcher l'alerte de se fermer (c'était le cas en V39/V40 : alerte figée + pas de son)
+  const ttsGo = () => { try { ttsEnqueue(a); } catch (e) { console.log('[tts] ignoré pour cette alerte : ' + (e && e.message || e)); } };
+  if (textDelayMs > 0) setTimeout(ttsGo, textDelayMs); else setTimeout(ttsGo, 0);
   while (alertsEl.children.length > 1) alertsEl.removeChild(alertsEl.firstChild);
   // debloque l'audio pour OBS (pas de clic utilisateur) – tente resume AudioContext
   try{ 
@@ -2068,7 +2100,20 @@ function showAlert(a) {
   };
   playSingle().then(ok => {
     if (!ok && !MUTE) {
-      // dernier recours beep court
+      // aucun fichier son trouvé → on joue le bruitage court de l'overlay.
+      // V41 : d'abord via <audio> (marche dans OBS), l'AudioContext n'étant qu'un 2e choix
+      // (il démarre « suspended » dans une source navigateur et ne sonne jamais).
+      try {
+        const url = alertWhooshUrl();
+        if (url) {
+          const a = new Audio(url);
+          a.volume = vol;
+          const pr = a.play();
+          if (pr && pr.catch) pr.catch(() => {});
+          played = true;
+          return;
+        }
+      } catch (e) {}
       try {
         const c = audio();
         if (c) {
@@ -2083,6 +2128,10 @@ function showAlert(a) {
       } catch(e){}
     }
   });
+  // V41 : filet de securite — si pour une raison quelconque la sortie n'a pas eu lieu
+  // (animation bloquee, onglet mis en pause par OBS, erreur dans un module), on retire
+  // l'element quand meme : l'alerte suivante ne reste plus coincee derriere.
+  setTimeout(() => { try { if (d.parentNode) { d.remove(); processAlerts(); } } catch (e) {} }, t.hold + 2500);
   setTimeout(() => { 
     d.classList.remove('anim-in-' + animIn);
     d.classList.add('out', 'anim-out-' + animOut);
