@@ -100,9 +100,8 @@ const DEFAULT_CONFIG = {
   alertAnimationIn: 'slideTop',
   alertAnimationOut: 'slideTop',
   alertAnimationDuration: 550,
-  alertFontLabel: 'Bebas Neue',
-  alertFontUser: 'Bebas Neue',
-  alertFontSub: 'Inter',
+  // polices figées (Bebas Neue pour les titres/pseudo, Inter pour les détails) :
+  // OBS n'a pas besoin d'un réglage pour ça, et le panneau n'avait que des titres dispo.
   alertFontSizeLabel: 26,
   alertFontSizeUser: 72,
   alertFontSizeSub: 16,
@@ -382,9 +381,6 @@ function velocityAlertFields(src) {
     alertAnimationIn: s.alertAnimationIn,
     alertAnimationOut: s.alertAnimationOut,
     alertAnimationDuration: s.alertAnimationDuration,
-    alertFontLabel: s.alertFontLabel,
-    alertFontUser: s.alertFontUser,
-    alertFontSub: s.alertFontSub,
     alertFontSizeLabel: s.alertFontSizeLabel,
     alertFontSizeUser: s.alertFontSizeUser,
     alertFontSizeSub: s.alertFontSizeSub,
@@ -1558,9 +1554,20 @@ const server = http.createServer((req, res) => {
     if (u.pathname === '/api/alert-bg' && req.method === 'GET') {
       const assetsDir = path.join(__dirname, 'assets');
       try {
-        const files = fs.readdirSync(assetsDir).filter(f => /^(IMG_0607|alert-photo|alert-bg)\.(jpg|jpeg|png)$/i.test(f)).map(f => {
-          try { const st = fs.statSync(path.join(assetsDir, f)); return { file: f, size: st.size, mtime: st.mtime.toISOString() }; } catch(e){ return { file: f }; }
-        });
+        // V40 : on ne liste QUE les photos ajoutées par toi (jamais alert-bg.png, qui est le
+        // fond par défaut du repo → le panneau annonçait à tort « photo custom »), et on
+        // priorité au nom mémorisé dans la config (une photo PNG était invisible après relance).
+        // V40 : on ne liste QUE ce qui est enregistre dans la config (les IMG_0607.jpg /
+        // alert-photo.jpg du depot ne sont pas « ta » photo : ils faisaient croire a une photo
+        // custom alors que personne n'avait rien envoye).
+        const fromCfg = (appConfig.alertImages && appConfig.alertImages.default) ? String(appConfig.alertImages.default) : '';
+        const files = [];
+        if (fromCfg) {
+          try {
+            const st = fs.statSync(path.join(assetsDir, fromCfg));
+            files.push({ file: fromCfg, url: '/assets/' + fromCfg, type: 'default', size: st.size, mtime: st.mtime.toISOString() });
+          } catch (e) { delete appConfig.alertImages.default; }   // fichier supprime a la main → on oublie pas la config
+        }
         return send(200, 'application/json', JSON.stringify({ ok: true, files }));
       } catch(e) { return send(200, 'application/json', JSON.stringify({ ok: true, files: [] })); }
     }
@@ -1589,7 +1596,13 @@ const server = http.createServer((req, res) => {
           // save both names for compatibility
           fs.writeFileSync(out1, raw);
           fs.writeFileSync(out2, raw);
-          console.log(`[alert-bg] photo custom ${raw.length/1024|0} Ko → ${out1}`);
+          // une photo PNG ne s'appelait pas alert-photo.jpg : l'overlay ne la trouvait plus
+          // au redémarrage. On mémorise le VRAI nom dans la config (persistée) + on la diffuse.
+          if (!appConfig.alertImages) appConfig.alertImages = {};
+          appConfig.alertImages.default = `alert-photo.${ext}`;
+          saveConfig();
+          for (const res of sse) res.write('data: ' + JSON.stringify({ cfg: 1, alert: 1, alertImages: appConfig.alertImages }) + '\n\n');
+          console.log(`[alert-bg] photo custom ${raw.length/1024|0} Ko → ${out1} (mémorisée dans la config)`);
           return send(200, 'application/json', JSON.stringify({ ok: true, file: `alert-photo.${ext}` }));
         } catch(e) {
           return send(400, 'application/json', JSON.stringify({ ok: false, err: e.message }));
@@ -1600,7 +1613,9 @@ const server = http.createServer((req, res) => {
     if (u.pathname === '/api/alert-bg' && req.method === 'DELETE') {
       try {
         const assetsDir = path.join(__dirname, 'assets');
-        fs.readdirSync(assetsDir).forEach(f => { if (/^(IMG_0607|alert-photo)\.(jpg|jpeg|png)$/i.test(f)) fs.unlinkSync(path.join(assetsDir, f)); });
+        fs.readdirSync(assetsDir).forEach(f => { if (/^(IMG_0607|alert-photo)\.(jpg|jpeg|png|webp)$/i.test(f)) fs.unlinkSync(path.join(assetsDir, f)); });
+        if (appConfig.alertImages) { delete appConfig.alertImages.default; saveConfig(); }
+        for (const res of sse) res.write('data: ' + JSON.stringify({ cfg: 1, alert: 1, alertImages: appConfig.alertImages || {} }) + '\n\n');
       } catch(e){}
       return send(200, 'application/json', JSON.stringify({ ok: true }));
     }
@@ -1670,8 +1685,13 @@ const server = http.createServer((req, res) => {
     if (u.pathname === '/api/alert-images' && req.method === 'GET') {
       const assetsDir = path.join(__dirname, 'assets');
       try {
+        // V40 : on renvoie LE TYPE avec chaque fichier (avant, le panneau ne pouvait pas
+        // retrouver quel fond appartenait à quel type → le fond « disparaissait » au reload)
         const files = fs.readdirSync(assetsDir).filter(f => /^alert-(follow|sub|resub|gift|anon|community|prime|raid|default)-custom\.(jpg|jpeg|png|gif|webp)$/i.test(f)).map(f => {
-          try { const st = fs.statSync(path.join(assetsDir, f)); return { file: f, size: st.size, mtime: st.mtime.toISOString() }; } catch(e){ return { file: f }; }
+          const m = f.match(/^alert-([a-z]+)-custom\.[a-z0-9]+$/i);
+          let extra = {};
+          try { const st = fs.statSync(path.join(assetsDir, f)); extra = { size: st.size, mtime: st.mtime.toISOString() }; } catch(e){}
+          return Object.assign({ file: f, type: m ? m[1].toLowerCase() : 'default', url: '/assets/' + f }, extra);
         });
         return send(200, 'application/json', JSON.stringify({ ok: true, files }));
       } catch(e) { return send(200, 'application/json', JSON.stringify({ ok: true, files: [] })); }
@@ -1969,9 +1989,6 @@ const server = http.createServer((req, res) => {
               alertAnimationIn: p.alertAnimationIn || appConfig.alertAnimationIn,
               alertAnimationOut: p.alertAnimationOut || appConfig.alertAnimationOut,
               alertAnimationDuration: p.alertAnimationDuration !== undefined ? Math.max(100, Math.min(2000, Math.round(+p.alertAnimationDuration))) : appConfig.alertAnimationDuration,
-              alertFontLabel: p.alertFontLabel || appConfig.alertFontLabel,
-              alertFontUser: p.alertFontUser || appConfig.alertFontUser,
-              alertFontSub: p.alertFontSub || appConfig.alertFontSub,
               alertFontSizeLabel: p.alertFontSizeLabel !== undefined ? Math.max(8, Math.min(80, Math.round(+p.alertFontSizeLabel))) : appConfig.alertFontSizeLabel,
               alertFontSizeUser: p.alertFontSizeUser !== undefined ? Math.max(12, Math.min(120, Math.round(+p.alertFontSizeUser))) : appConfig.alertFontSizeUser,
               alertFontSizeSub: p.alertFontSizeSub !== undefined ? Math.max(8, Math.min(60, Math.round(+p.alertFontSizeSub))) : appConfig.alertFontSizeSub,
@@ -2081,9 +2098,6 @@ const server = http.createServer((req, res) => {
           if (p.alertAnimationIn !== undefined) appConfig.alertAnimationIn = String(p.alertAnimationIn).slice(0,20);
           if (p.alertAnimationOut !== undefined) appConfig.alertAnimationOut = String(p.alertAnimationOut).slice(0,20);
           if (p.alertAnimationDuration !== undefined) appConfig.alertAnimationDuration = Math.max(100, Math.min(2000, Math.round(+p.alertAnimationDuration)));
-          if (p.alertFontLabel !== undefined) appConfig.alertFontLabel = String(p.alertFontLabel).slice(0,40);
-          if (p.alertFontUser !== undefined) appConfig.alertFontUser = String(p.alertFontUser).slice(0,40);
-          if (p.alertFontSub !== undefined) appConfig.alertFontSub = String(p.alertFontSub).slice(0,40);
           if (p.alertFontSizeLabel !== undefined) appConfig.alertFontSizeLabel = Math.max(8, Math.min(80, Math.round(+p.alertFontSizeLabel)));
           if (p.alertFontSizeUser !== undefined) appConfig.alertFontSizeUser = Math.max(12, Math.min(120, Math.round(+p.alertFontSizeUser)));
           if (p.alertFontSizeSub !== undefined) appConfig.alertFontSizeSub = Math.max(8, Math.min(60, Math.round(+p.alertFontSizeSub)));

@@ -388,7 +388,9 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .alert--photo .alert__icon{width:52px;height:52px}
 .alert--photo .alert__body{gap:5px;max-width:100%}
 .alert--photo .mark7g{width:24px;height:24px;top:8px;right:10px}
-.alert--photo .alert__msg{font-size:12px;max-width:100%}
+.alert--photo .alert__msg{font-size:16px;max-width:100%;color:#fff;font-style:italic;
+  -webkit-text-stroke:2px #000;paint-order:stroke fill;
+  text-shadow:0 1px 0 #000,0 -1px 0 #000,1px 0 0 #000,-1px 0 0 #000,0 2px 10px rgba(0,0,0,.9)}
 @keyframes bgFade{to{opacity:1}}
 /* V35 animations configurables Streamlabs-like – simple descente par défaut, mais fade/slide/bounce disponibles */
 .alert{ --alert-anim-dur:550ms; animation-duration:var(--alert-anim-dur); animation-timing-function:var(--ease-out); animation-fill-mode:both; animation-name:alertIn-slideTop; }
@@ -418,11 +420,11 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 /* détail : Inter italique grisé — le nom du receveur ressort en bleu gras non italique */
 .alert__sub{font-size:14px;font-weight:400;font-style:italic;letter-spacing:.03em;color:#B9BEC9}
 .alert__sub .hl{color:#7CC7FF;font-style:normal;font-weight:700}
-/* message personnalisé du sub (slot dédié : centré, filet au-dessus, 2 lignes max) */
+/* message personnalisé du sub : ENTIER (V40 — plus de « 2 lignes puis … »), repris
+   aux réglages du détail (taille + couleur) pour qu'il reste lisible */
 .alert__divider{width:44px;height:1px;background:rgba(255,255,255,.18)}
-.alert__msg{font-size:13px;font-weight:400;font-style:italic;color:#9AA0A6;line-height:1.45;
-  max-width:540px;text-align:center;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.alert__msg{font-size:16px;font-weight:400;font-style:italic;color:#D8DCE3;line-height:1.5;
+  max-width:min(540px,100%);text-align:center}
 /* monogramme 7G : coin haut-droit, discret */
 .alert .mark7g{position:absolute;top:14px;right:16px;opacity:.85;z-index:2;width:32px;height:32px;border-radius:8px}
 /* Layouts Streamlabs-like */
@@ -1242,9 +1244,8 @@ function applyConfig(c) {
     const scale = num(c.alertScale, cur.scale);
     const duration = num(c.alertDuration, cur.duration||6500);
     const durations = c.alertDurations || window._alertDurations || cur.durations || { follow:5200, sub:6500, raid:6500 };
-    const fontLabel = c.alertFontLabel || cur.fontLabel || 'Bebas Neue';
-    const fontUser = c.alertFontUser || cur.fontUser || 'Bebas Neue';
-    const fontSub = c.alertFontSub || cur.fontSub || 'Inter';
+    // V40 : polices fixes (plus de réglage — il ne proposait que des titres, et OBS les change déjà)
+    const fontLabel = 'Bebas Neue', fontUser = 'Bebas Neue', fontSub = 'Inter';
     const sizeLabel = num(c.alertFontSizeLabel, cur.sizeLabel);
     const sizeUser = num(c.alertFontSizeUser, cur.sizeUser);
     const sizeSub = num(c.alertFontSizeSub, cur.sizeSub);
@@ -1261,6 +1262,7 @@ function applyConfig(c) {
     window._alertEnabled = enabled;
     window._alertTemplates = templates;
     window._alertImages = images;
+    refreshPhotoFlag();   // V40 : dès que la config arrive, le fond photo est reconnu (1re alerte comprise)
 
     if (alertsEl) {
       alertsEl.style.left = posX + '%';
@@ -1291,6 +1293,12 @@ function applyConfig(c) {
         if (lbl) { lbl.style.fontFamily = fontLabel; lbl.style.fontSize = sizeLabel + 'px'; lbl.style.color = (tc && tc.labelColor) || colorLabel; }
         if (usr) { usr.style.fontFamily = fontUser; usr.style.fontSize = ((tc && tc.fontSize) || sizeUser) + 'px'; usr.style.color = (tc && tc.fontColor) || colorUser; usr.style.webkitTextStrokeWidth = stroke + 'px'; }
         if (sub) { sub.style.fontFamily = fontSub; sub.style.fontSize = sizeSub + 'px'; sub.style.color = colorSub; }
+        const mg = el.querySelector('.alert__msg');
+        if (mg) {
+          mg.style.fontFamily = fontSub; mg.style.fontSize = sizeSub + 'px';
+          mg.style.color = colorSub;   // couleur des détails
+          if (el.classList.contains('alert--photo')) mg.style.color = '#fff';
+        }
         fitAlertLines(el);
       });
     }
@@ -1436,9 +1444,15 @@ function pushChat(m) {
 /* Préchargement des assets d'alertes à l'ouverture : au premier follow/sub/raid,
    plus de fond noir qui « pop » (l'image est déjà en cache) */
 let usePhotoAlert = false;
+function customBgFile() { const im = window._alertImages || {}; return String(im.default || ''); }
 function refreshPhotoFlag(){
+  // V40 : le nom mémorisé dans la config fait foi (extension comprise) → la toute première
+  // alerte après un lancement a déjà ton fond, et une photo en PNG marche comme un JPG.
+  const cf = customBgFile();
+  if (cf && !usePhotoAlert) { usePhotoAlert = true; console.log('[alert] fond photo (config) :', cf); }
   const ts = Date.now();
   // HEAD avec cache bust pour capter upload via panneau instantanément dans OBS
+  if (cf) fetch('assets/' + cf + '?v=' + ts, { method:'HEAD', cache:'no-store' }).then(r => { if (!r.ok) usePhotoAlert = false; }).catch(()=>{});
   fetch('assets/IMG_0607.jpg?v='+ts, {method:'HEAD', cache:'no-store'}).then(r=>{ if(r.ok){ if(!usePhotoAlert) console.log('[alert] photo custom detectee IMG_0607.jpg'); usePhotoAlert=true; } }).catch(()=>{});
   fetch('assets/alert-photo.jpg?v='+ts, {method:'HEAD', cache:'no-store'}).then(r=>{ if(r.ok){ if(!usePhotoAlert) console.log('[alert] photo custom detectee alert-photo.jpg'); usePhotoAlert=true; } }).catch(()=>{});
 }
@@ -1887,7 +1901,7 @@ function showAlert(a) {
   d.dataset.type = a.alert;
   const bg = document.createElement('div'); bg.className = 'alert__bg';
   const images = window._alertImages || {};
-  const customImg = images[a.alert] || images[a.type] || '';
+  const customImg = images[a.alert] || images[a.type] || images.default || '';
   if (customImg) {
     bg.style.backgroundImage = `url('assets/${customImg}?v=${ts}'), url('assets/IMG_0607.jpg?v=${ts}'), url('assets/alert-photo.jpg?v=${ts}'), url('assets/alert-bg.png?v=${ts}')`;
   } else {
@@ -1902,7 +1916,7 @@ function showAlert(a) {
     probeImg.onload = () => {
       try { const w = probeImg.naturalWidth, h = probeImg.naturalHeight; if (w && h) d.style.aspectRatio = w + ' / ' + h; } catch(e){}
     };
-    probeImg.src = customImg ? `assets/${customImg}?v=${ts}` : 'assets/IMG_0607.jpg?v=' + ts;
+    probeImg.src = customImg ? `assets/${customImg}?v=${ts}` : ('assets/' + (customBgFile() || 'IMG_0607.jpg') + '?v=' + ts);
     probeImg.onerror = () => {
       const fallback = new Image();
       fallback.onload = () => { try { const w = fallback.naturalWidth, h = fallback.naturalHeight; if (w && h) d.style.aspectRatio = w + ' / ' + h; } catch(e){} };
@@ -1973,6 +1987,9 @@ function showAlert(a) {
     const mg = document.createElement('span'); mg.className = 'alert__msg';
     mg.textContent = '« ' + t.subMsg + ' »';
     mg.style.fontFamily = cfg.fontSub||'Inter';
+    mg.style.fontSize = (cfg.sizeSub||16) + 'px';
+    mg.style.color = cfg.colorSub || '#D8DCE3';   // V40 : le message prend la couleur des détails (réglable)
+    if (isPhoto) mg.style.color = '#fff';
     bd.append(dv, mg);
   }
   if (ic) d.appendChild(ic);

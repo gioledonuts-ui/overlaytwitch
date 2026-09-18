@@ -688,14 +688,11 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
 
           <div class="aH"><h3>🔤 Polices, tailles et contour</h3></div>
           <div class="aGrid3">
-            <div class="field"><label>Police du label</label><input id="alertFontLabel" type="text" placeholder="Bebas Neue" data-f="alertFontLabel"></div>
-            <div class="field"><label>Police du pseudo</label><input id="alertFontUser" type="text" placeholder="Bebas Neue" data-f="alertFontUser"></div>
-            <div class="field"><label>Police du détail</label><input id="alertFontSub" type="text" placeholder="Inter" data-f="alertFontSub"></div>
-            <div class="field"><label>Taille label (px)</label><input id="alertFontSizeLabel" type="number" min="8" max="80" step="1" data-f="alertFontSizeLabel"></div>
-            <div class="field"><label>Taille détail (px)</label><input id="alertFontSizeSub" type="number" min="8" max="60" step="1" data-f="alertFontSizeSub"></div>
+            <div class="field"><label>Taille du titre (px)</label><input id="alertFontSizeLabel" type="number" min="8" max="80" step="1" data-f="alertFontSizeLabel"><div class="note">Le petit mot au-dessus du pseudo (FOLLOW, RAID…).</div></div>
+            <div class="field"><label>Taille des détails (px)</label><input id="alertFontSizeSub" type="number" min="8" max="60" step="1" data-f="alertFontSizeSub"><div class="note">Sert aussi au <b>message du sub</b>.</div></div>
             <div class="field"><label>Contour du pseudo (px)</label><input id="alertStroke" type="number" min="0" max="10" step="0.5" data-f="alertStroke"></div>
             <div class="field"><label>Couleur du détail</label><input id="alertColorSub" type="color" data-f="alertColorSub"></div>
-            <div class="note" style="grid-column:span 2;align-self:end">La couleur du label et du pseudo se règle par type, dans les onglets plus bas.</div>
+            <div class="note" style="grid-column:span 2;align-self:end">Polices fixes : Bebas Neue pour les titres et le pseudo, Inter pour les détails et le message (comme dans OBS). La couleur du titre et du pseudo se règle par type, dans les onglets plus bas.</div>
           </div>
 
           <div class="aH"><h3>🖼️ Fond photo (option)</h3></div>
@@ -703,7 +700,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
           <div class="row" style="gap:12px;align-items:flex-start;margin-top:8px">
             <div class="aPrev" id="alertBgPreview" style="max-width:120px;max-height:150px"><img id="alertBgImg" alt=""></div>
             <div style="flex:1;min-width:230px">
-              <label>Choisir une photo JPG ou PNG (max 10 Mo)</label>
+              <label>Choisir une photo JPG, PNG (max 10 Mo) — gardée dans <span class="mono" style="display:inline;padding:2px 6px">assets/</span>, elle survit aux mises à jour et aux relances</label>
               <input type="file" accept=".jpg,.jpeg,.png" id="alertBgInput" class="aFile">
               <div class="row"><button class="btn small ghost" id="btnDelAlertBg" type="button" style="display:none">SUPPRIMER LA PHOTO</button></div>
             </div>
@@ -751,7 +748,8 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
             <div class="field"><label>Phrases en attente max</label><input id="ttsQueueMax" type="number" min="0" max="5" step="1" data-f="ttsQueueMax"><div class="note">Au-delà, la phrase est sautée : jamais de retard sur le direct.</div></div>
           </div>
           <div style="margin-top:12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
-            <button class="btn small" type="button" data-tts-test="1">▶ TESTER LA VOIX</button>
+            <button class="btn small" type="button" data-tts-test="1">▶ TESTER (alerte + voix, comme en vrai)</button>
+            <button class="btn small ghost" type="button" data-tts-local="1" title="Entendre la voix choisie juste ici, sans OBS">entendre dans ce navigateur</button>
             <div class="field" style="margin:0"><label style="font-size:12px">La voix sort par</label>
               <select id="ttsOutput" data-f="ttsOutput" style="min-width:250px">
                 <option value="auto">Auto — OBS si des voix existent, sinon Windows</option>
@@ -1471,12 +1469,14 @@ const ALERT_DESC = {
   gift: 'Abonnement offert à un viewer.',
   raid: 'Une autre chaîne envoie son public.'
 };
+/* Ce que voit l'overlay quand tu testes : exactement les mêmes champs que le pont
+   reçoit de Twitch (plan, mois d'affilée, mois au total, viewers, message). */
 const ALERT_TEST = {
   follow: { type: 'follow', user: 'ViewerExemple' },
-  sub: { type: 'sub', user: 'amelie', message: 'Content de rejoindre le stream, bonne soirée !' },
-  resub: { type: 'resub', user: 'Louna', stints: 2, total: 12, message: 'Toujours la !' },
-  gift: { type: 'gift', user: 'kevin', viewer: 'maeva', message: 'Bienvenue dans la 7G family' },
-  raid: { type: 'raid', user: 'UNAUTRECREATOR', viewers: 1240, message: 'On arrive avec toute la team !' }
+  sub:    { type: 'sub', user: 'amelie', plan: '1000', stints: 0, total: 1, message: 'Content de rejoindre le stream, bonne soirée !' },
+  resub:  { type: 'resub', user: 'Louna', plan: '1000', stints: 2, total: 12, message: 'Toujours la ! 3 mois d’affilée, et le message un peu long pour vérifier qu’il s’affiche bien en entier, sans points de suspension.' },
+  gift:   { type: 'gift', user: 'kevin', viewer: 'maeva', plan: '1000', total: 1, message: 'Bienvenue dans la 7G family' },
+  raid:   { type: 'raid', user: 'UNAUTRECREATOR', viewers: 1240, message: 'On arrive avec toute la team !' }
 };
 const ALERT_LAYOUTS = [['above', 'Image au-dessus du texte'], ['below', 'Image en-dessous'], ['left', 'Image à gauche'], ['right', 'Image à droite'], ['overlay', 'Texte posé sur l\'image'], ['banner', 'Bannière large']];
 const ALERT_ANIMS = [['fade', 'Fondu'], ['slide', 'Glisse (descente)'], ['bounce', 'Rebond'], ['zoom', 'Zoom'], ['flip', 'Retournement']];
@@ -1490,7 +1490,6 @@ const ALERT_TYPE_DEFAULTS = {
 };
 const ALERT_GLOBAL_DEFAULTS = {
   alertPosX: 58, alertPosY: 140, alertPosYLive: 360, alertWidth: 380, alertPhotoWidth: 340, alertScale: 100, alertGapMs: 400,
-  alertFontLabel: 'Bebas Neue', alertFontUser: 'Bebas Neue', alertFontSub: 'Inter',
   alertFontSizeLabel: 26, alertFontSizeSub: 16, alertColorSub: '#B9BEC9', alertStroke: 2.5,
   /* TTS — la voix qui lit les messages (éteinte par défaut, c'est toi qui l'allumes) */
   ttsEnabled: false, ttsVoice: '', ttsRate: 1, ttsVolume: 90, ttsTemplate: '{name} a dit : {message}', ttsMaxChars: 220,
@@ -1641,27 +1640,35 @@ function ttsFillVoices() {
                                     : 'Aucune voix trouvée dans ce navigateur — le pont parlera avec Windows.';
   ttsRefreshNotes();
 }
-function ttsTest() {
+/* Test fidèle : on envoie une VRAIE alerte de re-sub avec un message au pont.
+   C'est donc l'overlay (ou le pont, selon ton réglage) qui parle, exactement
+   comme en direct — pas une voix du navigateur du panneau. */
+function ttsSpeakHere() {
   const vs = ttsSysVoices();
-  const msg = 'Merci pour ton sub, ça fait vraiment plaisir !';
-  let text = String(alertGlobal.ttsTemplate || '{name} a dit : {message}')
+  const msg = 'Merci pour le sub, ça fait vraiment plaisir !';
+  let text = String(alertGlobal.ttsTemplate || '')
     .replace(/\{name\}/gi, 'Louna').replace(/\{message\}/gi, msg)
-    .replace(/\{(months|streak|total|viewers|amount|count)\}/gi, '3');
-  if (!text.trim()) text = msg;
-  if (!vs.length) {
-    post(API + '/api/tts', { text }).then(r => toast(r && r.ok ? 'Lu par le pont (Windows) ▶' : 'Aucune voix ici non plus — installe une voix française dans Windows')).catch(() => toast('Le pont ne répond pas'));
-    return;
-  }
+    .replace(/\{(months|streak|total|viewers|amount|count)\}/gi, '3').trim() || msg;
+  if (!vs.length) { toast('Aucune voix dans ce navigateur : installe une voix française dans Windows'); return; }
   try {
     const u = new SpeechSynthesisUtterance(text);
     const want = String(alertGlobal.ttsVoice || '').toLowerCase();
     const v = (want && vs.find(x => String(x.name).toLowerCase() === want)) || vs.find(x => /^fr/i.test(x.lang || '')) || vs[0];
     if (v) { u.voice = v; if (v.lang) u.lang = v.lang; }
     u.rate = +alertGlobal.ttsRate || 1; u.volume = Math.max(0, Math.min(1, (+alertGlobal.ttsVolume || 90) / 100));
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-    toast('Test ▶ ' + (v ? v.name : 'voix auto'));
+    window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+    toast('Test dans ce navigateur ▶ ' + (v ? v.name : 'voix auto'));
   } catch (e) { toast('Ce navigateur refuse la synthèse vocale'); }
+}
+function ttsTest() {
+  // Test FIDÈLE : une vraie alerte de re-sub avec un message, envoyée au pont.
+  // C'est donc l'overlay (ou le pont Windows selon ton réglage) qui parle, pas le panneau.
+  post(API + '/api/alert', {
+    type: 'resub', user: 'Louna', plan: '1000', stints: 2, total: 12,
+    message: 'Test de la voix : merci pour le sub, tout est bon !'
+  }).then(j => toast(j && j.ok
+    ? '▶ Alerte envoyée — écoute OBS. Rien ? mets « La voix sort par » sur Windows / le pont.'
+    : 'Le pont ne répond pas : ni alerte, ni voix'));
 }
 /* — ce qui part dans la config (global + types + miroir legacy) — */
 function alertMirrorLegacy() {
@@ -1833,6 +1840,8 @@ function onAlertEdit(e) {
 async function onAlertClick(e) {
   const tt = e.target.closest && e.target.closest('[data-tts-test]');
   if (tt) { ttsTest(); return; }
+  const tl = e.target.closest && e.target.closest('[data-tts-local]');
+  if (tl) { ttsSpeakHere(); return; }
   const tab = e.target.closest && e.target.closest('[data-tabtype]');
   if (tab) { alertCurType = tab.dataset.tabtype; renderAlertTabs(); renderAlertTypeBody(); return; }
   const test = e.target.closest && e.target.closest('[data-alert-test]');
