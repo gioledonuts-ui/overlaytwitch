@@ -407,6 +407,13 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
 .alertTile h3{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
 .alertTile p{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4}
 .alertTile .chipbtn{margin-top:8px}
+.alertAdv{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line2)}
+.alertTile.is-open .alertAdv{display:block}
+.advGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.advGrid .field{margin-top:0}
+.mediaPrev{margin-top:6px;max-width:160px;max-height:90px;overflow:hidden;border-radius:4px;border:1px solid var(--line2);display:none}
+.mediaPrev img,.mediaPrev video{width:100%;height:auto;display:block;max-height:90px;object-fit:contain;background:#000}
+.tok{font-family:Consolas,monospace;font-size:9px;background:#0c0c14;border:1px solid var(--line2);border-radius:3px;padding:1px 5px;color:var(--acc)}
 /* mono */
 .mono{font-family:Consolas,monospace;font-size:10px;background:#0c0c14;border:1px solid var(--line2);border-radius:4px;padding:8px 9px;word-break:break-all;cursor:pointer;position:relative;transition:all .12s}
 .mono:hover{border-color:var(--acc);background:#12121e}
@@ -455,7 +462,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
       <div class="brand__txt">
         <div class="brand__name">7GIONNY</div>
         <div class="brand__sub">STUDIO</div>
-        <div id="verPill">V30</div>
+        <div id="verPill">V35</div>
       </div>
     </div>
     <nav class="nav">
@@ -795,6 +802,11 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
                 <input id="alertPhotoWidth" type="number" min="180" max="600" step="10" style="width:100%">
               </div>
             </div>
+            <div class="field" style="margin-top:8px">
+              <label>Pause entre 2 alertes (ms) – file d'attente</label>
+              <input id="alertGapMs" type="number" min="0" max="5000" step="50" style="max-width:180px">
+              <div class="note" style="margin-top:4px">400 = enchaînement rapide. 1500 = plus d'air entre deux alertes.</div>
+            </div>
             <div class="row" style="margin-top:12px;gap:8px">
               <button class="btn primary" id="btnSaveAlertPos">ENREGISTRER POSITION & TAILLE</button>
               <button class="btn ghost small" id="btnPreviewAlert">APERÇU ALERTE</button>
@@ -912,7 +924,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
               <input id="velocityBarHeight" type="number" min="280" max="900" step="10" placeholder="700">
             </div>
           </div>
-          <div class="row grow">
+            <div class="row grow">
             <div class="field" style="margin-top:0">
               <label>Climb</label>
               <input id="velocityClimb" type="number" min="0.05" max="5" step="0.05" placeholder="0.65">
@@ -921,6 +933,37 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
               <label>Decay lente</label>
               <input id="velocityDecay" type="number" min="0.02" max="5" step="0.02" placeholder="0.14">
             </div>
+          </div>
+          <div class="card" style="margin-top:14px;background:#10101a;border-color:var(--line2)">
+            <h2 style="font-size:11px">🛡️ ANTI-SPAM — messages comptés dans le %</h2>
+            <p class="sub">Le chat s'affiche toujours. Seuls les messages « propres » montent la barre. Un viewer ne peut pas spammer pour forcer l'objectif.</p>
+            <div class="switchRow">
+              <label class="switch">
+                <input type="checkbox" id="velocityAntiSpam">
+                <span class="switch__track"><span class="switch__thumb"></span></span>
+              </label>
+              <span class="switch__label">Anti-spam activé</span>
+            </div>
+            <div class="row grow" style="margin-top:10px">
+              <div class="field" style="margin-top:0">
+                <label>Cooldown entre 2 messages comptés (sec)</label>
+                <input id="velocityCooldown" type="number" min="0" max="120" step="1" placeholder="15">
+                <div class="note" style="margin-top:4px">15s = un même pseudo n'est recompté qu'après 15 secondes. 0 = pas de cooldown.</div>
+              </div>
+              <div class="field" style="margin-top:0">
+                <label>Max messages comptés / minute / viewer</label>
+                <input id="velocityMaxPerMin" type="number" min="1" max="30" step="1" placeholder="2">
+                <div class="note" style="margin-top:4px">2 = le 3e message de la même personne dans la minute est ignoré pour le %.</div>
+              </div>
+            </div>
+            <div class="switchRow" style="margin-top:8px">
+              <label class="switch">
+                <input type="checkbox" id="velocityExemptStaff">
+                <span class="switch__track"><span class="switch__thumb"></span></span>
+              </label>
+              <span class="switch__label">Streamer + mods ne comptent pas (recommandé)</span>
+            </div>
+            <div class="note" style="margin-top:8px;line-height:1.5">Combo viable par défaut : cooldown 15s <b>et</b> max 2 / minute. Exemple : t=0 compte, t=5 ignoré (cooldown), t=16 compte (2e), t=32 ignoré (plafond), t=61 recompte. Les commandes <span class="tok">!</span> sont toujours exclues.</div>
           </div>
           <div class="row" style="margin-top:14px">
             <button class="btn primary" id="btnSauverVelocity">ENREGISTRER</button>
@@ -1355,7 +1398,11 @@ function getVelocityForm(){
     goalDurationMinutes: Math.max(1, Math.min(120, Math.round(+$('velocityGoalDuration').value || velocityDef.goalDurationMinutes))),
     finHour: Math.max(0, Math.min(23, Math.round(+$('velocityFinHour').value || velocityDef.finHour))),
     finMinute: Math.max(0, Math.min(59, Math.round(+$('velocityFinMinute').value || velocityDef.finMinute))),
-    finEnabled: !!$('velocityFinEnabled').checked
+    finEnabled: !!$('velocityFinEnabled').checked,
+    antiSpam: $('velocityAntiSpam') ? !!$('velocityAntiSpam').checked : true,
+    cooldownSeconds: Math.max(0, Math.min(120, Math.round($('velocityCooldown') ? +$('velocityCooldown').value : velocityDef.cooldownSeconds) || 0)),
+    maxPerMinute: Math.max(1, Math.min(30, Math.round($('velocityMaxPerMin') ? +$('velocityMaxPerMin').value : velocityDef.maxPerMinute) || 2)),
+    exemptStaff: $('velocityExemptStaff') ? !!$('velocityExemptStaff').checked : true
   };
 }
 function setVelocityForm(c){
@@ -1386,7 +1433,15 @@ function setVelocityForm(c){
   if($('velocityFinHour'))$('velocityFinHour').value=finH;
   if($('velocityFinMinute'))$('velocityFinMinute').value=finM;
   if($('velocityFinEnabled'))$('velocityFinEnabled').checked=!!finEn;
-  velocitySaved={equilibriumMPM:eq,climbSensitivity:climb,decayRate:decay,holdDurationSeconds:hold,barWidth:bw,barHeight:bh,showMetrics:!!sm,velocityEnabled:!!en,goalThreshold:gth,goalDurationMinutes:gdur,finHour:finH,finMinute:finM,finEnabled:!!finEn};
+  const spam=s.velocityAntiSpam!=null?s.velocityAntiSpam:(s.antiSpam!=null?s.antiSpam:velocityDef.antiSpam);
+  const cd=s.velocityCooldownSeconds!=null?s.velocityCooldownSeconds:(s.cooldownSeconds!=null?s.cooldownSeconds:velocityDef.cooldownSeconds);
+  const mx=s.velocityMaxPerMinute!=null?s.velocityMaxPerMinute:(s.maxPerMinute!=null?s.maxPerMinute:velocityDef.maxPerMinute);
+  const ex=s.velocityExemptStaff!=null?s.velocityExemptStaff:(s.exemptStaff!=null?s.exemptStaff:velocityDef.exemptStaff);
+  if($('velocityAntiSpam'))$('velocityAntiSpam').checked=!!spam;
+  if($('velocityCooldown'))$('velocityCooldown').value=cd;
+  if($('velocityMaxPerMin'))$('velocityMaxPerMin').value=mx;
+  if($('velocityExemptStaff'))$('velocityExemptStaff').checked=!!ex;
+  velocitySaved={equilibriumMPM:eq,climbSensitivity:climb,decayRate:decay,holdDurationSeconds:hold,barWidth:bw,barHeight:bh,showMetrics:!!sm,velocityEnabled:!!en,goalThreshold:gth,goalDurationMinutes:gdur,finHour:finH,finMinute:finM,finEnabled:!!finEn,antiSpam:!!spam,cooldownSeconds:cd,maxPerMinute:mx,exemptStaff:!!ex};
 }
 function apercuVelocity(){
   clearTimeout(_velPrevT);
@@ -1410,11 +1465,11 @@ function sauverVelocityImmediate() {
     }
   }).catch(()=>{});
 }
-['velocityEquilibrium','velocityClimb','velocityDecay','velocityHold','velocityBarWidth','velocityBarHeight','velocityGoalThreshold','velocityGoalDuration','velocityFinHour','velocityFinMinute'].forEach(id=>{
+['velocityEquilibrium','velocityClimb','velocityDecay','velocityHold','velocityBarWidth','velocityBarHeight','velocityGoalThreshold','velocityGoalDuration','velocityFinHour','velocityFinMinute','velocityCooldown','velocityMaxPerMin'].forEach(id=>{
   const el=$(id);
   if(el) el.addEventListener('input',apercuVelocity);
 });
-['velocityShowMetrics','velocityFinEnabled'].forEach(id=>{
+['velocityShowMetrics','velocityFinEnabled','velocityAntiSpam','velocityExemptStaff'].forEach(id=>{
   const el=$(id);
   if(el) el.addEventListener('change',apercuVelocity);
 });
@@ -1458,7 +1513,7 @@ if(btnResetVelocity) btnResetVelocity.addEventListener('click',async()=>{
 });
 
 /* ═══ ALERTES POSITION & TAILLE V34 – réglage en une touche, sauvegarde comme son ═══ */
-const alertDef = { alertPosX:58, alertPosY:140, alertPosYLive:360, alertWidth:380, alertPhotoWidth:340, alertScale:100 };
+const alertDef = { alertPosX:58, alertPosY:140, alertPosYLive:360, alertWidth:380, alertPhotoWidth:340, alertScale:100, alertGapMs:400 };
 let alertSaved = { ...alertDef };
 function setAlertForm(c){
   const s=c||{};
@@ -1476,7 +1531,9 @@ function setAlertForm(c){
   if($('alertScale')) $('alertScale').value=scale;
   if($('alertPosXVal')) $('alertPosXVal').textContent=posX+'%';
   if($('alertScaleVal')) $('alertScaleVal').textContent=scale+'%';
-  alertSaved={ alertPosX:posX, alertPosY:posY, alertPosYLive:posYLive, alertWidth:w, alertPhotoWidth:photoW, alertScale:scale };
+  const gap=s.alertGapMs!=null?s.alertGapMs:alertDef.alertGapMs;
+  if($('alertGapMs')) $('alertGapMs').value=gap;
+  alertSaved={ alertPosX:posX, alertPosY:posY, alertPosYLive:posYLive, alertWidth:w, alertPhotoWidth:photoW, alertScale:scale, alertGapMs:gap };
 }
 function getAlertForm(){
   return {
@@ -1485,7 +1542,8 @@ function getAlertForm(){
     alertPosYLive: Math.max(0, Math.min(900, Math.round(+($('alertPosYLive')?$('alertPosYLive').value:alertDef.alertPosYLive)))),
     alertWidth: Math.max(200, Math.min(800, Math.round(+($('alertWidth')?$('alertWidth').value:alertDef.alertWidth)))),
     alertPhotoWidth: Math.max(180, Math.min(600, Math.round(+($('alertPhotoWidth')?$('alertPhotoWidth').value:alertDef.alertPhotoWidth)))),
-    alertScale: Math.max(50, Math.min(150, Math.round(+($('alertScale')?$('alertScale').value:alertDef.alertScale))))
+    alertScale: Math.max(50, Math.min(150, Math.round(+($('alertScale')?$('alertScale').value:alertDef.alertScale)))),
+    alertGapMs: Math.max(0, Math.min(5000, Math.round(+($('alertGapMs')?$('alertGapMs').value:alertDef.alertGapMs))))
   };
 }
 function previewAlertPos(){
@@ -1737,6 +1795,216 @@ document.querySelectorAll('[data-del]').forEach(btn=>{
 });
 loadSounds();
 
+/* ═══ STUDIO ALERTES V35 — options type Streamlabs, injectées dans chaque tuile ═══ */
+const ALERT_STUDIO_TYPES = ['follow','sub','resub','gift','raid'];
+const ALERT_TYPE_DEFAULTS = {
+  follow: { enabled:true, duration:5.2, layout:'above', animationIn:'slide', animationOut:'fade', textAnimation:'none', soundVolume:75, imageScale:100, fontSize:52, fontColor:'#7CC7FF', highlightColor:'#7CC7FF', labelColor:'#B06CFF', label:'NOUVEAU FOLLOW', template:'{name}', subTemplate:'Bienvenue dans le chat !', showMessage:true, showIcon:true, textDelay:0, minAmount:0, videoMuted:true },
+  sub:    { enabled:true, duration:6.5, layout:'above', animationIn:'slide', animationOut:'fade', textAnimation:'none', soundVolume:75, imageScale:100, fontSize:72, fontColor:'#7CC7FF', highlightColor:'#7CC7FF', labelColor:'#B06CFF', label:'NOUVEAU SUB', template:'{name}', subTemplate:'1 mois', showMessage:true, showIcon:true, textDelay:0, minAmount:0, videoMuted:true },
+  resub:  { enabled:true, duration:6.5, layout:'above', animationIn:'slide', animationOut:'fade', textAnimation:'none', soundVolume:75, imageScale:100, fontSize:72, fontColor:'#7CC7FF', highlightColor:'#7CC7FF', labelColor:'#B06CFF', label:'NOUVEAU SUB', template:'{name}', subTemplate:'{streak} mois consécutif — {total} mois total', showMessage:true, showIcon:true, textDelay:0, minAmount:0, videoMuted:true },
+  gift:   { enabled:true, duration:6.5, layout:'above', animationIn:'slide', animationOut:'fade', textAnimation:'none', soundVolume:75, imageScale:100, fontSize:72, fontColor:'#7CC7FF', highlightColor:'#7CC7FF', labelColor:'#B06CFF', label:'NOUVEAU SUB', template:'{name}', subTemplate:'a offert un abonnement à {viewer}', showMessage:true, showIcon:true, textDelay:0, minAmount:0, videoMuted:true },
+  raid:   { enabled:true, duration:6.5, layout:'above', animationIn:'slide', animationOut:'fade', textAnimation:'none', soundVolume:75, imageScale:100, fontSize:62, fontColor:'#7CC7FF', highlightColor:'#7CC7FF', labelColor:'#E7E9EE', label:'RAID', template:'{name}', subTemplate:'arrive avec {amount} spectateurs', showMessage:true, showIcon:true, textDelay:0, minAmount:0, videoMuted:true }
+};
+let alertTypesSaved = JSON.parse(JSON.stringify(ALERT_TYPE_DEFAULTS));
+let _alertTypePrevT = null;
+function selOpts(list, val){ return list.map(([v,l])=>'<option value="'+v+'"'+(v===val?' selected':'')+'>'+l+'</option>').join(''); }
+function buildAlertStudio(tile){
+  const type = tile.dataset.type;
+  if (!type || tile.querySelector('.alertAdv')) return;
+  const tog = document.createElement('button');
+  tog.className = 'btn small ghost';
+  tog.type = 'button';
+  tog.textContent = 'PERSONNALISER ▾';
+  tog.style.marginTop = '10px';
+  tog.addEventListener('click', ()=>{
+    tile.classList.toggle('is-open');
+    tog.textContent = tile.classList.contains('is-open') ? 'PERSONNALISER ▴' : 'PERSONNALISER ▾';
+  });
+  const box = document.createElement('div');
+  box.className = 'alertAdv';
+  box.innerHTML =
+    '<div class="switchRow" style="margin-top:0">'+
+      '<label class="switch"><input type="checkbox" data-k="enabled"><span class="switch__track"><span class="switch__thumb"></span></span></label>'+
+      '<span class="switch__label">Alerte '+type.toUpperCase()+' activée</span>'+
+    '</div>'+
+    '<div class="advGrid" style="margin-top:10px">'+
+      '<div class="field"><label>Durée affichage (sec)</label><input type="number" min="1" max="30" step="0.1" data-k="duration"></div>'+
+      '<div class="field"><label>Volume son (0-100)</label><input type="range" min="0" max="100" step="1" data-k="soundVolume"><div class="note" data-vol></div></div>'+
+      '<div class="field"><label>Layout</label><select data-k="layout">'+selOpts([['above','Image au-dessus'],['below','Image en-dessous'],['left','Image à gauche'],['right','Image à droite'],['overlay','Texte sur image'],['banner','Bannière']], 'above')+'</select></div>'+
+      '<div class="field"><label>Animation entrée</label><select data-k="animationIn">'+selOpts([['fade','Fade'],['slide','Slide (descente)'],['bounce','Bounce'],['zoom','Zoom'],['flip','Flip']], 'slide')+'</select></div>'+
+      '<div class="field"><label>Animation sortie</label><select data-k="animationOut">'+selOpts([['fade','Fade'],['slide','Slide'],['bounce','Bounce'],['zoom','Zoom'],['flip','Flip']], 'fade')+'</select></div>'+
+      '<div class="field"><label>Animation texte</label><select data-k="textAnimation">'+selOpts([['none','Aucune'],['pulse','Pulse'],['bounce','Bounce']], 'none')+'</select></div>'+
+      '<div class="field"><label>Label (titre)</label><input type="text" maxlength="48" data-k="label"></div>'+
+      '<div class="field"><label>Template pseudo</label><input type="text" maxlength="80" data-k="template" placeholder="{name}"></div>'+
+      '<div class="field" style="grid-column:1/-1"><label>Ligne détail</label><input type="text" maxlength="140" data-k="subTemplate"></div>'+
+      '<div class="field"><label>Taille pseudo (px)</label><input type="number" min="18" max="140" step="1" data-k="fontSize"></div>'+
+      '<div class="field"><label>Échelle image (%)</label><input type="number" min="0" max="200" step="5" data-k="imageScale"></div>'+
+      '<div class="field"><label>Couleur pseudo</label><input type="color" data-k="fontColor"></div>'+
+      '<div class="field"><label>Couleur highlight</label><input type="color" data-k="highlightColor"></div>'+
+      '<div class="field"><label>Couleur label</label><input type="color" data-k="labelColor"></div>'+
+      '<div class="field"><label>Délai texte (sec)</label><input type="number" min="0" max="10" step="0.1" data-k="textDelay"></div>'+
+      '<div class="field"><label>Seuil min (raid viewers / gifts)</label><input type="number" min="0" max="100000" step="1" data-k="minAmount"></div>'+
+    '</div>'+
+    '<div class="switchRow" style="margin-top:10px">'+
+      '<label class="switch"><input type="checkbox" data-k="showMessage"><span class="switch__track"><span class="switch__thumb"></span></span></label>'+
+      '<span class="switch__label">Afficher le message perso (sub/raid)</span>'+
+    '</div>'+
+    '<div class="switchRow">'+
+      '<label class="switch"><input type="checkbox" data-k="showIcon"><span class="switch__track"><span class="switch__thumb"></span></span></label>'+
+      '<span class="switch__label">Afficher icône / média</span>'+
+    '</div>'+
+    '<div class="switchRow">'+
+      '<label class="switch"><input type="checkbox" data-k="videoMuted"><span class="switch__track"><span class="switch__thumb"></span></span></label>'+
+      '<span class="switch__label">Couper le son de la vidéo (évite le double avec le son d\'alerte)</span>'+
+    '</div>'+
+    '<div class="field" style="margin-top:12px">'+
+      '<label>Image / GIF / Vidéo custom (remplace l\'icône)</label>'+
+      '<div class="row" style="gap:6px;margin-top:4px">'+
+        '<input type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.webm,.mp4" class="mediaInput" data-type="'+type+'" style="font-size:10px;max-width:220px">'+
+        '<button class="btn small ghost mediaDel" data-type="'+type+'" style="display:none">SUPPR MÉDIA</button>'+
+      '</div>'+
+      '<div class="mediaPrev" data-prev="'+type+'"><img alt=""></div>'+
+      '<div class="note mediaStatus" data-mstatus="'+type+'" style="margin-top:4px;font-size:9px">Aucun média custom – icône par défaut</div>'+
+    '</div>'+
+    '<div class="row" style="margin-top:12px;gap:8px">'+
+      '<button class="btn primary small btnSaveType" type="button">ENREGISTRER '+type.toUpperCase()+'</button>'+
+      '<button class="btn ghost small btnResetType" type="button">RESET TYPE</button>'+
+    '</div>';
+  tile.appendChild(tog);
+  tile.appendChild(box);
+  fillAlertStudio(type);
+  box.querySelectorAll('[data-k]').forEach(el=>{
+    const ev = (el.type === 'checkbox' || el.tagName === 'SELECT') ? 'change' : 'input';
+    el.addEventListener(ev, ()=>{
+      if (el.dataset.k === 'soundVolume') {
+        const n = box.querySelector('[data-vol]');
+        if (n) n.textContent = el.value + '%';
+      }
+      previewAlertTypes();
+    });
+  });
+  const saveBtn = box.querySelector('.btnSaveType');
+  if (saveBtn) saveBtn.addEventListener('click', async ()=>{
+    const f = collectAlertTypes();
+    const r = await post(API+'/api/config', { alertTypes: f });
+    if (r.ok) { alertTypesSaved = JSON.parse(JSON.stringify(f)); toast('Alerte '+type+' enregistrée ✔'); }
+  });
+  const rst = box.querySelector('.btnResetType');
+  if (rst) rst.addEventListener('click', async ()=>{
+    alertTypesSaved[type] = JSON.parse(JSON.stringify(ALERT_TYPE_DEFAULTS[type]));
+    fillAlertStudio(type);
+    const r = await post(API+'/api/config', { alertTypes: collectAlertTypes() });
+    if (r.ok) toast('Type '+type+' réinitialisé');
+    previewAlertTypes();
+  });
+}
+function fillAlertStudio(type, src){
+  const tile = document.querySelector('.alertTile[data-type="'+type+'"]');
+  if (!tile) return;
+  const c = Object.assign({}, ALERT_TYPE_DEFAULTS[type], (src && src[type]) || alertTypesSaved[type] || {});
+  tile.querySelectorAll('[data-k]').forEach(el=>{
+    const k = el.dataset.k;
+    if (el.type === 'checkbox') el.checked = !!c[k];
+    else if (el.type === 'color') el.value = c[k] || '#7CC7FF';
+    else el.value = c[k] != null ? c[k] : '';
+  });
+  const n = tile.querySelector('[data-vol]');
+  if (n) n.textContent = (c.soundVolume != null ? c.soundVolume : 75) + '%';
+}
+function collectAlertTypes(){
+  const out = {};
+  ALERT_STUDIO_TYPES.forEach(type=>{
+    const tile = document.querySelector('.alertTile[data-type="'+type+'"]');
+    const d = Object.assign({}, ALERT_TYPE_DEFAULTS[type], alertTypesSaved[type] || {});
+    if (!tile) { out[type] = d; return; }
+    tile.querySelectorAll('[data-k]').forEach(el=>{
+      const k = el.dataset.k;
+      if (el.type === 'checkbox') d[k] = el.checked;
+      else if (el.type === 'number' || el.type === 'range') d[k] = +el.value;
+      else d[k] = el.value;
+    });
+    out[type] = d;
+  });
+  return out;
+}
+function previewAlertTypes(){
+  clearTimeout(_alertTypePrevT);
+  _alertTypePrevT = setTimeout(()=>{
+    post(API+'/api/config', { alertTypes: collectAlertTypes(), preview:true }).catch(()=>{});
+  }, 180);
+}
+function applyAlertTypesFromConfig(cfg){
+  if (!cfg || !cfg.alertTypes) return;
+  alertTypesSaved = {};
+  ALERT_STUDIO_TYPES.forEach(t=>{
+    alertTypesSaved[t] = Object.assign({}, ALERT_TYPE_DEFAULTS[t], cfg.alertTypes[t] || {});
+    fillAlertStudio(t);
+  });
+}
+async function loadAlertMedia(){
+  try{
+    const r = await fetch(API+'/api/alert-media', { cache:'no-store' });
+    const j = await r.json();
+    const map = {};
+    (j.files||[]).forEach(f=>{ map[f.type]=f; });
+    ALERT_STUDIO_TYPES.forEach(type=>{
+      const st = document.querySelector('[data-mstatus="'+type+'"]');
+      const prev = document.querySelector('[data-prev="'+type+'"]');
+      const del = document.querySelector('.mediaDel[data-type="'+type+'"]');
+      const has = map[type];
+      if (has){
+        if (st){ st.textContent = 'Média custom : '+has.file+' ✔'; st.style.color='var(--ok)'; }
+        if (del) del.style.display='inline-flex';
+        if (prev){
+          prev.style.display='block';
+          const url = API+'/assets/'+has.file+'?v='+Date.now();
+          if (has.kind==='video'){
+            prev.innerHTML = '<video src="'+url+'" muted autoplay loop playsinline></video>';
+          } else {
+            prev.innerHTML = '<img src="'+url+'" alt="">';
+          }
+        }
+      } else {
+        if (st){ st.textContent='Aucun média custom – icône par défaut'; st.style.color='var(--muted)'; }
+        if (del) del.style.display='none';
+        if (prev) prev.style.display='none';
+      }
+    });
+  }catch(e){}
+}
+document.querySelectorAll('.alertTile[data-type]').forEach(buildAlertStudio);
+document.querySelectorAll('.mediaInput').forEach(inp=>{
+  inp.addEventListener('change', async ()=>{
+    const file = inp.files[0];
+    if (!file) return;
+    const type = inp.dataset.type;
+    if (file.size > 14*1024*1024){ toast('Fichier trop gros (max 14 Mo)'); inp.value=''; return; }
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['png','jpg','jpeg','gif','webp','webm','mp4'].includes(ext)){ toast('Format: png/jpg/gif/webp/webm/mp4'); inp.value=''; return; }
+    inp.disabled = true;
+    try{
+      const b64 = await fileToBase64(file);
+      const r = await fetch(API+'/api/alert-media', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type, data:b64, ext }) });
+      const j = await r.json();
+      if (j.ok){ toast('Média '+type+' enregistré ✔'); loadAlertMedia(); }
+      else toast('Erreur: '+(j.err||'?'));
+    }catch(e){ toast('Erreur upload média: '+(e.message||'')); }
+    inp.disabled = false;
+    inp.value = '';
+  });
+});
+document.querySelectorAll('.mediaDel').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    const type = btn.dataset.type;
+    if (!confirm('Supprimer le média custom '+type+' ?')) return;
+    try{
+      const r = await fetch(API+'/api/alert-media?type='+encodeURIComponent(type), { method:'DELETE' });
+      const j = await r.json();
+      if (j.ok){ toast('Média '+type+' supprimé'); loadAlertMedia(); }
+    }catch(e){ toast('Erreur suppression'); }
+  });
+});
+loadAlertMedia();
+
 // --- Son local sur PC (panneau) : ecoute les alertes via SSE et joue le son custom si case cochee ---
 let localPCEnabled = localStorage.getItem('alertLocalPC') === '1';
 const localPCCheck=$('alertLocalPC');
@@ -1960,6 +2228,7 @@ async function init(){
       updateGoalAutoUI();
       setVelocityForm(s.config);
       setAlertForm(s.config);
+      applyAlertTypesFromConfig(s.config);
       const et=$('velocityEtat');
       if(et) et.innerHTML='<span class=\"note\">Config chargée – équilibre '+esc(velocitySaved.equilibriumMPM+' MPM')+'</span>';
     }

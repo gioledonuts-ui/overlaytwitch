@@ -431,6 +431,48 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .alert--raid .alert__labeltxt::after{background:linear-gradient(90deg,rgba(231,233,238,.6),transparent)}
 .alert--raid .alert__user{font-size:62px}
 
+/* ═══ ALERTES V35 — layouts Streamlabs + animations in/out + media custom ═══ */
+.alert__media{position:relative;z-index:1;max-width:100%;object-fit:contain;border-radius:8px}
+.alert video.alert__media{background:#000}
+.alert--layout-above{flex-direction:column}
+.alert--layout-below{flex-direction:column-reverse}
+.alert--layout-left{flex-direction:row;align-items:center;gap:18px;text-align:left}
+.alert--layout-left .alert__body{align-items:flex-start;text-align:left}
+.alert--layout-right{flex-direction:row-reverse;align-items:center;gap:18px;text-align:left}
+.alert--layout-right .alert__body{align-items:flex-end;text-align:right}
+.alert--layout-banner{flex-direction:row;align-items:center;gap:18px;width:min(720px,var(--alert-w,380px));padding:16px 22px}
+.alert--layout-banner .alert__body{align-items:flex-start;text-align:left}
+.alert--layout-overlay{justify-content:flex-end;min-height:220px}
+.alert--layout-overlay .alert__icon,
+.alert--layout-overlay .alert__media{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;border-radius:inherit;max-width:none
+}
+.alert--layout-overlay .alert__body{z-index:2;padding:8px 4px 4px;width:100%}
+.alert.anim-in-fade{animation:alertInFade .55s var(--ease-out)}
+.alert.anim-in-slide{animation:alertIn .55s var(--ease-out)}
+.alert.anim-in-bounce{animation:alertInBounce .7s var(--ease-out)}
+.alert.anim-in-zoom{animation:alertInZoom .5s var(--ease-out)}
+.alert.anim-in-flip{animation:alertInFlip .6s var(--ease-out)}
+.alert.anim-out-fade,.alert.out.anim-out-fade{animation:alertOutFade .35s var(--ease-in) forwards}
+.alert.anim-out-slide,.alert.out.anim-out-slide{animation:alertOut .35s var(--ease-in) forwards}
+.alert.anim-out-bounce,.alert.out.anim-out-bounce{animation:alertOutBounce .4s var(--ease-in) forwards}
+.alert.anim-out-zoom,.alert.out.anim-out-zoom{animation:alertOutZoom .32s var(--ease-in) forwards}
+.alert.anim-out-flip,.alert.out.anim-out-flip{animation:alertOutFlip .4s var(--ease-in) forwards}
+@keyframes alertInFade{from{opacity:0;transform:scale(var(--alert-scale,1))}to{opacity:1;transform:scale(var(--alert-scale,1))}}
+@keyframes alertOutFade{from{opacity:1;transform:scale(var(--alert-scale,1))}to{opacity:0;transform:scale(var(--alert-scale,1))}}
+@keyframes alertInBounce{0%{opacity:0;transform:translateY(-90px) scale(var(--alert-scale,1))}60%{opacity:1;transform:translateY(12px) scale(var(--alert-scale,1))}80%{transform:translateY(-6px) scale(var(--alert-scale,1))}100%{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}}
+@keyframes alertOutBounce{from{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}to{opacity:0;transform:translateY(40px) scale(.92)}}
+@keyframes alertInZoom{from{opacity:0;transform:scale(calc(var(--alert-scale,1) * .42))}to{opacity:1;transform:scale(var(--alert-scale,1))}}
+@keyframes alertOutZoom{from{opacity:1;transform:scale(var(--alert-scale,1))}to{opacity:0;transform:scale(calc(var(--alert-scale,1) * .4))}}
+@keyframes alertInFlip{from{opacity:0;transform:perspective(800px) rotateX(75deg) scale(var(--alert-scale,1))}to{opacity:1;transform:perspective(800px) rotateX(0) scale(var(--alert-scale,1))}}
+@keyframes alertOutFlip{from{opacity:1;transform:perspective(800px) rotateX(0) scale(var(--alert-scale,1))}to{opacity:0;transform:perspective(800px) rotateX(-70deg) scale(var(--alert-scale,1))}}
+.alert__user.tanim-pulse{animation:alertTextPulse .9s ease-in-out infinite}
+.alert__user.tanim-bounce{animation:alertTextBounce .7s ease-in-out infinite}
+@keyframes alertTextPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@keyframes alertTextBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.alert.is-text-delay .alert__body{opacity:0}
+.alert.is-text-on .alert__body{opacity:1;transition:opacity .35s var(--ease-out)}
+
 /* ═══ ÉTAT RÉSULTAT (5 s de sentence) ═══ */
 .opt.is-loser .lbl,.opt.is-loser .bar,.opt.is-loser .pct{opacity:.35}
 .opt.is-winner{filter:brightness(1.15)}
@@ -1131,7 +1173,7 @@ function apply(m) {
     if (m.cfg || m.velocity) applyConfig(m);
     return;
   }
-  if (m.alert) { queueAlert(m); return; }                 // follow / sub / raid
+  if (m.alert && m.alert !== 1 && m.alert !== true) { queueAlert(m); return; } // follow / sub / raid
   if (m.mode) setState(m);
 }
 
@@ -1205,7 +1247,9 @@ function applyConfig(c) {
       });
     }
   }
-  if (c.velocity || c.equilibriumMPM !== undefined || c.velocityEnabled !== undefined) {
+  if (c.alertTypes) window._alertTypes = c.alertTypes;
+  if (c.alertGapMs !== undefined) window._alertGapMs = Math.max(0, Math.min(5000, +c.alertGapMs || 0));
+  if (c.velocity || c.equilibriumMPM !== undefined || c.velocityEnabled !== undefined || c.velocityAntiSpam !== undefined || c.antiSpam !== undefined) {
     if (window.velocityApplyConfig) window.velocityApplyConfig(c);
   }
 }
@@ -1335,7 +1379,7 @@ function pushChat(m) {
   chatList.appendChild(buildMsgRow(m));
   while (chatList.children.length > MAX_CHAT) chatList.removeChild(chatList.firstChild);
   chatPanel.classList.add('is-on');
-  try { if (window.__velocityPush) window.__velocityPush(); } catch(e) {}
+  try { if (window.__velocityPush) window.__velocityPush(m); } catch(e) {}
 }
 /* ═══ ALERTES (haut centre) : file d'attente + variantes Twitch ═══ */
 /* Préchargement des assets d'alertes à l'ouverture : au premier follow/sub/raid,
@@ -1412,6 +1456,55 @@ let alertAudioReady = false;
 const alertsEl = $('alerts');
 const alertQueue = [];
 const PLAN_NAMES = { 1000: 'Tier 1', 2000: 'Tier 2', 3000: 'Tier 3' };
+window._alertTypes = window._alertTypes || {};
+window._alertGapMs = window._alertGapMs || 400;
+const alertMedia = {};
+(function probeAlertMedia() {
+  async function run() {
+    try {
+      const r = await fetch('api/alert-media', { cache: 'no-store' });
+      const j = await r.json();
+      const seen = {};
+      for (const f of (j.files || [])) {
+        seen[f.type] = 1;
+        alertMedia[f.type] = { url: (f.url || ('/assets/' + f.file)) + '?v=' + Date.now(), kind: f.kind, ext: f.ext };
+      }
+      ['follow','sub','resub','gift','raid'].forEach(t => { if (!seen[t]) delete alertMedia[t]; });
+    } catch (e) {}
+  }
+  run();
+  setInterval(run, 8000);
+})();
+function resolveAlertTypeKey(kind) {
+  if (kind === 'prime') return 'sub';
+  if (kind === 'anon' || kind === 'community') return 'gift';
+  if (kind === 'follow' || kind === 'sub' || kind === 'resub' || kind === 'gift' || kind === 'raid') return kind;
+  return 'sub';
+}
+function typeCfgOf(kind) {
+  const key = resolveAlertTypeKey(kind);
+  const map = window._alertTypes || {};
+  return map[key] || null;
+}
+function fillAlertTemplate(tpl, a) {
+  const name = String(a.user || '');
+  const viewer = String(a.viewer || '');
+  const amount = a.viewers != null ? a.viewers : (a.total != null ? a.total : '');
+  const streak = (a.stints || 0) + 1;
+  const total = a.total || streak;
+  return String(tpl == null ? '' : tpl)
+    .replace(/\{name\}/gi, name)
+    .replace(/\{user\}/gi, name)
+    .replace(/\{viewer\}/gi, viewer)
+    .replace(/\{recipient\}/gi, viewer)
+    .replace(/\{amount\}/gi, String(amount))
+    .replace(/\{viewers\}/gi, String(a.viewers != null ? a.viewers : amount))
+    .replace(/\{count\}/gi, String(a.total != null ? a.total : amount))
+    .replace(/\{months\}/gi, String(total))
+    .replace(/\{streak\}/gi, String(streak))
+    .replace(/\{total\}/gi, String(total))
+    .replace(/\{message\}/gi, a.message || '');
+}
 function alertText(a) {
   const SUB_ICON = 'assets/icon-sub.png';
   switch (a.alert) {
@@ -1450,12 +1543,35 @@ function alertText(a) {
 function showAlert(a) {
   const t = alertText(a);
   if (!t) return;
+  const typeKey = resolveAlertTypeKey(a.alert);
+  const tc = typeCfgOf(a.alert) || {};
+  if (tc.enabled === false) { setTimeout(processAlerts, 80); return; }
+  const minAmt = +tc.minAmount || 0;
+  if (minAmt > 0) {
+    const amt = Number(a.viewers != null ? a.viewers : (a.total != null ? a.total : 0));
+    if (isFinite(amt) && amt < minAmt) { setTimeout(processAlerts, 80); return; }
+  }
+  if (tc.label) t.labelTxt = fillAlertTemplate(tc.label, a) || t.labelTxt;
+  if (tc.template) t.user = fillAlertTemplate(tc.template, a) || t.user;
+  if (tc.subTemplate) {
+    const filled = fillAlertTemplate(tc.subTemplate, a);
+    if (filled) { t.subText = filled; t.subPre = undefined; t.subHl = undefined; }
+  }
+  if (tc.showMessage === false) t.subMsg = undefined;
+  if (tc.duration) t.hold = Math.round(Math.max(1, Math.min(30, +tc.duration)) * 1000);
+  const layout = ['above','below','left','right','overlay','banner'].includes(tc.layout) ? tc.layout : 'above';
+  const animIn = ['fade','slide','bounce','zoom','flip'].includes(tc.animationIn) ? tc.animationIn : 'slide';
+  const animOut = ['fade','slide','bounce','zoom','flip'].includes(tc.animationOut) ? tc.animationOut : 'fade';
+  const textAnim = ['pulse','bounce'].includes(tc.textAnimation) ? tc.textAnimation : 'none';
+  const vol = Math.max(0, Math.min(1, ((tc.soundVolume != null ? +tc.soundVolume : 75) / 100)));
+  const imgScale = Math.max(0, Math.min(2, (tc.imageScale != null ? +tc.imageScale : 100) / 100));
+  const media = alertMedia[typeKey] || alertMedia[t.kind] || null;
   const d = document.createElement('div');
   refreshPhotoFlag();
   const ts = Date.now();
   const isPhoto = usePhotoAlert;
   const photoClass = isPhoto ? ' alert--photo' : '';
-  d.className = 'alert alert--' + t.kind + photoClass;
+  d.className = 'alert alert--' + t.kind + photoClass + ' alert--layout-' + layout + ' anim-in-' + animIn;
   // V34 fix taille : override min-width gigantesque (sub 700, follow 540, raid 660) + applique config panneau
   const cfg = window._alertCfg || { width: 380, photoWidth: 340, scale: 100 };
   const targetW = isPhoto ? (cfg.photoWidth||340) : (cfg.width||380);
@@ -1503,17 +1619,44 @@ function showAlert(a) {
   const mki = document.createElement('img'); mki.src = 'assets/logo-7g.png?v=30'; mki.alt = '7G';
   mk.appendChild(mki);
   d.appendChild(mk);
-  const ic = document.createElement('img');
-  ic.className = 'alert__icon'; ic.src = t.icon; ic.alt = '';
-  ic.onerror = () => ic.remove();
+  let ic = null;
+  const showIcon = tc.showIcon !== false && imgScale > 0;
+  if (showIcon && media && media.kind === 'video') {
+    ic = document.createElement('video');
+    ic.className = 'alert__media';
+    ic.src = media.url;
+    ic.autoplay = true; ic.loop = true; ic.playsInline = true;
+    ic.muted = tc.videoMuted !== false;
+    ic.volume = Math.max(0, Math.min(1, vol));
+    ic.style.width = Math.round(120 * imgScale) + 'px';
+    ic.style.height = 'auto';
+    ic.play().catch(()=>{});
+  } else if (showIcon && media) {
+    ic = document.createElement('img');
+    ic.className = 'alert__icon alert__media';
+    ic.src = media.url; ic.alt = '';
+    ic.style.width = Math.round((t.kind === 'sub' ? 120 : 100) * imgScale) + 'px';
+    ic.style.height = 'auto';
+    ic.onerror = () => ic.remove();
+  } else if (showIcon) {
+    ic = document.createElement('img');
+    ic.className = 'alert__icon'; ic.src = t.icon; ic.alt = '';
+    ic.style.transform = 'scale(' + imgScale + ')';
+    ic.onerror = () => ic.remove();
+  }
   const bd = document.createElement('span'); bd.className = 'alert__body';
   const lb = document.createElement('span'); lb.className = 'alert__labeltxt'; lb.textContent = t.labelTxt;
+  if (tc.labelColor) lb.style.color = tc.labelColor;
   const us = document.createElement('span'); us.className = 'alert__user'; us.textContent = t.user || '???';
+  if (tc.fontSize) us.style.fontSize = Math.round(+tc.fontSize) + 'px';
+  if (tc.fontColor) { us.style.color = tc.fontColor; us.style.filter = 'drop-shadow(0 0 16px ' + tc.fontColor + '88)'; }
+  if (textAnim !== 'none') us.classList.add('tanim-' + textAnim);
   const sb = document.createElement('span'); sb.className = 'alert__sub';
   if (t.subText) sb.textContent = t.subText;
   else {
     if (t.subPre) sb.appendChild(document.createTextNode(t.subPre));
     const h = document.createElement('span'); h.className = 'hl'; h.textContent = t.subHl || '';
+    if (tc.highlightColor) h.style.color = tc.highlightColor;
     sb.appendChild(h);
   }
   bd.append(lb, us, sb);
@@ -1523,7 +1666,13 @@ function showAlert(a) {
     mg.textContent = '« ' + t.subMsg + ' »';
     bd.append(dv, mg);
   }
-  d.append(ic, bd);
+  if (ic) d.appendChild(ic);
+  d.appendChild(bd);
+  const textDelayMs = Math.round(Math.max(0, Math.min(10, +tc.textDelay || 0)) * 1000);
+  if (textDelayMs > 0) {
+    d.classList.add('is-text-delay');
+    setTimeout(() => { d.classList.add('is-text-on'); }, textDelayMs);
+  }
   if (isPhoto) alertsEl.classList.add('has-photo');
   alertsEl.appendChild(d);
   while (alertsEl.children.length > 1) alertsEl.removeChild(alertsEl.firstChild);
@@ -1558,7 +1707,7 @@ function showAlert(a) {
       try {
         au.currentTime = 0;
         au.muted = false;
-        au.volume = 0.75;
+        au.volume = vol;
         await au.play();
         played = true;
         return true;
@@ -1567,7 +1716,7 @@ function showAlert(a) {
         try {
           au.muted = true;
           await au.play();
-          setTimeout(()=>{ try{ au.muted=false; au.volume=0.75; }catch(e){} }, 150);
+          setTimeout(()=>{ try{ au.muted=false; au.volume=vol; }catch(e){} }, 150);
           played = true;
           return true;
         } catch(e2) { continue; }
@@ -1585,7 +1734,7 @@ function showAlert(a) {
         const src = c.createBufferSource();
         src.buffer = buf;
         const g = c.createGain();
-        g.gain.value = 0.75;
+        g.gain.value = vol;
         src.connect(g).connect(c.destination);
         src.start();
         played = true;
@@ -1612,20 +1761,25 @@ function showAlert(a) {
     }
   });
   setTimeout(() => { 
-    d.classList.add('out'); 
+    d.classList.remove('anim-in-' + animIn);
+    d.classList.add('out', 'anim-out-' + animOut);
     setTimeout(() => { 
       d.remove(); 
       // si plus d'alerte photo, retire classe has-photo pour repositionner container
       if (!alertsEl.querySelector('.alert--photo')) alertsEl.classList.remove('has-photo');
+      const gap = Math.max(0, window._alertGapMs != null ? window._alertGapMs : 400);
+      setTimeout(processAlerts, gap);
     }, 320); 
   }, t.hold);
 }
 function queueAlert(a) {
+  const tc = typeCfgOf(a.alert);
+  if (tc && tc.enabled === false) return;
   alertQueue.push(a);
   processAlerts();
 }
 function processAlerts() {
-  if (alertsEl.children.length > 0) { setTimeout(processAlerts, 1500); return; }
+  if (alertsEl.children.length > 0) { setTimeout(processAlerts, 400); return; }
   const a = alertQueue.shift();
   if (a) showAlert(a);
 }
@@ -1745,8 +1899,13 @@ function setGoal(g) {
     holdDurationSeconds: 120,
     finHour: 21,
     finMinute: 30,
-    finEnabled: true
+    finEnabled: true,
+    antiSpam: true,
+    cooldownSeconds: 15,
+    maxPerMinute: 2,
+    exemptStaff: true
   };
+  const userHits = new Map(); // user -> { last, times[] }
 
   let velocity = 0;
   let displayed = 0;
@@ -1795,7 +1954,7 @@ function setGoal(g) {
   window.__velocityPush = pushTimestamp;
 
   function resetVelocity(full) {
-    if (full) mpmScore = 0;
+    if (full) { mpmScore = 0; userHits.clear(); }
     velocity = 0; displayed = 0; aboveStart = 0; isOverdrive = false;
     wrap.classList.remove('is-overdrive','is-hot','is-goal');
     if (fill) fill.style.height = '0%';
@@ -1867,6 +2026,14 @@ function setGoal(g) {
     if (src.velocityBarWidth !== undefined) cfg.barWidth = Math.max(12, Math.min(40, Math.round(toNum(src.velocityBarWidth, 30))));
     if (src.velocityBarHeight !== undefined) cfg.barHeight = Math.max(280, Math.min(900, Math.round(toNum(src.velocityBarHeight, 700))));
     if (src.velocityShowMetrics !== undefined) cfg.showMetrics = !!src.velocityShowMetrics;
+    if (src.antiSpam !== undefined) cfg.antiSpam = !!src.antiSpam;
+    if (src.velocityAntiSpam !== undefined) cfg.antiSpam = !!src.velocityAntiSpam;
+    if (src.cooldownSeconds !== undefined) cfg.cooldownSeconds = Math.max(0, Math.min(120, Math.round(toNum(src.cooldownSeconds, 15))));
+    if (src.velocityCooldownSeconds !== undefined) cfg.cooldownSeconds = Math.max(0, Math.min(120, Math.round(toNum(src.velocityCooldownSeconds, 15))));
+    if (src.maxPerMinute !== undefined) cfg.maxPerMinute = Math.max(1, Math.min(30, Math.round(toNum(src.maxPerMinute, 2))));
+    if (src.velocityMaxPerMinute !== undefined) cfg.maxPerMinute = Math.max(1, Math.min(30, Math.round(toNum(src.velocityMaxPerMinute, 2))));
+    if (src.exemptStaff !== undefined) cfg.exemptStaff = !!src.exemptStaff;
+    if (src.velocityExemptStaff !== undefined) cfg.exemptStaff = !!src.velocityExemptStaff;
     // debug
     try { console.log('[velocite] config appliquee', cfg); } catch(e){}
     applyVisualConfig();
@@ -2106,6 +2273,26 @@ function clickVote(choice) {
   if (DEMO && demoVotes) {
     demoVotes[choice]++;
     setState({ mode: 'live', question: cur.question, a: cur.a, b: cur.b, c: cur.c, d: cur.d,
+               startsAt: cur.startsAt, va: demoVotes.A, vb: demoVotes.B, vc: demoVotes.C, vd: demoVotes.D, endsAt: cur.endsAt, source: 'demo' });
+  } else vote(choice);
+}
+E.optA.addEventListener('click', () => clickVote('A'));
+E.optB.addEventListener('click', () => clickVote('B'));
+if (E.optC) E.optC.addEventListener('click', () => clickVote('C'));
+if (E.optD) E.optD.addEventListener('click', () => clickVote('D'));
+
+/* ── Boucle d'affichage (timer) + démarrage ──────────────────── */
+setInterval(() => { if (mode !== 'idle') render(); }, 250);
+if (DEMO) { demoStart(); fakeChatLoop(); demoChatExtras(); demoAlerts(); } else {
+  connect();
+  fetch('api/goal').then(r => r.json()).then(setGoal).catch(() => {});
+  fetch('api/config').then(r => r.json()).then(d => { if (d && d.config) applyConfig(d.config); }).catch(() => {});
+}
+})();
+</script>
+</body>
+</html>
+a: cur.a, b: cur.b, c: cur.c, d: cur.d,
                startsAt: cur.startsAt, va: demoVotes.A, vb: demoVotes.B, vc: demoVotes.C, vd: demoVotes.D, endsAt: cur.endsAt, source: 'demo' });
   } else vote(choice);
 }
