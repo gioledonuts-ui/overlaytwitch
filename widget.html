@@ -323,16 +323,19 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 /* Composition CENTRÉE : icône / label à filets / pseudo / détail —
    hiérarchie typographique : label espacé violet, pseudo bleu énorme, détail italique */
 .alert{position:relative;display:flex;flex-direction:column;align-items:center;z-index:21;
-  gap:10px;overflow:hidden;min-width:0;width:var(--alert-w,380px);padding:24px 40px;border-radius:18px;
+  /* V38 : min-width:0 + échelle appliquée AUSSI au repos → plus de « saut de taille »
+     entre l'animation et la fin de l'animation. Le rognage de la boîte a été retiré
+     (c'était lui qui « mangeait » la fin des lignes) : les coins ronds restent gérés par .alert__bg. */
+  gap:10px;min-width:0;width:var(--alert-w,380px);padding:24px 40px;border-radius:18px;
+  transform:scale(var(--alert-scale,1));transform-origin:center;
   background:rgba(10,10,12,.9);
   border:1px solid rgba(255,255,255,.14);
   box-shadow:0 28px 70px rgba(0,0,0,.55);
-  animation:alertIn .55s var(--ease-out);
   --alert-scale:1;
 }
 /* image de fond en calque séparé : elle FADE-IN sur ~1,2 s → plus de « pop » noir
    au premier chargement (et les assets sont préchargés à l'ouverture de la page) */
-.alert__bg{position:absolute;inset:0;z-index:0;pointer-events:none;
+.alert__bg{position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;overflow:hidden;
   background:url('assets/alert-bg.png') center/cover no-repeat;
   opacity:0;animation:bgFade 1.2s ease-out .1s forwards}
 .alert--photo{
@@ -341,6 +344,9 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   width:var(--alert-photo-w,340px);
   max-width:var(--alert-photo-w,340px);
   aspect-ratio:4 / 5;
+  /* format 4:5 respecté, mais la boîte GRANDIT si le texte a besoin de place :
+     jamais une ligne avalée (l'ancien rognage de la boîte mangeait le bas du pseudo) */
+  min-height:fit-content;
   padding:16px 18px 18px;
   background:#000;
   justify-content:center;
@@ -357,7 +363,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   filter:brightness(.96) contrast(1.05);
 }
 .alert--photo::after{
-  content:"";position:absolute;inset:0;z-index:0;
+  content:"";position:absolute;inset:0;z-index:0;border-radius:inherit;
   background:linear-gradient(180deg,rgba(0,0,0,.15) 0%,rgba(0,0,0,.05) 35%,rgba(0,0,0,.35) 100%);
   pointer-events:none;
 }
@@ -374,7 +380,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   filter:none;
 }
 .alert--photo .alert__labeltxt{font-size:26px;letter-spacing:.18em;line-height:1}
-.alert--photo .alert__user{font-size:72px;line-height:.90;letter-spacing:.02em;max-width:100%;word-break:break-word;text-align:center}
+.alert--photo .alert__user{font-size:72px;line-height:.90;letter-spacing:.02em;max-width:100%;text-align:center;white-space:nowrap}
 .alert--photo .alert__sub{color:#fff;font-weight:800;font-style:normal;font-size:16px;letter-spacing:.02em;line-height:1.25;max-width:100%;text-align:center;
   -webkit-text-stroke:2px #000;paint-order:stroke fill;
   text-shadow:0 1px 0 #000,0 -1px 0 #000,1px 0 0 #000,-1px 0 0 #000,0 2px 10px rgba(0,0,0,.95);
@@ -382,7 +388,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .alert--photo .alert__icon{width:52px;height:52px}
 .alert--photo .alert__body{gap:5px;max-width:100%}
 .alert--photo .mark7g{width:24px;height:24px;top:8px;right:10px}
-.alert--photo .alert__msg{font-size:12px;max-width:300px}
+.alert--photo .alert__msg{font-size:12px;max-width:100%}
 @keyframes bgFade{to{opacity:1}}
 /* V35 animations configurables Streamlabs-like – simple descente par défaut, mais fade/slide/bounce disponibles */
 .alert{ --alert-anim-dur:550ms; animation-duration:var(--alert-anim-dur); animation-timing-function:var(--ease-out); animation-fill-mode:both; animation-name:alertIn-slideTop; }
@@ -394,18 +400,21 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 @keyframes alertIn{from{opacity:0;transform:translateY(-120px) scale(var(--alert-scale,1))}to{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}}
 @keyframes alertOut{from{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}to{opacity:0;transform:translateY(-80px) scale(var(--alert-scale,1))}}
 .alert > .alert__icon,.alert > .alert__body{position:relative;z-index:1}
-.alert__icon{width:100px;height:100px;object-fit:contain}
-/* label : Bebas violet très espacé + filet de chaque côté (touch TV) */
+.alert__icon{width:100px;height:100px;object-fit:contain;max-width:100%}
+/* label : Bebas violet très espacé + filet de chaque côté (le filet peut se rétracter
+   pour laisser de la place au texte dans les petites alertes / formats 4:5) */
 .alert__labeltxt{font-family:'Bebas Neue',sans-serif;font-size:22px;font-weight:400;
   letter-spacing:.5em;color:#B06CFF;line-height:1;
   display:flex;align-items:center;gap:16px}
-.alert__labeltxt::before,.alert__labeltxt::after{content:"";width:46px;height:1px;flex:none}
+.alert__labeltxt::before,.alert__labeltxt::after{content:"";width:46px;height:1px;flex:0 1 auto;min-width:6px}
 .alert__labeltxt::before{background:linear-gradient(90deg,transparent,rgba(176,108,255,.75))}
 .alert__labeltxt::after{background:linear-gradient(90deg,rgba(176,108,255,.75),transparent)}
-.alert__body{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
-/* PSEUDO : bleu clair uni, très grand, lueur bleue */
+.alert__body{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;min-width:0;max-width:100%}
+/* PSEUDO : bleu clair uni, très grand, lueur bleue.
+   nowrap + ajustement auto (fitAlertLines) : le prénom reste sur UNE ligne, il rétrécit
+   au lieu de se casser en deux (bug « 4 lettres puis 2 lettres »). */
 .alert__user{font-family:'Bebas Neue',sans-serif;font-size:56px;letter-spacing:.06em;line-height:1;
-  color:#7CC7FF;filter:drop-shadow(0 0 16px rgba(80,170,255,.55))}
+  color:#7CC7FF;filter:drop-shadow(0 0 16px rgba(80,170,255,.55));white-space:nowrap;max-width:100%}
 /* détail : Inter italique grisé — le nom du receveur ressort en bleu gras non italique */
 .alert__sub{font-size:14px;font-weight:400;font-style:italic;letter-spacing:.03em;color:#B9BEC9}
 .alert__sub .hl{color:#7CC7FF;font-style:normal;font-weight:700}
@@ -440,6 +449,8 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 
 /* ═══ ALERTES V35 — layouts Streamlabs + animations in/out + media custom ═══ */
 .alert__media{position:relative;z-index:1;max-width:100%;object-fit:contain;border-radius:8px}
+/* formats portrait (4:5) à côté du texte : l'image ne doit pas manger la ligne du pseudo */
+.alert--layout-left .alert__media,.alert--layout-right .alert__media,.alert--layout-banner .alert__media{max-width:45%}
 .alert video.alert__media{background:#000}
 .alert--layout-above{flex-direction:column}
 .alert--layout-below{flex-direction:column-reverse}
@@ -455,11 +466,11 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;border-radius:inherit;max-width:none
 }
 .alert--layout-overlay .alert__body{z-index:2;padding:8px 4px 4px;width:100%}
-.alert.anim-in-fade{animation:alertInFade .55s var(--ease-out)}
-.alert.anim-in-slide{animation:alertIn .55s var(--ease-out)}
-.alert.anim-in-bounce{animation:alertInBounce .7s var(--ease-out)}
-.alert.anim-in-zoom{animation:alertInZoom .5s var(--ease-out)}
-.alert.anim-in-flip{animation:alertInFlip .6s var(--ease-out)}
+.alert.anim-in-fade{animation:alertInFade .55s var(--ease-out) both}
+.alert.anim-in-slide{animation:alertIn .55s var(--ease-out) both}
+.alert.anim-in-bounce{animation:alertInBounce .7s var(--ease-out) both}
+.alert.anim-in-zoom{animation:alertInZoom .5s var(--ease-out) both}
+.alert.anim-in-flip{animation:alertInFlip .6s var(--ease-out) both}
 .alert.anim-out-fade,.alert.out.anim-out-fade{animation:alertOutFade .35s var(--ease-in) forwards}
 .alert.anim-out-slide,.alert.out.anim-out-slide{animation:alertOut .35s var(--ease-in) forwards}
 .alert.anim-out-bounce,.alert.out.anim-out-bounce{animation:alertOutBounce .4s var(--ease-in) forwards}
@@ -468,7 +479,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 @keyframes alertInFade{from{opacity:0;transform:scale(var(--alert-scale,1))}to{opacity:1;transform:scale(var(--alert-scale,1))}}
 @keyframes alertOutFade{from{opacity:1;transform:scale(var(--alert-scale,1))}to{opacity:0;transform:scale(var(--alert-scale,1))}}
 @keyframes alertInBounce{0%{opacity:0;transform:translateY(-90px) scale(var(--alert-scale,1))}60%{opacity:1;transform:translateY(12px) scale(var(--alert-scale,1))}80%{transform:translateY(-6px) scale(var(--alert-scale,1))}100%{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}}
-@keyframes alertOutBounce{from{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}to{opacity:0;transform:translateY(40px) scale(.92)}}
+@keyframes alertOutBounce{from{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}to{opacity:0;transform:translateY(40px) scale(calc(var(--alert-scale,1) * .92))}}
 @keyframes alertInZoom{from{opacity:0;transform:scale(calc(var(--alert-scale,1) * .42))}to{opacity:1;transform:scale(var(--alert-scale,1))}}
 @keyframes alertOutZoom{from{opacity:1;transform:scale(var(--alert-scale,1))}to{opacity:0;transform:scale(calc(var(--alert-scale,1) * .4))}}
 @keyframes alertInFlip{from{opacity:0;transform:perspective(800px) rotateX(75deg) scale(var(--alert-scale,1))}to{opacity:1;transform:perspective(800px) rotateX(0) scale(var(--alert-scale,1))}}
@@ -1216,7 +1227,9 @@ function applyConfig(c) {
     }
   }
   // alertes V37 – position/taille + polices = globales, tout le reste = par type (alertTypes)
-  if (c.alert || c.alertPosX !== undefined || c.alertDuration !== undefined) {
+  if (c.alertTypes) window._alertTypes = c.alertTypes;   // avant le re-style : il lit les réglages par type
+  if (c.alert || c.alertPosX !== undefined || c.alertDuration !== undefined || c.alertWidth !== undefined
+      || c.alertScale !== undefined || c.alertGapMs !== undefined || c.alertTypes !== undefined) {
     const alertsEl = document.getElementById('alerts');
     const def = { posX:58, posY:140, posYLive:360, width:380, photoWidth:340, scale:100, duration:6500, fontLabel:'Bebas Neue', fontUser:'Bebas Neue', fontSub:'Inter', sizeLabel:26, sizeUser:72, sizeSub:16, colorLabel:'#B06CFF', colorUser:'#7CC7FF', colorSub:'#B9BEC9', stroke:2.5 };
     const cur = window._alertCfg || def;
@@ -1278,10 +1291,10 @@ function applyConfig(c) {
         if (lbl) { lbl.style.fontFamily = fontLabel; lbl.style.fontSize = sizeLabel + 'px'; lbl.style.color = (tc && tc.labelColor) || colorLabel; }
         if (usr) { usr.style.fontFamily = fontUser; usr.style.fontSize = ((tc && tc.fontSize) || sizeUser) + 'px'; usr.style.color = (tc && tc.fontColor) || colorUser; usr.style.webkitTextStrokeWidth = stroke + 'px'; }
         if (sub) { sub.style.fontFamily = fontSub; sub.style.fontSize = sizeSub + 'px'; sub.style.color = colorSub; }
+        fitAlertLines(el);
       });
     }
   }
-  if (c.alertTypes) window._alertTypes = c.alertTypes;
   if (c.alertGapMs !== undefined) window._alertGapMs = Math.max(0, Math.min(5000, +c.alertGapMs || 0));
   if (c.velocity || c.equilibriumMPM !== undefined || c.velocityEnabled !== undefined || c.velocityAntiSpam !== undefined || c.antiSpam !== undefined || c.excludedUsers !== undefined || c.velocityExcludedUsers !== undefined) {
     if (window.velocityApplyConfig) window.velocityApplyConfig(c);
@@ -1538,6 +1551,37 @@ function fillAlertTemplate(tpl, a) {
     .replace(/\{streak\}/gi, String(streak))
     .replace(/\{total\}/gi, String(total))
     .replace(/\{message\}/gi, a.message || '');}
+/* ── Ajustement auto du texte dans la boîte (formats 4:5 / alertes étroites) ──
+   Le pseudo doit rester sur UNE ligne et rester lisible : on réduit la police
+   jusqu'à ce que ça rentre, et on ne casse JAMAIS un mot en deux. Le petit titre
+   se resserre d'abord (espacement), puis rétrécit. */
+function fitAlertLine(el, avail, ratioMin, spacingFallback) {
+  if (!el || !(avail > 40)) return;
+  const st = window.getComputedStyle(el);
+  const base = parseFloat(el.style.fontSize || st.fontSize) || 0;
+  if (!base) return;
+  const oldSpace = el.style.whiteSpace, oldSpacing = el.style.letterSpacing;
+  el.style.whiteSpace = 'nowrap';
+  if (spacingFallback) el.style.letterSpacing = spacingFallback;
+  const need = el.scrollWidth;
+  if (need > avail + 1) {
+    const size = Math.floor(base * (avail / need) * 0.985);
+    const floor = Math.max(13, Math.round(base * (ratioMin || 0.45)));
+    if (size >= floor) el.style.fontSize = size + 'px';
+    else { el.style.fontSize = floor + 'px'; el.style.whiteSpace = 'normal'; el.style.letterSpacing = oldSpacing; }
+  } else if (spacingFallback) { el.style.letterSpacing = oldSpacing; }
+}
+function fitAlertLines(d) {
+  try {
+    const cs = window.getComputedStyle(d);
+    let avail = d.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+    const media = d.querySelector('.alert__media');
+    if (media && /layout-(left|right|banner)/.test(d.className)) avail -= media.offsetWidth + 18;
+    if (!(avail > 40)) return;
+    fitAlertLine(d.querySelector('.alert__user'), avail, 0.42, '');
+    fitAlertLine(d.querySelector('.alert__labeltxt'), avail, 0.6, '.16em');
+  } catch (e) {}
+}
 function renderAlertTemplate(tmpl, vars){
   try{
     let s = String(tmpl||'');
@@ -1771,6 +1815,7 @@ function showAlert(a) {
   }
   if (isPhoto) alertsEl.classList.add('has-photo');
   alertsEl.appendChild(d);
+  fitAlertLines(d);
   while (alertsEl.children.length > 1) alertsEl.removeChild(alertsEl.firstChild);
   // debloque l'audio pour OBS (pas de clic utilisateur) – tente resume AudioContext
   try{ 

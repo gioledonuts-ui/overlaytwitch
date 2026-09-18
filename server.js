@@ -231,6 +231,19 @@ function sanitizeAlertType(type, p) {
   };
 }
 
+/* V38 — échelle globale : avant, elle n'agissait QUE pendant l'animation (la taille
+   « sautait » à la fin puis au départ). Elle s'applique maintenant en permanence.
+   Comme beaucoup l'avaient baissée pour compenser le bug de la V34, on la remet à
+   100 % une seule fois : la largeur réglée dans le panneau reste LA taille de l'alerte,
+   l'affichage ne change pas d'un cheveu, et le curseur redevient utilisable. */
+function normalizeAlertScale(saved) {
+  if (!saved || typeof saved !== 'object' || saved.alertScaleNormalized) return false;
+  saved.alertScaleNormalized = true;
+  const v = +saved.alertScale;
+  if (isFinite(v) && v !== 100 && v > 0) { saved.alertScale = 100; return true; }
+  return false;
+}
+
 function mergeAlertTypes(saved) {
   const out = {};
   const src = saved && typeof saved === 'object' ? saved : {};
@@ -303,7 +316,7 @@ function normalizeExcludedUsers(v) {
 }
 
 let appConfig = Object.assign({}, DEFAULT_CONFIG);
-let legacyAlertNeedsSave = false, legacyAlertMovedCount = 0;
+let legacyAlertNeedsSave = false, legacyAlertMovedCount = 0, legacyAlertScaleFixed = false;
 try {
   if (fs.existsSync(PERSIST_FILE)) {
     const saved = JSON.parse(fs.readFileSync(PERSIST_FILE, 'utf8')) || {};
@@ -311,6 +324,7 @@ try {
       legacyAlertMovedCount = migrateLegacyAlertTypes(saved);   // rapporte les anciennes clés plates dans alertTypes
       legacyAlertNeedsSave = true;
     }
+    if (normalizeAlertScale(saved)) { legacyAlertNeedsSave = true; legacyAlertScaleFixed = true; }
     appConfig = Object.assign({}, DEFAULT_CONFIG, saved);
     appConfig.alertTypes = mergeAlertTypes(saved.alertTypes);
   }
@@ -324,7 +338,8 @@ if (!appConfig.alertTypes || typeof appConfig.alertTypes !== 'object') {
 appConfig.velocityExemptStaff = false;
 if (legacyAlertNeedsSave) {
   appConfig.alertLegacyMigrated = true;   // la migration ne se rejoue jamais
-  console.log('[migration V37] anciens réglages alertes (clés plates) reportés dans les réglages par type : ' + legacyAlertMovedCount + ' valeur(s)');
+  if (legacyAlertMovedCount) console.log('[migration V37] anciens réglages alertes (clés plates) reportés dans les réglages par type : ' + legacyAlertMovedCount + ' valeur(s)');
+  if (legacyAlertScaleFixed) console.log('[migration V38] échelle globale remise à 100 % (elle n\'agissait que pendant l\'animation — la taille vient de la largeur réglée dans le panneau)');
   saveConfig();
 }
 appConfig.velocityExcludedUsers = normalizeExcludedUsers(appConfig.velocityExcludedUsers);

@@ -470,7 +470,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
       <div class="brand__txt">
         <div class="brand__name">7GIONNY</div>
         <div class="brand__sub">STUDIO</div>
-        <div id="verPill">V37</div>
+        <div id="verPill">V38</div>
       </div>
     </div>
     <nav class="nav">
@@ -679,10 +679,10 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
           <div class="aH"><h3>📍 Emplacement &amp; taille — les 5 types ensemble</h3></div>
           <div class="aGrid">
             <div class="field"><label>Position horizontale</label><input id="alertPosX" type="range" min="0" max="100" step="1" data-f="alertPosX"><div class="note"><span id="alertPosXVal">58%</span> · 0% = bord gauche, 100% = bord droit</div></div>
-            <div class="field"><label>Échelle globale</label><input id="alertScale" type="range" min="50" max="150" step="5" data-f="alertScale"><div class="note"><span id="alertScaleVal">100%</span> · sert à raccourcir une alerte trop grande</div></div>
+            <div class="field"><label>Échelle (zoom de toute l'alerte)</label><input id="alertScale" type="range" min="50" max="150" step="5" data-f="alertScale"><div class="note"><span id="alertScaleVal">100%</span> · box + image + texte d'un coup. Laisse 100 % si la largeur te va : c'est elle qui donne la taille.</div></div>
             <div class="field"><label>Hauteur en haut (px)</label><input id="alertPosY" type="number" min="0" max="800" step="10" data-f="alertPosY"></div>
             <div class="field"><label>Hauteur pendant un sondage (px)</label><input id="alertPosYLive" type="number" min="0" max="800" step="10" data-f="alertPosYLive"></div>
-            <div class="field"><label>Largeur d'une alerte (px)</label><input id="alertWidth" type="number" min="200" max="800" step="10" data-f="alertWidth"></div>
+            <div class="field"><label>Largeur d'une alerte (px)</label><input id="alertWidth" type="number" min="200" max="800" step="10" data-f="alertWidth"><div class="note">C'est LA taille de l'alerte. Le texte d'un prénom se rétrécit tout seul s'il ne rentre pas, il ne se coupe plus en deux.</div></div>
             <div class="field"><label>Pause entre 2 alertes (ms)</label><input id="alertGapMs" type="number" min="0" max="5000" step="50" data-f="alertGapMs"><div class="note">400 = enchaîné, 1500 = plus d'air</div></div>
           </div>
 
@@ -707,7 +707,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
               <input type="file" accept=".jpg,.jpeg,.png" id="alertBgInput" class="aFile">
               <div class="row"><button class="btn small ghost" id="btnDelAlertBg" type="button" style="display:none">SUPPRIMER LA PHOTO</button></div>
             </div>
-            <div class="field" style="flex:0 0 170px"><label>Largeur en mode photo (px)</label><input id="alertPhotoWidth" type="number" min="180" max="600" step="10" data-f="alertPhotoWidth"></div>
+            <div class="field" style="flex:0 0 170px"><label>Largeur en mode photo (px)</label><input id="alertPhotoWidth" type="number" min="180" max="600" step="10" data-f="alertPhotoWidth"><div class="note">Avec une image 4:5, l'alerte garde ce ratio et grandit si le texte a besoin de place.</div></div>
           </div>
           <div class="note" style="margin-top:6px">Avec une photo, l'alerte devient une carte 4:5 : remerciement en haut, pseudo en bas, texte blanc contour noir. Sans photo, c'est le fond violet par défaut.</div>
 
@@ -1516,7 +1516,7 @@ function renderAlertTypeBody() {
       aText('Ligne du pseudo', 'template', 80, '{name}') +
       aText('Ligne de détail', 'subTemplate', 140, '{streak} mois, {total} au total', 'Variables : {name} {viewer} {viewers} {amount} {streak} {total} {message}') +
       aNum('Taille du pseudo (px)', 'fontSize', 18, 140, 1) +
-      aNum('Taille de l\'image (%)', 'imageScale', 0, 200, 5) +
+      aWrap('Taille de l\'image / vidéo (%)', '<input type="number" min="0" max="200" step="5" data-k="imageScale">', '100 = l\'image garde sa taille dans la limite de la largeur de l\'alerte') +
       aColor('Couleur du pseudo', 'fontColor') +
       aColor('Couleur du titre', 'labelColor') +
       aColor('Couleur surlignée', 'highlightColor') +
