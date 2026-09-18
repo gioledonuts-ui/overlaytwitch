@@ -387,31 +387,9 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 /* V35 animations configurables Streamlabs-like – simple descente par défaut, mais fade/slide/bounce disponibles */
 .alert{ --alert-anim-dur:550ms; animation-duration:var(--alert-anim-dur); animation-timing-function:var(--ease-out); animation-fill-mode:both; animation-name:alertIn-slideTop; }
 .alert.out{ animation-duration:350ms; animation-timing-function:var(--ease-in); animation-fill-mode:forwards; animation-name:alertOut-slideTop; }
-.alert[data-anim-in="slideTop"]{ animation-name:alertIn-slideTop; }
-.alert[data-anim-in="fade"]{ animation-name:alertIn-fade; }
-.alert[data-anim-in="slideLeft"]{ animation-name:alertIn-slideLeft; }
-.alert[data-anim-in="slideRight"]{ animation-name:alertIn-slideRight; }
-.alert[data-anim-in="slideBottom"]{ animation-name:alertIn-slideBottom; }
-.alert[data-anim-in="bounce"]{ animation-name:alertIn-bounce; }
-.alert.out[data-anim-out="slideTop"]{ animation-name:alertOut-slideTop; }
-.alert.out[data-anim-out="fade"]{ animation-name:alertOut-fade; }
-.alert.out[data-anim-out="slideLeft"]{ animation-name:alertOut-slideLeft; }
-.alert.out[data-anim-out="slideRight"]{ animation-name:alertOut-slideRight; }
-.alert.out[data-anim-out="slideBottom"]{ animation-name:alertOut-slideBottom; }
-.alert.out[data-anim-out="bounce"]{ animation-name:alertOut-bounce; }
 
 @keyframes alertIn-slideTop{from{opacity:0;transform:translateY(-120px) scale(var(--alert-scale,1))}to{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}}
 @keyframes alertOut-slideTop{from{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}to{opacity:0;transform:translateY(-80px) scale(var(--alert-scale,1))}}
-@keyframes alertIn-fade{from{opacity:0;transform:scale(var(--alert-scale,1))}to{opacity:1;transform:scale(var(--alert-scale,1))}}
-@keyframes alertOut-fade{from{opacity:1;transform:scale(var(--alert-scale,1))}to{opacity:0;transform:scale(var(--alert-scale,1))}}
-@keyframes alertIn-slideLeft{from{opacity:0;transform:translateX(-120px) scale(var(--alert-scale,1))}to{opacity:1;transform:translateX(0) scale(var(--alert-scale,1))}}
-@keyframes alertOut-slideLeft{from{opacity:1;transform:translateX(0) scale(var(--alert-scale,1))}to{opacity:0;transform:translateX(-120px) scale(var(--alert-scale,1))}}
-@keyframes alertIn-slideRight{from{opacity:0;transform:translateX(120px) scale(var(--alert-scale,1))}to{opacity:1;transform:translateX(0) scale(var(--alert-scale,1))}}
-@keyframes alertOut-slideRight{from{opacity:1;transform:translateX(0) scale(var(--alert-scale,1))}to{opacity:0;transform:translateX(120px) scale(var(--alert-scale,1))}}
-@keyframes alertIn-slideBottom{from{opacity:0;transform:translateY(120px) scale(var(--alert-scale,1))}to{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}}
-@keyframes alertOut-slideBottom{from{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}to{opacity:0;transform:translateY(120px) scale(var(--alert-scale,1))}}
-@keyframes alertIn-bounce{0%{opacity:0;transform:translateY(-120px) scale(var(--alert-scale,1))}60%{opacity:1;transform:translateY(10px) scale(var(--alert-scale,1))}80%{transform:translateY(-5px) scale(var(--alert-scale,1))}100%{transform:translateY(0) scale(var(--alert-scale,1))}}
-@keyframes alertOut-bounce{0%{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}100%{opacity:0;transform:translateY(-60px) scale(.9)}}
 /* compat old names */
 @keyframes alertIn{from{opacity:0;transform:translateY(-120px) scale(var(--alert-scale,1))}to{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}}
 @keyframes alertOut{from{opacity:1;transform:translateY(0) scale(var(--alert-scale,1))}to{opacity:0;transform:translateY(-80px) scale(var(--alert-scale,1))}}
@@ -439,11 +417,6 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 /* monogramme 7G : coin haut-droit, discret */
 .alert .mark7g{position:absolute;top:14px;right:16px;opacity:.85;z-index:2;width:32px;height:32px;border-radius:8px}
 /* Layouts Streamlabs-like */
-.alert[data-layout="side"]{ flex-direction:row; align-items:center; gap:18px; text-align:left; }
-.alert[data-layout="side"] .alert__body{ align-items:flex-start; text-align:left; }
-.alert[data-layout="textUnder"]{ flex-direction:column-reverse; }
-.alert[data-layout="middle"]{ justify-content:center; text-align:center; padding:32px 44px; }
-.alert[data-layout="middle"] .alert__body{ align-items:center; }
 
 /* FOLLOW : le plus simple */
 .alert--follow{min-width:0;width:var(--alert-w,380px)}
@@ -1242,47 +1215,39 @@ function applyConfig(c) {
       document.documentElement.style.setProperty('--violet-light', light);
     }
   }
-  // alertes V35 – personnalisation complète type Streamlabs (position, taille, fonts, couleurs, animations, templates)
+  // alertes V37 – position/taille + polices = globales, tout le reste = par type (alertTypes)
   if (c.alert || c.alertPosX !== undefined || c.alertDuration !== undefined) {
     const alertsEl = document.getElementById('alerts');
-    const def = { posX:58, posY:140, posYLive:360, width:380, photoWidth:340, scale:100, duration:6500, textDelay:0, delay:0, imgSize:100, layout:'textOver', animIn:'slideTop', animOut:'slideTop', animDur:550, fontLabel:'Bebas Neue', fontUser:'Bebas Neue', fontSub:'Inter', sizeLabel:26, sizeUser:72, sizeSub:16, colorLabel:'#B06CFF', colorUser:'#7CC7FF', colorSub:'#B9BEC9', stroke:2.5 };
+    const def = { posX:58, posY:140, posYLive:360, width:380, photoWidth:340, scale:100, duration:6500, fontLabel:'Bebas Neue', fontUser:'Bebas Neue', fontSub:'Inter', sizeLabel:26, sizeUser:72, sizeSub:16, colorLabel:'#B06CFF', colorUser:'#7CC7FF', colorSub:'#B9BEC9', stroke:2.5 };
     const cur = window._alertCfg || def;
-    const posX = c.alertPosX != null ? c.alertPosX : cur.posX;
-    const posY = c.alertPosY != null ? c.alertPosY : cur.posY;
-    const posYLive = c.alertPosYLive != null ? c.alertPosYLive : cur.posYLive;
-    const w = c.alertWidth != null ? c.alertWidth : cur.width;
-    const photoW = c.alertPhotoWidth != null ? c.alertPhotoWidth : cur.photoWidth;
-    const scale = c.alertScale != null ? c.alertScale : cur.scale;
-    const duration = c.alertDuration != null ? c.alertDuration : (cur.duration||6500);
+    const num = (v, d) => (v != null && isFinite(+v)) ? +v : d;
+    const posX = num(c.alertPosX, cur.posX);
+    const posY = num(c.alertPosY, cur.posY);
+    const posYLive = num(c.alertPosYLive, cur.posYLive);
+    const w = num(c.alertWidth, cur.width);
+    const photoW = num(c.alertPhotoWidth, cur.photoWidth);
+    const scale = num(c.alertScale, cur.scale);
+    const duration = num(c.alertDuration, cur.duration||6500);
     const durations = c.alertDurations || window._alertDurations || cur.durations || { follow:5200, sub:6500, raid:6500 };
-    const textDelay = c.alertTextDelay != null ? c.alertTextDelay : (cur.textDelay||0);
-    const delay = c.alertDelay != null ? c.alertDelay : (cur.delay||0);
-    const imgSize = c.alertImageSize != null ? c.alertImageSize : (cur.imgSize||100);
-    const layout = c.alertLayout || cur.layout || 'textOver';
-    const animIn = c.alertAnimationIn || cur.animIn || 'slideTop';
-    const animOut = c.alertAnimationOut || cur.animOut || 'slideTop';
-    const animDur = c.alertAnimationDuration != null ? c.alertAnimationDuration : (cur.animDur||550);
     const fontLabel = c.alertFontLabel || cur.fontLabel || 'Bebas Neue';
     const fontUser = c.alertFontUser || cur.fontUser || 'Bebas Neue';
     const fontSub = c.alertFontSub || cur.fontSub || 'Inter';
-    const sizeLabel = c.alertFontSizeLabel != null ? c.alertFontSizeLabel : (cur.sizeLabel||26);
-    const sizeUser = c.alertFontSizeUser != null ? c.alertFontSizeUser : (cur.sizeUser||72);
-    const sizeSub = c.alertFontSizeSub != null ? c.alertFontSizeSub : (cur.sizeSub||16);
+    const sizeLabel = num(c.alertFontSizeLabel, cur.sizeLabel);
+    const sizeUser = num(c.alertFontSizeUser, cur.sizeUser);
+    const sizeSub = num(c.alertFontSizeSub, cur.sizeSub);
     const colorLabel = c.alertColorLabel || cur.colorLabel || '#B06CFF';
     const colorUser = c.alertColorUser || cur.colorUser || '#7CC7FF';
     const colorSub = c.alertColorSub || cur.colorSub || '#B9BEC9';
-    const stroke = c.alertStroke != null ? c.alertStroke : (cur.stroke||2.5);
+    const stroke = num(c.alertStroke, cur.stroke);
     const enabled = c.alertEnabled || window._alertEnabled || cur.enabled || { follow:true, sub:true, gift:true, raid:true };
     const templates = c.alertMessageTemplates || window._alertTemplates || cur.templates || {};
     const images = c.alertImages || window._alertImages || cur.images || {};
-    const volumes = c.alertSoundsVolume || window._alertVolumes || cur.volumes || {};
 
-    window._alertCfg = { posX, posY, posYLive, width:w, photoWidth:photoW, scale, duration, textDelay, delay, imgSize, layout, animIn, animOut, animDur, fontLabel, fontUser, fontSub, sizeLabel, sizeUser, sizeSub, colorLabel, colorUser, colorSub, stroke, enabled, templates, images, volumes };
+    window._alertCfg = { posX, posY, posYLive, width:w, photoWidth:photoW, scale, duration, fontLabel, fontUser, fontSub, sizeLabel, sizeUser, sizeSub, colorLabel, colorUser, colorSub, stroke, enabled, templates, images };
     window._alertDurations = durations;
     window._alertEnabled = enabled;
     window._alertTemplates = templates;
     window._alertImages = images;
-    window._alertVolumes = volumes;
 
     if (alertsEl) {
       alertsEl.style.left = posX + '%';
@@ -1294,11 +1259,10 @@ function applyConfig(c) {
       document.documentElement.style.setProperty('--alert-w', w + 'px');
       document.documentElement.style.setProperty('--alert-photo-w', photoW + 'px');
       document.documentElement.style.setProperty('--alert-scale', (scale/100).toString());
-      document.documentElement.style.setProperty('--alert-img-size', imgSize + '%');
-      document.documentElement.style.setProperty('--alert-anim-dur', animDur + 'ms');
       const card = document.getElementById('card');
       const isLive = card && card.classList.contains('is-live');
       alertsEl.style.top = (isLive ? posYLive : posY) + 'px';
+      // re-style des alertes déjà à l'écran : le réglage par type prime sur le global
       document.querySelectorAll('.alert').forEach(el=>{
         const isPh = el.classList.contains('alert--photo');
         const targetW = isPh ? photoW : w;
@@ -1306,19 +1270,16 @@ function applyConfig(c) {
         el.style.minWidth = '0';
         el.style.maxWidth = targetW + 'px';
         el.style.setProperty('--alert-scale', (scale/100).toString());
-        // fonts live update
+        const key = el.dataset.type ? resolveAlertTypeKey(el.dataset.type) : null;
+        const tc = (key && window._alertTypes) ? (window._alertTypes[key] || null) : null;
         const lbl = el.querySelector('.alert__labeltxt');
         const usr = el.querySelector('.alert__user');
         const sub = el.querySelector('.alert__sub');
-        if (lbl) { lbl.style.fontFamily = fontLabel; lbl.style.fontSize = sizeLabel + 'px'; lbl.style.color = colorLabel; }
-        if (usr) { usr.style.fontFamily = fontUser; usr.style.fontSize = sizeUser + 'px'; usr.style.color = colorUser; usr.style.webkitTextStrokeWidth = stroke + 'px'; }
+        if (lbl) { lbl.style.fontFamily = fontLabel; lbl.style.fontSize = sizeLabel + 'px'; lbl.style.color = (tc && tc.labelColor) || colorLabel; }
+        if (usr) { usr.style.fontFamily = fontUser; usr.style.fontSize = ((tc && tc.fontSize) || sizeUser) + 'px'; usr.style.color = (tc && tc.fontColor) || colorUser; usr.style.webkitTextStrokeWidth = stroke + 'px'; }
         if (sub) { sub.style.fontFamily = fontSub; sub.style.fontSize = sizeSub + 'px'; sub.style.color = colorSub; }
       });
     }
-    // applique layout global
-    document.documentElement.dataset.alertLayout = layout;
-    document.documentElement.dataset.alertAnimIn = animIn;
-    document.documentElement.dataset.alertAnimOut = animOut;
   }
   if (c.alertTypes) window._alertTypes = c.alertTypes;
   if (c.alertGapMs !== undefined) window._alertGapMs = Math.max(0, Math.min(5000, +c.alertGapMs || 0));
@@ -1671,15 +1632,19 @@ function showAlert(a) {
   if (!t) return;
   const typeKey = resolveAlertTypeKey(a.alert);
   const tc = typeCfgOf(a.alert) || {};
+  // les types derives (cadeau anonyme, cadeau communautaire, Prime) suivent le style
+  // du type principal, mais gardent LEUR texte : on ne remplace label/template/subTemplate
+  // que quand le reglage concerne exactement ce type-la.
+  const own = a.alert === typeKey;
   if (tc.enabled === false) { setTimeout(processAlerts, 80); return; }
   const minAmt = +tc.minAmount || 0;
   if (minAmt > 0) {
     const amt = Number(a.viewers != null ? a.viewers : (a.total != null ? a.total : 0));
     if (isFinite(amt) && amt < minAmt) { setTimeout(processAlerts, 80); return; }
   }
-  if (tc.label) t.labelTxt = fillAlertTemplate(tc.label, a) || t.labelTxt;
-  if (tc.template) t.user = fillAlertTemplate(tc.template, a) || t.user;
-  if (tc.subTemplate) {
+  if (own && tc.label) t.labelTxt = fillAlertTemplate(tc.label, a) || t.labelTxt;
+  if (own && tc.template) t.user = fillAlertTemplate(tc.template, a) || t.user;
+  if (own && tc.subTemplate) {
     const filled = fillAlertTemplate(tc.subTemplate, a);
     if (filled) { t.subText = filled; t.subPre = undefined; t.subHl = undefined; }
   }
@@ -1698,23 +1663,15 @@ function showAlert(a) {
   const isPhoto = usePhotoAlert;
   const photoClass = isPhoto ? ' alert--photo' : '';
   d.className = 'alert alert--' + t.kind + photoClass + ' alert--layout-' + layout + ' anim-in-' + animIn;
-  const cfg = window._alertCfg || { width: 380, photoWidth: 340, scale: 100, imgSize:100, fontLabel:'Bebas Neue', fontUser:'Bebas Neue', fontSub:'Inter', sizeLabel:26, sizeUser:72, sizeSub:16, colorLabel:'#B06CFF', colorUser:'#7CC7FF', colorSub:'#B9BEC9', stroke:2.5, animIn:'slideTop', animOut:'slideTop', animDur:550, textDelay:0, delay:0, layout:'textOver' };
+  const cfg = window._alertCfg || { width: 380, photoWidth: 340, scale: 100, fontLabel:'Bebas Neue', fontUser:'Bebas Neue', fontSub:'Inter', sizeLabel:26, sizeUser:72, sizeSub:16, colorLabel:'#B06CFF', colorUser:'#7CC7FF', colorSub:'#B9BEC9', stroke:2.5 };
   const targetW = isPhoto ? (cfg.photoWidth||340) : (cfg.width||380);
   const scale = (cfg.scale||100)/100;
-  const imgSize = cfg.imgSize||100;
-  const animDur = cfg.animDur||550;
-  const textDelay = cfg.textDelay||0;
-  const delaySec = cfg.delay||0;
   d.style.width = targetW + 'px';
   d.style.minWidth = '0';
   d.style.maxWidth = targetW + 'px';
   d.style.setProperty('--alert-scale', scale.toString());
   d.style.setProperty('--alert-w', targetW + 'px');
-  d.style.setProperty('--alert-img-size', imgSize + '%');
-  d.style.setProperty('--alert-anim-dur', animDur + 'ms');
-  d.dataset.animIn = animIn;
-  d.dataset.animOut = animOut;
-  d.dataset.layout = cfg.layout||'textOver';
+  d.dataset.type = a.alert;
   const bg = document.createElement('div'); bg.className = 'alert__bg';
   const images = window._alertImages || {};
   const customImg = images[a.alert] || images[a.type] || '';
@@ -1773,7 +1730,6 @@ function showAlert(a) {
     ic.style.transform = 'scale(' + imgScale + ')';
     ic.onerror = () => ic.remove();
   }  const bd = document.createElement('span'); bd.className = 'alert__body';
-  if (textDelay) bd.style.animationDelay = textDelay + 'ms';
   const lb = document.createElement('span'); lb.className = 'alert__labeltxt'; lb.textContent = t.labelTxt;
   lb.style.fontFamily = cfg.fontLabel||'Bebas Neue';
   lb.style.fontSize = (cfg.sizeLabel||26) + 'px';

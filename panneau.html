@@ -401,18 +401,26 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
 .swatch:hover{transform:translateY(-1px)}
 .swatch.active{border-color:#fff}
 /* alerts */
-.alertGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.alertTile{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:11px;cursor:pointer;transition:border-color .12s,background .12s}
-.alertTile:hover{border-color:var(--line2);background:var(--surface2)}
-.alertTile h3{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
-.alertTile p{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4}
-.alertTile .chipbtn{margin-top:8px}
-.alertAdv{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line2)}
-.alertTile.is-open .alertAdv{display:block}
-.advGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.advGrid .field{margin-top:0}
-.mediaPrev{margin-top:6px;max-width:160px;max-height:90px;overflow:hidden;border-radius:4px;border:1px solid var(--line2);display:none}
-.mediaPrev img,.mediaPrev video{width:100%;height:auto;display:block;max-height:90px;object-fit:contain;background:#000}
+/* ═══ ALERTES V37 — studio compact, chaque réglage à UN seul endroit ═══ */
+.aH{display:flex;align-items:center;gap:10px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line2)}
+.aH h3{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:.10em;text-transform:uppercase;color:var(--acc)}
+.aGrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:8px}
+.aGrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 14px;margin-top:8px}
+.aGrid .field,.aGrid3 .field{margin-top:6px}
+.aTabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.aTab{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid var(--line);border-radius:5px;background:var(--surface2);color:var(--muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:.10em;cursor:pointer;transition:border-color .12s,color .12s,background .12s}
+.aTab:hover{border-color:var(--line2);color:var(--text)}
+.aTab.is-on{border-color:var(--acc);color:#fff;background:var(--acc-soft)}
+.aTab i{width:6px;height:6px;border-radius:50%;background:var(--ok);flex:none}
+.aTab.is-off i{background:var(--bad)}
+.aPrev{max-width:120px;max-height:84px;overflow:hidden;border-radius:4px;border:1px solid var(--line2);display:none;background:#000}
+.aPrev img,.aPrev video{width:100%;height:auto;display:block;max-height:82px;object-fit:contain;background:#000}
+#alertBgPreview{max-width:110px;max-height:140px}
+#alertBgPreview img{max-height:138px}
+.aFile{font-size:10px;padding:6px}
+.aHelp{margin-top:12px;border:1px solid var(--line2);border-radius:5px;padding:10px 12px;background:#0f0f18}
+.aHelp summary{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+.aHelp[open] summary{margin-bottom:8px;color:var(--acc)}
 .tok{font-family:Consolas,monospace;font-size:9px;background:#0c0c14;border:1px solid var(--line2);border-radius:3px;padding:1px 5px;color:var(--acc)}
 /* mono */
 .mono{font-family:Consolas,monospace;font-size:10px;background:#0c0c14;border:1px solid var(--line2);border-radius:4px;padding:8px 9px;word-break:break-all;cursor:pointer;position:relative;transition:all .12s}
@@ -450,7 +458,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
   .topbar__title{flex:1 1 100%}
   .content{overflow:visible;padding:12px}
   .row.grow{grid-template-columns:1fr}
-  .alertGrid{grid-template-columns:1fr}
+  .aGrid,.aGrid3{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -462,7 +470,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
       <div class="brand__txt">
         <div class="brand__name">7GIONNY</div>
         <div class="brand__sub">STUDIO</div>
-        <div id="verPill">V35</div>
+        <div id="verPill">V37</div>
       </div>
     </div>
     <nav class="nav">
@@ -663,280 +671,79 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
           </div>
         </div>
       </section>
-            <section class="tab" id="tab-alertes">
+      <section class="tab" id="tab-alertes">
         <div class="card">
-          <h2>ALERTES & SONS</h2>
-          <p class="sub">Declenche une alerte dans OBS. Chaque type a son son custom (mp3/wav/ogg) – upload direct sur l'icone, test instantane, supprimable. Le son est auto-applique dans l'overlay.</p>
-          <div class="alertGrid">
-            <div class="alertTile" data-type="follow">
-              <h3>FOLLOW</h3>
-              <p>Nouveau follower.</p>
-              <div class="row" style="margin-top:8px">
-                <button class="chipbtn" data-alert='{"type":"follow","user":"ViewerExemple"}'>TEST ALERTE</button>
-                <button class="chipbtn" data-playsound="follow">TEST SON</button>
-              </div>
-              <div class="field" style="margin-top:10px">
-                <label>Son custom FOLLOW</label>
-                <div class="row" style="gap:6px;margin-top:4px">
-                  <input type="file" accept=".mp3,.wav,.ogg,.m4a" data-type="follow" class="soundInput" style="font-size:10px;max-width:180px">
-                  <button class="btn small ghost" data-del="follow" style="display:none">SUPPR</button>
-                </div>
-                <div class="note soundStatus" data-status="follow" style="margin-top:4px;font-size:9px;color:var(--muted)">Aucun custom – son par defaut</div>
-              </div>
-            </div>
-            <div class="alertTile" data-type="sub">
-              <h3>SUB</h3>
-              <p>Nouvel abonne.</p>
-              <div class="row" style="margin-top:8px">
-                <button class="chipbtn" data-alert='{"type":"sub","user":"amelie"}'>TEST ALERTE</button>
-                <button class="chipbtn" data-playsound="sub">TEST SON</button>
-              </div>
-              <div class="field" style="margin-top:10px">
-                <label>Son custom SUB / RESUB / GIFT</label>
-                <div class="row" style="gap:6px;margin-top:4px">
-                  <input type="file" accept=".mp3,.wav,.ogg,.m4a" data-type="sub" class="soundInput" style="font-size:10px;max-width:180px">
-                  <button class="btn small ghost" data-del="sub" style="display:none">SUPPR</button>
-                </div>
-                <div class="note soundStatus" data-status="sub" style="margin-top:4px;font-size:9px;color:var(--muted)">Aucun custom – son par defaut</div>
-              </div>
-            </div>
-            <div class="alertTile" data-type="resub">
-              <h3>RESUB</h3>
-              <p>Fidele X mois.</p>
-              <div class="row" style="margin-top:8px">
-                <button class="chipbtn" data-alert='{"type":"resub","user":"Louna","stints":2,"total":12,"message":"Toujours la !"}'>TEST ALERTE</button>
-                <button class="chipbtn" data-playsound="sub">TEST SON</button>
-              </div>
-              <div class="field" style="margin-top:10px">
-                <label>Son RESUB (utilise SUB si vide)</label>
-                <div class="row" style="gap:6px;margin-top:4px">
-                  <input type="file" accept=".mp3,.wav,.ogg,.m4a" data-type="resub" class="soundInput" style="font-size:10px;max-width:180px">
-                  <button class="btn small ghost" data-del="resub" style="display:none">SUPPR</button>
-                </div>
-                <div class="note soundStatus" data-status="resub" style="margin-top:4px;font-size:9px;color:var(--muted)">Aucun custom – utilise SUB</div>
-              </div>
-            </div>
-            <div class="alertTile" data-type="gift">
-              <h3>GIFT</h3>
-              <p>Sub offert.</p>
-              <div class="row" style="margin-top:8px">
-                <button class="chipbtn" data-alert='{"type":"gift","user":"kevin","viewer":"maeva"}'>TEST ALERTE</button>
-                <button class="chipbtn" data-playsound="gift">TEST SON</button>
-              </div>
-              <div class="field" style="margin-top:10px">
-                <label>Son custom GIFT</label>
-                <div class="row" style="gap:6px;margin-top:4px">
-                  <input type="file" accept=".mp3,.wav,.ogg,.m4a" data-type="gift" class="soundInput" style="font-size:10px;max-width:180px">
-                  <button class="btn small ghost" data-del="gift" style="display:none">SUPPR</button>
-                </div>
-                <div class="note soundStatus" data-status="gift" style="margin-top:4px;font-size:9px;color:var(--muted)">Aucun custom – utilise SUB</div>
-              </div>
-            </div>
-            <div class="alertTile" data-type="raid">
-              <h3>RAID</h3>
-              <p>Autre chaine.</p>
-              <div class="row" style="margin-top:8px">
-                <button class="chipbtn" data-alert='{"type":"raid","user":"UNAUTRECREATOR","viewers":1240}'>TEST ALERTE</button>
-                <button class="chipbtn" data-playsound="raid">TEST SON</button>
-              </div>
-              <div class="field" style="margin-top:10px">
-                <label>Son custom RAID</label>
-                <div class="row" style="gap:6px;margin-top:4px">
-                  <input type="file" accept=".mp3,.wav,.ogg,.m4a" data-type="raid" class="soundInput" style="font-size:10px;max-width:180px">
-                  <button class="btn small ghost" data-del="raid" style="display:none">SUPPR</button>
-                </div>
-                <div class="note soundStatus" data-status="raid" style="margin-top:4px;font-size:9px;color:var(--muted)">Aucun custom – son par defaut</div>
-              </div>
-            </div>
-          </div>
-          <div class="card" style="margin-top:12px;background:#10101a;border-color:var(--line2)">
-            <h2>🖼️ FOND ALERTE PHOTO (IMG_0607.jpg – 3024×4032)</h2>
-            <p class="sub">Remplace le fond noir/violet par ta photo. Texte blanc contour noir épais (remerciement en haut, pseudo en bas, à l'intérieur de l'image). Upload JPG/PNG → appliqué instantanément dans OBS.</p>
-            <div class="field">
-              <label>Photo actuelle</label>
-              <div id="alertBgStatus" class="note">Chargement...</div>
-              <div id="alertBgPreview" style="margin-top:8px;max-width:280px;max-height:180px;overflow:hidden;border-radius:4px;border:1px solid var(--line2);display:none"><img id="alertBgImg" style="width:100%;height:auto;display:block"></div>
-            </div>
-            <div class="field">
-              <label>Uploader nouvelle photo (JPG/PNG, max 10 Mo)</label>
-              <div class="row" style="gap:6px;margin-top:4px">
-                <input type="file" accept=".jpg,.jpeg,.png" id="alertBgInput" style="font-size:10px;max-width:220px">
-                <button class="btn small ghost" id="btnDelAlertBg" style="display:none">SUPPRIMER PHOTO</button>
-              </div>
-            </div>
-            <div class="note" style="margin-top:8px">Fichiers: <span class="mono" style="display:inline;padding:2px 6px">assets/IMG_0607.jpg</span> + <span class="mono" style="display:inline;padding:2px 6px">assets/alert-photo.jpg</span>. Si présent, alertes passent en mode photo avec texte blanc contour noir épais. Supprime pour revenir au fond par défaut.</div>
+          <h2>ALERTES — FOLLOW / SUB / RESUB / GIFT / RAID</h2>
+          <p class="sub">Chaque champ est enregistré et envoyé dans OBS dès que tu le touches — aucun bouton « enregistrer ». « Tester » envoie une fausse alerte pour voir tout de suite.</p>
+
+          <div class="aH"><h3>📍 Emplacement &amp; taille — les 5 types ensemble</h3></div>
+          <div class="aGrid">
+            <div class="field"><label>Position horizontale</label><input id="alertPosX" type="range" min="0" max="100" step="1" data-f="alertPosX"><div class="note"><span id="alertPosXVal">58%</span> · 0% = bord gauche, 100% = bord droit</div></div>
+            <div class="field"><label>Échelle globale</label><input id="alertScale" type="range" min="50" max="150" step="5" data-f="alertScale"><div class="note"><span id="alertScaleVal">100%</span> · sert à raccourcir une alerte trop grande</div></div>
+            <div class="field"><label>Hauteur en haut (px)</label><input id="alertPosY" type="number" min="0" max="800" step="10" data-f="alertPosY"></div>
+            <div class="field"><label>Hauteur pendant un sondage (px)</label><input id="alertPosYLive" type="number" min="0" max="800" step="10" data-f="alertPosYLive"></div>
+            <div class="field"><label>Largeur d'une alerte (px)</label><input id="alertWidth" type="number" min="200" max="800" step="10" data-f="alertWidth"></div>
+            <div class="field"><label>Pause entre 2 alertes (ms)</label><input id="alertGapMs" type="number" min="0" max="5000" step="50" data-f="alertGapMs"><div class="note">400 = enchaîné, 1500 = plus d'air</div></div>
           </div>
 
-          <div class="card" style="margin-top:12px;background:#10101a;border-color:var(--line2)">
-            <h2>📍 POSITION & TAILLE ALERTES (TOUS AU MÊME ENDROIT)</h2>
-            <p class="sub">Règle en une touche – animation simple qui descend d'en haut. Sauvegardé comme le son. Tous les types (follow/sub/gift/raid) utilisent le même emplacement. Photo 4:5 petite pour ne pas cacher le streamer.</p>
-            <div class="row grow" style="gap:12px">
-              <div class="field" style="flex:1;margin-top:0">
-                <label>Position X (% gauche → droite)</label>
-                <input id="alertPosX" type="range" min="0" max="100" step="1" style="width:100%">
-                <div class="note" style="font-size:10px"><span id="alertPosXVal">58%</span> – 0% gauche, 100% droite (58% = un peu à droite du milieu, avant chat)</div>
-              </div>
-              <div class="field" style="flex:1;margin-top:0">
-                <label>Échelle globale (%)</label>
-                <input id="alertScale" type="range" min="50" max="150" step="5" style="width:100%">
-                <div class="note" style="font-size:10px"><span id="alertScaleVal">100%</span> – 100% normal, 70% petit</div>
-              </div>
-            </div>
-            <div class="row grow" style="gap:12px;margin-top:8px">
-              <div class="field" style="flex:1;margin-top:0">
-                <label>Position Y haut (px) – sans sondage</label>
-                <input id="alertPosY" type="number" min="0" max="800" step="10" style="width:100%">
-              </div>
-              <div class="field" style="flex:1;margin-top:0">
-                <label>Position Y quand sondage live (px) – sous sondage</label>
-                <input id="alertPosYLive" type="number" min="0" max="800" step="10" style="width:100%">
-              </div>
-            </div>
-            <div class="row grow" style="gap:12px;margin-top:8px">
-              <div class="field" style="flex:1;margin-top:0">
-                <label>Largeur alerte normale (px)</label>
-                <input id="alertWidth" type="number" min="200" max="800" step="10" style="width:100%">
-              </div>
-              <div class="field" style="flex:1;margin-top:0">
-                <label>Largeur alerte photo 4:5 (px) – petite</label>
-                <input id="alertPhotoWidth" type="number" min="180" max="600" step="10" style="width:100%">
-              </div>
-            </div>
-            <div class="field" style="margin-top:8px">
-              <label>Pause entre 2 alertes (ms) – file d'attente</label>
-              <input id="alertGapMs" type="number" min="0" max="5000" step="50" style="max-width:180px">
-              <div class="note" style="margin-top:4px">400 = enchaînement rapide. 1500 = plus d'air entre deux alertes.</div>
-            </div>
-            <div class="row" style="margin-top:12px;gap:8px">
-              <button class="btn primary" id="btnSaveAlertPos">ENREGISTRER POSITION & TAILLE</button>
-              <button class="btn ghost small" id="btnPreviewAlert">APERÇU ALERTE</button>
-              <button class="btn ghost small" id="btnResetAlertPos">RÉINITIALISER</button>
-            </div>
-            <div class="note" style="margin-top:8px">Animation: descente simple d'en haut (slide -120px → 0, 0.55s). Taille photo conseillée 280-340px pour ne pas cacher le streamer. Sauvegardé dans config-perso.json comme les sons.</div>
+          <div class="aH"><h3>🔤 Polices, tailles et contour</h3></div>
+          <div class="aGrid3">
+            <div class="field"><label>Police du label</label><input id="alertFontLabel" type="text" placeholder="Bebas Neue" data-f="alertFontLabel"></div>
+            <div class="field"><label>Police du pseudo</label><input id="alertFontUser" type="text" placeholder="Bebas Neue" data-f="alertFontUser"></div>
+            <div class="field"><label>Police du détail</label><input id="alertFontSub" type="text" placeholder="Inter" data-f="alertFontSub"></div>
+            <div class="field"><label>Taille label (px)</label><input id="alertFontSizeLabel" type="number" min="8" max="80" step="1" data-f="alertFontSizeLabel"></div>
+            <div class="field"><label>Taille détail (px)</label><input id="alertFontSizeSub" type="number" min="8" max="60" step="1" data-f="alertFontSizeSub"></div>
+            <div class="field"><label>Contour du pseudo (px)</label><input id="alertStroke" type="number" min="0" max="10" step="0.5" data-f="alertStroke"></div>
+            <div class="field"><label>Couleur du détail</label><input id="alertColorSub" type="color" data-f="alertColorSub"></div>
+            <div class="note" style="grid-column:span 2;align-self:end">La couleur du label et du pseudo se règle par type, dans les onglets plus bas.</div>
           </div>
 
-          <div class="card" style="margin-top:12px;background:#14141e;border-color:var(--line2)">
-            <h2>🎨 PERSONNALISATION AVANCÉE (STYLE STREAMLABS)</h2>
-            <p class="sub">Tout comme Streamlabs Alert Box : image par type, son volume, durée, template message avec {name}{viewers}{count}{months}, fonts, couleurs, layout, animations in/out, enable/disable.</p>
-            
-            <h3 style="font-size:11px;margin-top:14px;letter-spacing:.08em;color:var(--accent)">✅ ACTIVER / DÉSACTIVER PAR TYPE</h3>
-            <div class="row grow" style="gap:8px;margin-top:6px;flex-wrap:wrap">
-              <label class="switchRow" style="flex:1;min-width:120px"><input type="checkbox" id="alertEn_follow" checked> <span>Follow</span></label>
-              <label class="switchRow" style="flex:1;min-width:120px"><input type="checkbox" id="alertEn_sub" checked> <span>Sub</span></label>
-              <label class="switchRow" style="flex:1;min-width:120px"><input type="checkbox" id="alertEn_resub" checked> <span>Resub</span></label>
-              <label class="switchRow" style="flex:1;min-width:120px"><input type="checkbox" id="alertEn_gift" checked> <span>Gift</span></label>
-              <label class="switchRow" style="flex:1;min-width:120px"><input type="checkbox" id="alertEn_raid" checked> <span>Raid</span></label>
-              <label class="switchRow" style="flex:1;min-width:120px"><input type="checkbox" id="alertEn_community" checked> <span>Community</span></label>
+          <div class="aH"><h3>🖼️ Fond photo (option)</h3></div>
+          <div class="note" id="alertBgStatus">Chargement…</div>
+          <div class="row" style="gap:12px;align-items:flex-start;margin-top:8px">
+            <div class="aPrev" id="alertBgPreview" style="max-width:120px;max-height:150px"><img id="alertBgImg" alt=""></div>
+            <div style="flex:1;min-width:230px">
+              <label>Choisir une photo JPG ou PNG (max 10 Mo)</label>
+              <input type="file" accept=".jpg,.jpeg,.png" id="alertBgInput" class="aFile">
+              <div class="row"><button class="btn small ghost" id="btnDelAlertBg" type="button" style="display:none">SUPPRIMER LA PHOTO</button></div>
             </div>
-
-            <h3 style="font-size:11px;margin-top:14px;letter-spacing:.08em;color:var(--accent)">⏱ DURÉES & DÉLAIS</h3>
-            <div class="row grow" style="gap:10px;margin-top:6px">
-              <div class="field" style="flex:1"><label>Durée globale (ms)</label><input id="alertDuration" type="number" min="1000" max="15000" step="100"></div>
-              <div class="field" style="flex:1"><label>Delay avant alerte (sec)</label><input id="alertDelay" type="number" min="0" max="10" step="0.5"></div>
-              <div class="field" style="flex:1"><label>Text delay (ms)</label><input id="alertTextDelay" type="number" min="0" max="5000" step="100"></div>
-              <div class="field" style="flex:1"><label>Anim durée (ms)</label><input id="alertAnimDur" type="number" min="100" max="2000" step="50"></div>
-            </div>
-            <div class="row grow" style="gap:10px;margin-top:8px">
-              <div class="field" style="flex:1"><label>Durée Follow (ms)</label><input id="alertDur_follow" type="number" min="1000" max="15000" step="100"></div>
-              <div class="field" style="flex:1"><label>Durée Sub (ms)</label><input id="alertDur_sub" type="number" min="1000" max="15000" step="100"></div>
-              <div class="field" style="flex:1"><label>Durée Gift (ms)</label><input id="alertDur_gift" type="number" min="1000" max="15000" step="100"></div>
-              <div class="field" style="flex:1"><label>Durée Raid (ms)</label><input id="alertDur_raid" type="number" min="1000" max="15000" step="100"></div>
-            </div>
-
-            <h3 style="font-size:11px;margin-top:14px;letter-spacing:.08em;color:var(--accent)">🖼 LAYOUT & ANIMATIONS (STREAMLABS)</h3>
-            <div class="row grow" style="gap:10px;margin-top:6px">
-              <div class="field" style="flex:1"><label>Layout</label><select id="alertLayout" style="width:100%;padding:6px"><option value="textOver">Text over image (defaut)</option><option value="textUnder">Text under image</option><option value="side">Image à côté</option><option value="middle">Middle box</option></select></div>
-              <div class="field" style="flex:1"><label>Animation In</label><select id="alertAnimIn" style="width:100%;padding:6px"><option value="slideTop">Slide Top (simple descente)</option><option value="fade">Fade</option><option value="slideLeft">Slide Left</option><option value="slideRight">Slide Right</option><option value="slideBottom">Slide Bottom</option><option value="bounce">Bounce</option></select></div>
-              <div class="field" style="flex:1"><label>Animation Out</label><select id="alertAnimOut" style="width:100%;padding:6px"><option value="slideTop">Slide Top</option><option value="fade">Fade</option><option value="slideLeft">Slide Left</option><option value="slideRight">Slide Right</option><option value="bounce">Bounce</option></select></div>
-              <div class="field" style="flex:1"><label>Taille image (%)</label><input id="alertImgSize" type="range" min="20" max="200" step="5" style="width:100%"><div class="note" style="font-size:10px"><span id="alertImgSizeVal">100%</span></div></div>
-            </div>
-
-            <h3 style="font-size:11px;margin-top:14px;letter-spacing:.08em;color:var(--accent)">🔤 FONTS & COULEURS</h3>
-            <div class="row grow" style="gap:10px;margin-top:6px">
-              <div class="field" style="flex:1"><label>Font Label</label><input id="alertFontLabel" type="text" placeholder="Bebas Neue" style="width:100%"></div>
-              <div class="field" style="flex:1"><label>Font User</label><input id="alertFontUser" type="text" placeholder="Bebas Neue" style="width:100%"></div>
-              <div class="field" style="flex:1"><label>Font Sub</label><input id="alertFontSub" type="text" placeholder="Inter" style="width:100%"></div>
-            </div>
-            <div class="row grow" style="gap:10px;margin-top:8px">
-              <div class="field" style="flex:1"><label>Taille Label (px)</label><input id="alertFontSizeLabel" type="number" min="8" max="80" step="1"></div>
-              <div class="field" style="flex:1"><label>Taille User (px)</label><input id="alertFontSizeUser" type="number" min="12" max="120" step="1"></div>
-              <div class="field" style="flex:1"><label>Taille Sub (px)</label><input id="alertFontSizeSub" type="number" min="8" max="60" step="1"></div>
-              <div class="field" style="flex:1"><label>Stroke (px)</label><input id="alertStroke" type="number" min="0" max="10" step="0.5"></div>
-            </div>
-            <div class="row grow" style="gap:10px;margin-top:8px">
-              <div class="field" style="flex:1"><label>Couleur Label</label><input id="alertColorLabel" type="color" style="width:100%;height:32px"></div>
-              <div class="field" style="flex:1"><label>Couleur User</label><input id="alertColorUser" type="color" style="width:100%;height:32px"></div>
-              <div class="field" style="flex:1"><label>Couleur Sub</label><input id="alertColorSub" type="color" style="width:100%;height:32px"></div>
-            </div>
-
-            <h3 style="font-size:11px;margin-top:14px;letter-spacing:.08em;color:var(--accent)">💬 TEMPLATES MESSAGE (variables {name} {viewer} {viewers} {count} {months} {streak} {total})</h3>
-            <div class="row grow" style="gap:10px;margin-top:6px">
-              <div class="field" style="flex:1"><label>Follow</label><input id="alertTpl_follow" type="text" placeholder="{name} vient de follow" style="width:100%"></div>
-              <div class="field" style="flex:1"><label>Sub</label><input id="alertTpl_sub" type="text" placeholder="{name} – {months}" style="width:100%"></div>
-            </div>
-            <div class="row grow" style="gap:10px;margin-top:6px">
-              <div class="field" style="flex:1"><label>Resub</label><input id="alertTpl_resub" type="text" placeholder="{name} – {streak} mois, {total} total" style="width:100%"></div>
-              <div class="field" style="flex:1"><label>Gift</label><input id="alertTpl_gift" type="text" placeholder="{name} a offert à {viewer}" style="width:100%"></div>
-            </div>
-            <div class="row grow" style="gap:10px;margin-top:6px">
-              <div class="field" style="flex:1"><label>Community</label><input id="alertTpl_community" type="text" placeholder="{name} a offert {total} subs" style="width:100%"></div>
-              <div class="field" style="flex:1"><label>Raid</label><input id="alertTpl_raid" type="text" placeholder="{name} raid {viewers} viewers" style="width:100%"></div>
-            </div>
-
-            <h3 style="font-size:11px;margin-top:14px;letter-spacing:.08em;color:var(--accent)">🔊 VOLUME PAR TYPE</h3>
-            <div class="row grow" style="gap:10px;margin-top:6px">
-              <div class="field" style="flex:1"><label>Vol Follow %</label><input id="alertVol_follow" type="range" min="0" max="100" step="5" style="width:100%"><div class="note" style="font-size:10px"><span id="alertVol_followVal">75%</span></div></div>
-              <div class="field" style="flex:1"><label>Vol Sub %</label><input id="alertVol_sub" type="range" min="0" max="100" step="5" style="width:100%"><div class="note" style="font-size:10px"><span id="alertVol_subVal">75%</span></div></div>
-              <div class="field" style="flex:1"><label>Vol Gift %</label><input id="alertVol_gift" type="range" min="0" max="100" step="5" style="width:100%"><div class="note" style="font-size:10px"><span id="alertVol_giftVal">75%</span></div></div>
-              <div class="field" style="flex:1"><label>Vol Raid %</label><input id="alertVol_raid" type="range" min="0" max="100" step="5" style="width:100%"><div class="note" style="font-size:10px"><span id="alertVol_raidVal">75%</span></div></div>
-            </div>
-
-            <h3 style="font-size:11px;margin-top:14px;letter-spacing:.08em;color:var(--accent)">🖼️ IMAGES PAR TYPE (upload comme son, sauvegardé)</h3>
-            <div class="note" style="margin-bottom:8px">Upload une image custom par type d'alerte (follow/sub/gift/raid). Comme Streamlabs image/video upload. Stocké dans assets/alert-{type}-custom.png</div>
-            <div class="row grow" style="gap:10px">
-              <div class="field" style="flex:1"><label>Follow image</label><input type="file" accept=".jpg,.jpeg,.png,.gif,.webp" id="alertImg_follow" style="font-size:10px"><button class="btn ghost small" id="btnDelImg_follow" style="margin-top:4px">SUPPRIMER</button><div id="alertImgStatus_follow" class="note" style="font-size:9px"></div></div>
-              <div class="field" style="flex:1"><label>Sub image</label><input type="file" accept=".jpg,.jpeg,.png,.gif,.webp" id="alertImg_sub" style="font-size:10px"><button class="btn ghost small" id="btnDelImg_sub" style="margin-top:4px">SUPPRIMER</button><div id="alertImgStatus_sub" class="note" style="font-size:9px"></div></div>
-              <div class="field" style="flex:1"><label>Gift image</label><input type="file" accept=".jpg,.jpeg,.png,.gif,.webp" id="alertImg_gift" style="font-size:10px"><button class="btn ghost small" id="btnDelImg_gift" style="margin-top:4px">SUPPRIMER</button><div id="alertImgStatus_gift" class="note" style="font-size:9px"></div></div>
-              <div class="field" style="flex:1"><label>Raid image</label><input type="file" accept=".jpg,.jpeg,.png,.gif,.webp" id="alertImg_raid" style="font-size:10px"><button class="btn ghost small" id="btnDelImg_raid" style="margin-top:4px">SUPPRIMER</button><div id="alertImgStatus_raid" class="note" style="font-size:9px"></div></div>
-            </div>
-
-            <div class="row" style="margin-top:14px;gap:8px">
-              <button class="btn primary" id="btnSaveAlertAdvanced">ENREGISTRER PERSONNALISATION AVANCÉE</button>
-              <button class="btn ghost small" id="btnPreviewAlertAdvanced">APERÇU</button>
-              <button class="btn ghost small" id="btnResetAlertAdvanced">RÉINITIALISER DÉFAUT</button>
-            </div>
-            <div class="note" style="margin-top:8px">Toutes options sauvegardées dans config-perso.json, comme les sons. Preview envoie au widget en temps réel.</div>
+            <div class="field" style="flex:0 0 170px"><label>Largeur en mode photo (px)</label><input id="alertPhotoWidth" type="number" min="180" max="600" step="10" data-f="alertPhotoWidth"></div>
           </div>
+          <div class="note" style="margin-top:6px">Avec une photo, l'alerte devient une carte 4:5 : remerciement en haut, pseudo en bas, texte blanc contour noir. Sans photo, c'est le fond violet par défaut.</div>
 
-          <p class="note" style="margin-top:12px">Fichiers sons stockés dans <span class="mono" style="display:inline;padding:2px 6px">sounds/alert-{type}.mp3</span>. Upload = remplacement instantané, re-détecté par OBS toutes les 15s.</p>
-          <div class="card" style="margin-top:12px;background:#0f0f1a;border-color:var(--line2)">
-            <h2 style="font-size:11px">🔊 SON DANS OBS – REGLAGE OBLIGATOIRE</h2>
-            <p class="sub" style="margin-bottom:8px">Si tu entends le son dans le panneau (TEST SON) mais pas dans OBS :</p>
-            <div class="note" style="line-height:1.6">
-              1. Dans OBS, clic droit sur ta source Navigateur (widget.html) → Propriétés<br>
-              2. Coche <b>Contrôler le son via OBS</b> (ou "Control audio via OBS")<br>
-              3. Dans le mélangeur audio OBS, la source Navigateur apparaît → mets-la en <b>Monitoring et Sortie</b> (ou au moins pas muette) et monte le volume<br>
-              4. Dans OBS → Paramètres → Audio → <b>Périphérique de monitoring</b> → choisis ton casque/haut-parleurs<br>
-              5. Assure-toi que l'URL OBS est <span class="mono" style="display:inline;padding:2px 6px">http://localhost:8321/widget.html</span> <b>sans ?mute=1</b><br>
-              6. Si toujours rien, clique une fois dans l'aperçu du navigateur OBS pour débloquer l'autoplay
-            </div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn small ghost" id="btnAlertResetAll" type="button">RAMENER TOUTES LES ALERTES AUX RÉGLAGES D'ORIGINE</button>
           </div>
-          <div class="card" style="margin-top:12px;background:#15151f;border-color:var(--line2)">
-            <h2 style="font-size:11px">🎧 ENTENDRE LES ALERTES SUR TON PC (LIVE)</h2>
-            <p class="sub" style="margin-bottom:8px">Par défaut le son sort uniquement dans OBS (viewers l'entendent). Pour que TOI tu l'entendes aussi pendant le live sans double :</p>
-            <div class="note" style="line-height:1.6;margin-bottom:10px">
-              <b>Solution recommandée (pas de double) :</b> Dans OBS, mets la source Navigateur en <b>Monitoring et Sortie</b> → tu entends via ton casque de monitoring, viewers entendent via le stream. Ne capture pas le son du bureau en plus.<br><br>
-              <b>Alternative :</b> Coche ci-dessous pour que le panneau joue aussi le son sur ce PC. <span class="warn">Attention : si tu as déjà Monitoring et Sortie activé, tu entendras double (une fois via monitoring OBS, une fois via panneau).</span>
-            </div>
-            <div class="switchRow">
-              <label class="switch">
-                <input type="checkbox" id="alertLocalPC">
-                <span class="switch__track"><span class="switch__thumb"></span></span>
-              </label>
-              <span class="switch__label">Jouer le son aussi sur ce PC (panneau)</span>
-            </div>
-            <div class="note" id="localSoundHint" style="margin-top:8px;font-size:10px">Decoche si tu utilises deja Monitoring et Sortie dans OBS (evite double).</div>
+        </div>
+
+        <div class="card">
+          <h2>RÉGLAGES PAR TYPE</h2>
+          <p class="sub">Un onglet par type : activer, durée, layout, animations, volume, son, image/GIF/vidéo, textes. Variables possibles : <span class="mono" style="display:inline;padding:2px 6px">{name} {viewer} {viewers} {amount} {streak} {total} {message}</span></p>
+          <div class="aTabs" id="alertTypeTabs"></div>
+          <div id="alertTypeBody"></div>
+        </div>
+
+        <div class="card">
+          <h2>SON DES ALERTES</h2>
+          <p class="sub">Les sons se rangent dans <span class="mono" style="display:inline;padding:2px 6px">sounds/alert-{type}.mp3</span> (mp3, wav, ogg ou m4a). OBS les re-détecte toutes les 15 s, pas besoin de relancer.</p>
+          <div class="switchRow" style="margin-top:4px">
+            <label class="switch">
+              <input type="checkbox" id="alertLocalPC">
+              <span class="switch__track"><span class="switch__thumb"></span></span>
+            </label>
+            <span class="switch__label">Entendre aussi les alertes sur ce PC (via le panneau)</span>
           </div>
+          <div class="note" style="margin-top:6px">À cocher seulement si la source Navigateur d'OBS n'est PAS en « Monitoring et sortie », sinon tu entends tout en double.</div>
+          <details class="aHelp">
+            <summary>Personne n'entend les alertes dans OBS — la check-list</summary>
+            <div class="note" style="line-height:1.7">
+              1. OBS → clic droit sur la source Navigateur (widget.html) → Propriétés → cocher <b>Contrôler le son via OBS</b>.<br>
+              2. Dans le mélangeur audio, la source Navigateur passe en <b>Monitoring et sortie</b>, volume monté, pas muette.<br>
+              3. OBS → Paramètres → Audio → <b>Périphérique de monitoring</b> = ton casque.<br>
+              4. URL de la source : <span class="mono" style="display:inline;padding:2px 6px">http://localhost:8321/widget.html</span> <b>sans ?mute=1</b>.<br>
+              5. Un clic dans l'aperçu OBS débloque la lecture auto du son.
+            </div>
+          </details>
         </div>
       </section>
             <section class="tab" id="tab-velocite">
@@ -1606,310 +1413,379 @@ if(btnResetVelocity) btnResetVelocity.addEventListener('click',async()=>{
   }catch(e){ toast('Erreur reset'); }
 });
 
-/* ═══ ALERTES POSITION & TAILLE V34 – réglage en une touche, sauvegarde comme son ═══ */
-const alertDef = { alertPosX:58, alertPosY:140, alertPosYLive:360, alertWidth:380, alertPhotoWidth:340, alertScale:100, alertGapMs:400 };
-let alertSaved = { ...alertDef };
-function setAlertForm(c){
-  const s=c||{};
-  const posX=s.alertPosX!=null?s.alertPosX:alertDef.alertPosX;
-  const posY=s.alertPosY!=null?s.alertPosY:alertDef.alertPosY;
-  const posYLive=s.alertPosYLive!=null?s.alertPosYLive:alertDef.alertPosYLive;
-  const w=s.alertWidth!=null?s.alertWidth:alertDef.alertWidth;
-  const photoW=s.alertPhotoWidth!=null?s.alertPhotoWidth:alertDef.alertPhotoWidth;
-  const scale=s.alertScale!=null?s.alertScale:alertDef.alertScale;
-  if($('alertPosX')) $('alertPosX').value=posX;
-  if($('alertPosY')) $('alertPosY').value=posY;
-  if($('alertPosYLive')) $('alertPosYLive').value=posYLive;
-  if($('alertWidth')) $('alertWidth').value=w;
-  if($('alertPhotoWidth')) $('alertPhotoWidth').value=photoW;
-  if($('alertScale')) $('alertScale').value=scale;
-  if($('alertPosXVal')) $('alertPosXVal').textContent=posX+'%';
-  if($('alertScaleVal')) $('alertScaleVal').textContent=scale+'%';
-  const gap=s.alertGapMs!=null?s.alertGapMs:alertDef.alertGapMs;
-  if($('alertGapMs')) $('alertGapMs').value=gap;
-  alertSaved={ alertPosX:posX, alertPosY:posY, alertPosYLive:posYLive, alertWidth:w, alertPhotoWidth:photoW, alertScale:scale, alertGapMs:gap };
-}
-function getAlertForm(){
-  return {
-    alertPosX: Math.max(0, Math.min(100, +($('alertPosX')?$('alertPosX').value:alertDef.alertPosX))),
-    alertPosY: Math.max(0, Math.min(900, Math.round(+($('alertPosY')?$('alertPosY').value:alertDef.alertPosY)))),
-    alertPosYLive: Math.max(0, Math.min(900, Math.round(+($('alertPosYLive')?$('alertPosYLive').value:alertDef.alertPosYLive)))),
-    alertWidth: Math.max(200, Math.min(800, Math.round(+($('alertWidth')?$('alertWidth').value:alertDef.alertWidth)))),
-    alertPhotoWidth: Math.max(180, Math.min(600, Math.round(+($('alertPhotoWidth')?$('alertPhotoWidth').value:alertDef.alertPhotoWidth)))),
-    alertScale: Math.max(50, Math.min(150, Math.round(+($('alertScale')?$('alertScale').value:alertDef.alertScale)))),
-    alertGapMs: Math.max(0, Math.min(5000, Math.round(+($('alertGapMs')?$('alertGapMs').value:alertDef.alertGapMs))))
-  };
-}
-function previewAlertPos(){
-  const f=getAlertForm();
-  if($('alertPosXVal')) $('alertPosXVal').textContent=f.alertPosX+'%';
-  if($('alertScaleVal')) $('alertScaleVal').textContent=f.alertScale+'%';
-  post(API+'/api/config',{...f, preview:true}).catch(()=>{});
-}
-['alertPosX','alertScale'].forEach(id=>{
-  const el=$(id);
-  if(el) el.addEventListener('input', previewAlertPos);
-});
-['alertPosY','alertPosYLive','alertWidth','alertPhotoWidth'].forEach(id=>{
-  const el=$(id);
-  if(el) el.addEventListener('input', ()=>{ clearTimeout(window._alertPrevT); window._alertPrevT=setTimeout(previewAlertPos, 200); });
-});
-const btnSaveAlertPos=$('btnSaveAlertPos');
-if(btnSaveAlertPos) btnSaveAlertPos.addEventListener('click', async()=>{
-  const f=getAlertForm();
-  const r=await post(API+'/api/config', f);
-  if(r.ok){ alertSaved={...f}; toast('Position & taille alertes enregistrées ✔ – tous au même endroit'); }
-});
-const btnPreviewAlert=$('btnPreviewAlert');
-if(btnPreviewAlert) btnPreviewAlert.addEventListener('click', async()=>{
-  previewAlertPos();
-  // déclenche une alerte test pour voir en direct
-  const data={type:'sub', user:'KEVIN', viewer:'TEST'};
-  await fetch(API+'/api/alert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).catch(()=>{});
-  toast('Aperçu alerte envoyé – regarde OBS');
-});
-const btnResetAlertPos=$('btnResetAlertPos');
-if(btnResetAlertPos) btnResetAlertPos.addEventListener('click', async()=>{
-  setAlertForm(alertDef);
-  previewAlertPos();
-  toast('Position alertes réinitialisée – aperçu envoyé');
-});
-
-/* ═══ ALERTES AVANCÉES V35 – Streamlabs parity ═══ */
-const alertAdvDef = {
-  alertDuration: 6500,
-  alertDurations: { follow:5200, sub:6500, resub:6500, gift:6500, anon:6500, community:6500, prime:6500, raid:6500 },
-  alertDelay: 0,
-  alertTextDelay: 0,
-  alertImageSize: 100,
-  alertLayout: 'textOver',
-  alertAnimationIn: 'slideTop',
-  alertAnimationOut: 'slideTop',
-  alertAnimationDuration: 550,
-  alertFontLabel: 'Bebas Neue',
-  alertFontUser: 'Bebas Neue',
-  alertFontSub: 'Inter',
-  alertFontSizeLabel: 26,
-  alertFontSizeUser: 72,
-  alertFontSizeSub: 16,
-  alertColorLabel: '#B06CFF',
-  alertColorUser: '#7CC7FF',
-  alertColorSub: '#B9BEC9',
-  alertStroke: 2.5,
-  alertEnabled: { follow:true, sub:true, resub:true, gift:true, anon:true, community:true, prime:true, raid:true },
-  alertMessageTemplates: { follow:'{name} vient de follow', sub:'{name} – {months}', resub:'{name} – {streak} mois, {total} total', gift:'{name} a offert un sub à {viewer}', anon:'Anonyme a offert à {viewer}', community:'{name} a offert {total} subs', prime:'{name} – Prime', raid:'{name} raid {viewers} viewers' },
-  alertSoundsVolume: { follow:75, sub:75, gift:75, raid:75, default:75 },
-  alertImages: {}
+/* ═══ ALERTES V37 — une seule page pour tout, auto-sauvegarde ═══════════
+   • Partie haute : ce qui est COMMUN aux 5 types (position, taille, polices, fond photo).
+   • Onglets : ce qui est PROPRE à chaque type (activer, durée, disposition, animations,
+     volume, son, image/GIF/vidéo, textes, couleurs).
+   • Chaque changement part sur /api/config → sauvegardé dans config-perso.json ET
+     poussé à OBS dans la foulée. D'où zéro bouton « enregistrer » / « aperçu ».
+   • alertEnabled + alertDurations (clés plates) restent synchronisées : l'overlay
+     s'en sert encore pour les types dérivés (anon / community / prime). */
+const ALERT_TYPES = ['follow', 'sub', 'resub', 'gift', 'raid'];
+const ALERT_LABEL = { follow: 'FOLLOW', sub: 'SUB', resub: 'RESUB', gift: 'GIFT', raid: 'RAID' };
+const ALERT_DESC = {
+  follow: 'Quelqu\'un vient de follow.',
+  sub: 'Nouvel abonnement.',
+  resub: 'Abonné fidèle — sans son propre, c\'est celui du SUB qui joue.',
+  gift: 'Abonnement offert à un viewer.',
+  raid: 'Une autre chaîne envoie son public.'
 };
-let alertAdvSaved = JSON.parse(JSON.stringify(alertAdvDef));
+const ALERT_TEST = {
+  follow: { type: 'follow', user: 'ViewerExemple' },
+  sub: { type: 'sub', user: 'amelie' },
+  resub: { type: 'resub', user: 'Louna', stints: 2, total: 12, message: 'Toujours la !' },
+  gift: { type: 'gift', user: 'kevin', viewer: 'maeva' },
+  raid: { type: 'raid', user: 'UNAUTRECREATOR', viewers: 1240 }
+};
+const ALERT_LAYOUTS = [['above', 'Image au-dessus du texte'], ['below', 'Image en-dessous'], ['left', 'Image à gauche'], ['right', 'Image à droite'], ['overlay', 'Texte posé sur l\'image'], ['banner', 'Bannière large']];
+const ALERT_ANIMS = [['fade', 'Fondu'], ['slide', 'Glisse (descente)'], ['bounce', 'Rebond'], ['zoom', 'Zoom'], ['flip', 'Retournement']];
+const ALERT_TEXT_ANIMS = [['none', 'Aucune'], ['pulse', 'Pulse'], ['bounce', 'Rebond']];
+const ALERT_TYPE_DEFAULTS = {
+  follow: { enabled: true, duration: 5.2, layout: 'above', animationIn: 'slide', animationOut: 'fade', textAnimation: 'none', soundVolume: 75, imageScale: 100, fontSize: 52, fontColor: '#7CC7FF', highlightColor: '#7CC7FF', labelColor: '#B06CFF', label: 'NOUVEAU FOLLOW', template: '{name}', subTemplate: 'Bienvenue dans le chat !', showMessage: true, showIcon: true, textDelay: 0, minAmount: 0, videoMuted: true },
+  sub:    { enabled: true, duration: 6.5, layout: 'above', animationIn: 'slide', animationOut: 'fade', textAnimation: 'none', soundVolume: 75, imageScale: 100, fontSize: 72, fontColor: '#7CC7FF', highlightColor: '#7CC7FF', labelColor: '#B06CFF', label: 'NOUVEAU SUB', template: '{name}', subTemplate: '1 mois', showMessage: true, showIcon: true, textDelay: 0, minAmount: 0, videoMuted: true },
+  resub:  { enabled: true, duration: 6.5, layout: 'above', animationIn: 'slide', animationOut: 'fade', textAnimation: 'none', soundVolume: 75, imageScale: 100, fontSize: 72, fontColor: '#7CC7FF', highlightColor: '#7CC7FF', labelColor: '#B06CFF', label: 'NOUVEAU SUB', template: '{name}', subTemplate: '{streak} mois consécutif — {total} mois total', showMessage: true, showIcon: true, textDelay: 0, minAmount: 0, videoMuted: true },
+  gift:   { enabled: true, duration: 6.5, layout: 'above', animationIn: 'slide', animationOut: 'fade', textAnimation: 'none', soundVolume: 75, imageScale: 100, fontSize: 72, fontColor: '#7CC7FF', highlightColor: '#7CC7FF', labelColor: '#B06CFF', label: 'NOUVEAU SUB', template: '{name}', subTemplate: 'a offert un abonnement à {viewer}', showMessage: true, showIcon: true, textDelay: 0, minAmount: 0, videoMuted: true },
+  raid:   { enabled: true, duration: 6.5, layout: 'above', animationIn: 'slide', animationOut: 'fade', textAnimation: 'none', soundVolume: 75, imageScale: 100, fontSize: 62, fontColor: '#7CC7FF', highlightColor: '#7CC7FF', labelColor: '#E7E9EE', label: 'RAID', template: '{name}', subTemplate: 'arrive avec {amount} spectateurs', showMessage: true, showIcon: true, textDelay: 0, minAmount: 0, videoMuted: true }
+};
+const ALERT_GLOBAL_DEFAULTS = {
+  alertPosX: 58, alertPosY: 140, alertPosYLive: 360, alertWidth: 380, alertPhotoWidth: 340, alertScale: 100, alertGapMs: 400,
+  alertFontLabel: 'Bebas Neue', alertFontUser: 'Bebas Neue', alertFontSub: 'Inter',
+  alertFontSizeLabel: 26, alertFontSizeSub: 16, alertColorSub: '#B9BEC9', alertStroke: 2.5
+};
+const ALERT_KEYS = Object.keys(ALERT_GLOBAL_DEFAULTS);
+let alertGlobal = Object.assign({}, ALERT_GLOBAL_DEFAULTS);
+let alertTypes = {};
+ALERT_TYPES.forEach(t => { alertTypes[t] = Object.assign({}, ALERT_TYPE_DEFAULTS[t]); });
+let alertCurType = 'follow';
+let _alertSaveT = null, _soundsMap = null, _mediaMap = null, _bgMap = null;
+const alertTabEl = $('tab-alertes');
 
-function setAlertAdvancedForm(c){
-  const s = c||{};
-  const dur = s.alertDuration!=null?s.alertDuration:alertAdvDef.alertDuration;
-  const durs = s.alertDurations||alertAdvDef.alertDurations;
-  const delay = s.alertDelay!=null?s.alertDelay:alertAdvDef.alertDelay;
-  const textDelay = s.alertTextDelay!=null?s.alertTextDelay:alertAdvDef.alertTextDelay;
-  const imgSize = s.alertImageSize!=null?s.alertImageSize:alertAdvDef.alertImageSize;
-  const layout = s.alertLayout||alertAdvDef.alertLayout;
-  const animIn = s.alertAnimationIn||alertAdvDef.alertAnimationIn;
-  const animOut = s.alertAnimationOut||alertAdvDef.alertAnimationOut;
-  const animDur = s.alertAnimationDuration!=null?s.alertAnimationDuration:alertAdvDef.alertAnimationDuration;
-  const fLabel = s.alertFontLabel||alertAdvDef.alertFontLabel;
-  const fUser = s.alertFontUser||alertAdvDef.alertFontUser;
-  const fSub = s.alertFontSub||alertAdvDef.alertFontSub;
-  const fsLabel = s.alertFontSizeLabel!=null?s.alertFontSizeLabel:alertAdvDef.alertFontSizeLabel;
-  const fsUser = s.alertFontSizeUser!=null?s.alertFontSizeUser:alertAdvDef.alertFontSizeUser;
-  const fsSub = s.alertFontSizeSub!=null?s.alertFontSizeSub:alertAdvDef.alertFontSizeSub;
-  const cLabel = s.alertColorLabel||alertAdvDef.alertColorLabel;
-  const cUser = s.alertColorUser||alertAdvDef.alertColorUser;
-  const cSub = s.alertColorSub||alertAdvDef.alertColorSub;
-  const stroke = s.alertStroke!=null?s.alertStroke:alertAdvDef.alertStroke;
-  const en = s.alertEnabled||alertAdvDef.alertEnabled;
-  const tpl = s.alertMessageTemplates||alertAdvDef.alertMessageTemplates;
-  const vol = s.alertSoundsVolume||alertAdvDef.alertSoundsVolume;
-  const imgs = s.alertImages||{};
-
-  if($('alertDuration')) $('alertDuration').value=dur;
-  if($('alertDelay')) $('alertDelay').value=delay;
-  if($('alertTextDelay')) $('alertTextDelay').value=textDelay;
-  if($('alertImgSize')) $('alertImgSize').value=imgSize;
-  if($('alertImgSizeVal')) $('alertImgSizeVal').textContent=imgSize+'%';
-  if($('alertLayout')) $('alertLayout').value=layout;
-  if($('alertAnimIn')) $('alertAnimIn').value=animIn;
-  if($('alertAnimOut')) $('alertAnimOut').value=animOut;
-  if($('alertAnimDur')) $('alertAnimDur').value=animDur;
-  if($('alertFontLabel')) $('alertFontLabel').value=fLabel;
-  if($('alertFontUser')) $('alertFontUser').value=fUser;
-  if($('alertFontSub')) $('alertFontSub').value=fSub;
-  if($('alertFontSizeLabel')) $('alertFontSizeLabel').value=fsLabel;
-  if($('alertFontSizeUser')) $('alertFontSizeUser').value=fsUser;
-  if($('alertFontSizeSub')) $('alertFontSizeSub').value=fsSub;
-  if($('alertColorLabel')) $('alertColorLabel').value=cLabel;
-  if($('alertColorUser')) $('alertColorUser').value=cUser;
-  if($('alertColorSub')) $('alertColorSub').value=cSub;
-  if($('alertStroke')) $('alertStroke').value=stroke;
-  if($('alertEn_follow')) $('alertEn_follow').checked = en.follow!==false;
-  if($('alertEn_sub')) $('alertEn_sub').checked = en.sub!==false;
-  if($('alertEn_resub')) $('alertEn_resub').checked = en.resub!==false;
-  if($('alertEn_gift')) $('alertEn_gift').checked = en.gift!==false;
-  if($('alertEn_raid')) $('alertEn_raid').checked = en.raid!==false;
-  if($('alertEn_community')) $('alertEn_community').checked = en.community!==false;
-  if($('alertDur_follow')) $('alertDur_follow').value = durs.follow!=null?durs.follow:alertAdvDef.alertDurations.follow;
-  if($('alertDur_sub')) $('alertDur_sub').value = durs.sub!=null?durs.sub:alertAdvDef.alertDurations.sub;
-  if($('alertDur_gift')) $('alertDur_gift').value = durs.gift!=null?durs.gift:alertAdvDef.alertDurations.gift;
-  if($('alertDur_raid')) $('alertDur_raid').value = durs.raid!=null?durs.raid:alertAdvDef.alertDurations.raid;
-  if($('alertTpl_follow')) $('alertTpl_follow').value = tpl.follow||'';
-  if($('alertTpl_sub')) $('alertTpl_sub').value = tpl.sub||'';
-  if($('alertTpl_resub')) $('alertTpl_resub').value = tpl.resub||'';
-  if($('alertTpl_gift')) $('alertTpl_gift').value = tpl.gift||'';
-  if($('alertTpl_community')) $('alertTpl_community').value = tpl.community||'';
-  if($('alertTpl_raid')) $('alertTpl_raid').value = tpl.raid||'';
-  if($('alertVol_follow')) { $('alertVol_follow').value = vol.follow!=null?vol.follow:75; if($('alertVol_followVal')) $('alertVol_followVal').textContent=(vol.follow!=null?vol.follow:75)+'%'; }
-  if($('alertVol_sub')) { $('alertVol_sub').value = vol.sub!=null?vol.sub:75; if($('alertVol_subVal')) $('alertVol_subVal').textContent=(vol.sub!=null?vol.sub:75)+'%'; }
-  if($('alertVol_gift')) { $('alertVol_gift').value = vol.gift!=null?vol.gift:75; if($('alertVol_giftVal')) $('alertVol_giftVal').textContent=(vol.gift!=null?vol.gift:75)+'%'; }
-  if($('alertVol_raid')) { $('alertVol_raid').value = vol.raid!=null?vol.raid:75; if($('alertVol_raidVal')) $('alertVol_raidVal').textContent=(vol.raid!=null?vol.raid:75)+'%'; }
-  // images status
-  ['follow','sub','gift','raid'].forEach(tp=>{
-    const st = $('alertImgStatus_'+tp);
-    if(st) st.textContent = imgs[tp] ? 'Custom: '+imgs[tp] : 'Défaut';
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => { try { res(String(r.result).split(',')[1]); } catch (e) { rej(e); } };
+    r.onerror = () => rej(r.error);
+    r.readAsDataURL(file);
   });
-  alertAdvSaved = { alertDuration:dur, alertDurations:{...durs}, alertDelay:delay, alertTextDelay:textDelay, alertImageSize:imgSize, alertLayout:layout, alertAnimationIn:animIn, alertAnimationOut:animOut, alertAnimationDuration:animDur, alertFontLabel:fLabel, alertFontUser:fUser, alertFontSub:fSub, alertFontSizeLabel:fsLabel, alertFontSizeUser:fsUser, alertFontSizeSub:fsSub, alertColorLabel:cLabel, alertColorUser:cUser, alertColorSub:cSub, alertStroke:stroke, alertEnabled:{...en}, alertMessageTemplates:{...tpl}, alertSoundsVolume:{...vol}, alertImages:{...imgs} };
 }
-
-function getAlertAdvancedForm(){
-  const durs = {};
-  if($('alertDur_follow')) durs.follow = Math.max(1000, Math.min(15000, Math.round(+$('alertDur_follow').value||5200)));
-  if($('alertDur_sub')) durs.sub = Math.max(1000, Math.min(15000, Math.round(+$('alertDur_sub').value||6500)));
-  if($('alertDur_gift')) durs.gift = Math.max(1000, Math.min(15000, Math.round(+$('alertDur_gift').value||6500)));
-  if($('alertDur_raid')) durs.raid = Math.max(1000, Math.min(15000, Math.round(+$('alertDur_raid').value||6500)));
-  const en = {
-    follow: $('alertEn_follow') ? $('alertEn_follow').checked : true,
-    sub: $('alertEn_sub') ? $('alertEn_sub').checked : true,
-    resub: $('alertEn_resub') ? $('alertEn_resub').checked : true,
-    gift: $('alertEn_gift') ? $('alertEn_gift').checked : true,
-    raid: $('alertEn_raid') ? $('alertEn_raid').checked : true,
-    community: $('alertEn_community') ? $('alertEn_community').checked : true,
-    anon: true, prime: true
-  };
-  const tpl = {
-    follow: $('alertTpl_follow') ? $('alertTpl_follow').value.trim() : '',
-    sub: $('alertTpl_sub') ? $('alertTpl_sub').value.trim() : '',
-    resub: $('alertTpl_resub') ? $('alertTpl_resub').value.trim() : '',
-    gift: $('alertTpl_gift') ? $('alertTpl_gift').value.trim() : '',
-    community: $('alertTpl_community') ? $('alertTpl_community').value.trim() : '',
-    raid: $('alertTpl_raid') ? $('alertTpl_raid').value.trim() : '',
-    anon: '{name} a offert à {viewer}',
-    prime: '{name} – Prime'
-  };
-  const vol = {
-    follow: $('alertVol_follow') ? Math.max(0, Math.min(100, +$('alertVol_follow').value)) : 75,
-    sub: $('alertVol_sub') ? Math.max(0, Math.min(100, +$('alertVol_sub').value)) : 75,
-    gift: $('alertVol_gift') ? Math.max(0, Math.min(100, +$('alertVol_gift').value)) : 75,
-    raid: $('alertVol_raid') ? Math.max(0, Math.min(100, +$('alertVol_raid').value)) : 75,
-    default: 75
-  };
-  return {
-    alertDuration: Math.max(1000, Math.min(15000, Math.round(+($('alertDuration')?$('alertDuration').value:6500)))),
-    alertDurations: durs,
-    alertDelay: Math.max(0, Math.min(10, +($('alertDelay')?$('alertDelay').value:0))),
-    alertTextDelay: Math.max(0, Math.min(5000, Math.round(+($('alertTextDelay')?$('alertTextDelay').value:0)))),
-    alertImageSize: Math.max(20, Math.min(200, Math.round(+($('alertImgSize')?$('alertImgSize').value:100)))),
-    alertLayout: $('alertLayout')?$('alertLayout').value:'textOver',
-    alertAnimationIn: $('alertAnimIn')?$('alertAnimIn').value:'slideTop',
-    alertAnimationOut: $('alertAnimOut')?$('alertAnimOut').value:'slideTop',
-    alertAnimationDuration: Math.max(100, Math.min(2000, Math.round(+($('alertAnimDur')?$('alertAnimDur').value:550)))),
-    alertFontLabel: $('alertFontLabel')?$('alertFontLabel').value.trim()||'Bebas Neue':'Bebas Neue',
-    alertFontUser: $('alertFontUser')?$('alertFontUser').value.trim()||'Bebas Neue':'Bebas Neue',
-    alertFontSub: $('alertFontSub')?$('alertFontSub').value.trim()||'Inter':'Inter',
-    alertFontSizeLabel: Math.max(8, Math.min(80, Math.round(+($('alertFontSizeLabel')?$('alertFontSizeLabel').value:26)))),
-    alertFontSizeUser: Math.max(12, Math.min(120, Math.round(+($('alertFontSizeUser')?$('alertFontSizeUser').value:72)))),
-    alertFontSizeSub: Math.max(8, Math.min(60, Math.round(+($('alertFontSizeSub')?$('alertFontSizeSub').value:16)))),
-    alertColorLabel: $('alertColorLabel')?$('alertColorLabel').value:'#B06CFF',
-    alertColorUser: $('alertColorUser')?$('alertColorUser').value:'#7CC7FF',
-    alertColorSub: $('alertColorSub')?$('alertColorSub').value:'#B9BEC9',
-    alertStroke: Math.max(0, Math.min(10, +($('alertStroke')?$('alertStroke').value:2.5))),
-    alertEnabled: en,
-    alertMessageTemplates: tpl,
-    alertSoundsVolume: vol
-  };
+/* — petits générateurs de champs (un seul modèle pour les 5 types) — */
+function aWrap(label, inner, hint) { return '<div class="field"><label>' + label + '</label>' + inner + (hint ? '<div class="note">' + hint + '</div>' : '') + '</div>'; }
+function aNum(label, key, min, max, step, hint) { return aWrap(label, '<input type="number" min="' + min + '" max="' + max + '" step="' + step + '" data-k="' + key + '">', hint); }
+function aText(label, key, maxlen, ph, hint) { return aWrap(label, '<input type="text" maxlength="' + maxlen + '" data-k="' + key + '" placeholder="' + ph + '">', hint); }
+function aColor(label, key) { return aWrap(label, '<input type="color" data-k="' + key + '">'); }
+function aSel(label, key, list) { return aWrap(label, '<select data-k="' + key + '">' + list.map(o => '<option value="' + o[0] + '">' + o[1] + '</option>').join('') + '</select>'); }
+function aSwitch(key, text) {
+  return '<div class="switchRow" style="margin-top:0"><label class="switch"><input type="checkbox" data-k="' + key + '">' +
+    '<span class="switch__track"><span class="switch__thumb"></span></span></label><span class="switch__label">' + text + '</span></div>';
 }
-
-function previewAlertAdvanced(){
-  const f = getAlertAdvancedForm();
-  if($('alertImgSizeVal')) $('alertImgSizeVal').textContent=f.alertImageSize+'%';
-  ['follow','sub','gift','raid'].forEach(tp=>{
-    const el=$('alertVol_'+tp);
-    const val=$('alertVol_'+tp+'Val');
-    if(el && val) val.textContent=el.value+'%';
-  });
-  post(API+'/api/config',{...f, preview:true}).catch(()=>{});
+/* — onglets FOLLOW / SUB / RESUB / GIFT / RAID — */
+function renderAlertTabs() {
+  const tabs = $('alertTypeTabs');
+  if (!tabs) return;
+  tabs.innerHTML = ALERT_TYPES.map(t => {
+    const off = alertTypes[t].enabled === false;
+    return '<button type="button" class="aTab' + (t === alertCurType ? ' is-on' : '') + (off ? ' is-off' : '') + '" data-tabtype="' + t + '"><i></i>' + ALERT_LABEL[t] + '</button>';
+  }).join('');
 }
-
-['alertImgSize','alertVol_follow','alertVol_sub','alertVol_gift','alertVol_raid'].forEach(id=>{
-  const el=$(id);
-  if(el) el.addEventListener('input', previewAlertAdvanced);
-});
-['alertDuration','alertDelay','alertTextDelay','alertAnimDur','alertFontSizeLabel','alertFontSizeUser','alertFontSizeSub','alertStroke','alertDur_follow','alertDur_sub','alertDur_gift','alertDur_raid'].forEach(id=>{
-  const el=$(id);
-  if(el) el.addEventListener('input', ()=>{ clearTimeout(window._advPrevT); window._advPrevT=setTimeout(previewAlertAdvanced, 250); });
-});
-['alertLayout','alertAnimIn','alertAnimOut','alertFontLabel','alertFontUser','alertFontSub','alertColorLabel','alertColorUser','alertColorSub','alertTpl_follow','alertTpl_sub','alertTpl_resub','alertTpl_gift','alertTpl_community','alertTpl_raid'].forEach(id=>{
-  const el=$(id);
-  if(el) el.addEventListener('input', ()=>{ clearTimeout(window._advPrevT); window._advPrevT=setTimeout(previewAlertAdvanced, 300); });
-  if(el && el.tagName==='SELECT') el.addEventListener('change', previewAlertAdvanced);
-});
-['alertEn_follow','alertEn_sub','alertEn_resub','alertEn_gift','alertEn_raid','alertEn_community'].forEach(id=>{
-  const el=$(id);
-  if(el) el.addEventListener('change', previewAlertAdvanced);
-});
-
-const btnSaveAlertAdvanced=$('btnSaveAlertAdvanced');
-if(btnSaveAlertAdvanced) btnSaveAlertAdvanced.addEventListener('click', async()=>{
-  const f=getAlertAdvancedForm();
-  const r=await post(API+'/api/config', f);
-  if(r.ok){ alertAdvSaved={...f, alertDurations:{...f.alertDurations}, alertEnabled:{...f.alertEnabled}, alertMessageTemplates:{...f.alertMessageTemplates}, alertSoundsVolume:{...f.alertSoundsVolume}}; toast('Personnalisation avancée enregistrée ✔'); }
-});
-const btnPreviewAlertAdvanced=$('btnPreviewAlertAdvanced');
-if(btnPreviewAlertAdvanced) btnPreviewAlertAdvanced.addEventListener('click', async()=>{
-  previewAlertAdvanced();
-  const data={type:'sub', user:'KEVIN', viewer:'TEST', total:12, stints:2};
-  await fetch(API+'/api/alert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).catch(()=>{});
-  toast('Aperçu avancé envoyé – regarde OBS');
-});
-const btnResetAlertAdvanced=$('btnResetAlertAdvanced');
-if(btnResetAlertAdvanced) btnResetAlertAdvanced.addEventListener('click', async()=>{
-  setAlertAdvancedForm(alertAdvDef);
-  previewAlertAdvanced();
-  toast('Personnalisation avancée réinitialisée – aperçu envoyé');
-});
-
-// upload images per type
-['follow','sub','gift','raid'].forEach(tp=>{
-  const input=$('alertImg_'+tp);
-  if(input) input.addEventListener('change', async(e)=>{
-    const file=e.target.files[0];
-    if(!file) return;
-    if(file.size>12*1024*1024){ toast('Fichier trop gros >12 Mo'); return; }
-    const reader=new FileReader();
-    reader.onload=async()=>{
-      try{
-        const base64=reader.result.split(',')[1];
-        const ext=file.name.split('.').pop().toLowerCase();
-        const r=await fetch(API+'/api/alert-image?type='+tp,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:base64, ext})});
-        const j=await r.json();
-        if(j.ok){ toast('Image '+tp+' uploadée ✔'); const st=$('alertImgStatus_'+tp); if(st) st.textContent='Custom: '+j.file; }
-        else toast('Erreur upload '+tp);
-      }catch(err){ toast('Erreur upload '+tp); }
-    };
-    reader.readAsDataURL(file);
+function renderAlertTypeBody() {
+  const body = $('alertTypeBody');
+  if (!body) return;
+  const t = alertCurType;
+  const seuil = t === 'raid'
+    ? aNum('Ne rien afficher en dessous de (vues du raid)', 'minAmount', 0, 100000, 1)
+    : (t === 'gift')
+      ? aNum('Ne rien afficher en dessous de (subs offerts)', 'minAmount', 0, 100000, 1)
+      : '';
+  body.innerHTML =
+    '<div class="note" style="margin-top:12px">' + ALERT_DESC[t] + '</div>' +
+    '<div class="row" style="gap:12px;align-items:center;margin-top:8px">' +
+      '<label class="switch"><input type="checkbox" data-k="enabled"><span class="switch__track"><span class="switch__thumb"></span></span></label>' +
+      '<span class="switch__label">Alerte ' + ALERT_LABEL[t] + ' activée</span>' +
+      '<span style="flex:1"></span>' +
+      '<button class="btn small" type="button" data-alert-test="' + t + '">▶ TESTER L\'ALERTE</button>' +
+      '<button class="btn small ghost" type="button" data-sound-test="' + t + '">▶ ÉCOUTER LE SON</button>' +
+    '</div>' +
+    '<div class="aGrid">' +
+      aNum('Durée affichée (secondes)', 'duration', 1, 30, 0.1) +
+      aWrap('Volume du son', '<input type="range" min="0" max="100" step="1" data-k="soundVolume"><div class="note" data-vol>75%</div>') +
+      aSel('Disposition image / texte', 'layout', ALERT_LAYOUTS) +
+      aSel('Animation d\'entrée', 'animationIn', ALERT_ANIMS) +
+      aSel('Animation de sortie', 'animationOut', ALERT_ANIMS) +
+      aSel('Effet sur le pseudo', 'textAnimation', ALERT_TEXT_ANIMS) +
+      aText('Petit titre au-dessus', 'label', 48, 'NOUVEAU SUB') +
+      aText('Ligne du pseudo', 'template', 80, '{name}') +
+      aText('Ligne de détail', 'subTemplate', 140, '{streak} mois, {total} au total', 'Variables : {name} {viewer} {viewers} {amount} {streak} {total} {message}') +
+      aNum('Taille du pseudo (px)', 'fontSize', 18, 140, 1) +
+      aNum('Taille de l\'image (%)', 'imageScale', 0, 200, 5) +
+      aColor('Couleur du pseudo', 'fontColor') +
+      aColor('Couleur du titre', 'labelColor') +
+      aColor('Couleur surlignée', 'highlightColor') +
+      aNum('Texte visible après (secondes)', 'textDelay', 0, 10, 0.1) +
+      seuil +
+    '</div>' +
+    '<div class="row" style="gap:18px;margin-top:14px">' +
+      aSwitch('showMessage', 'Afficher le message du viewer') +
+      aSwitch('showIcon', 'Afficher l\'image ou la vidéo') +
+      aSwitch('videoMuted', 'Couper le son de la vidéo (sinon doublon avec le son d\'alerte)') +
+    '</div>' +
+    '<div class="aH"><h3>Image / GIF / vidéo de ce type</h3></div>' +
+    '<div class="row" style="gap:12px;align-items:flex-start;margin-top:6px">' +
+      '<div class="aPrev" data-prev></div>' +
+      '<div style="flex:1;min-width:230px"><input type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.webm,.mp4" class="aFile mediaInput" data-type="' + t + '"><div class="note" data-mstatus></div></div>' +
+      '<button class="btn small ghost mediaDel" type="button" style="display:none">SUPPRIMER LE MÉDIA</button>' +
+    '</div>' +
+    '<div class="aH"><h3>Son de ce type</h3></div>' +
+    '<div class="row" style="gap:12px;align-items:center;margin-top:6px">' +
+      '<div style="flex:1;min-width:230px"><input type="file" accept=".mp3,.wav,.ogg,.m4a" class="aFile soundInput" data-type="' + t + '"><div class="note" data-sstatus></div></div>' +
+      '<button class="btn small ghost soundDel" type="button" style="display:none">SUPPRIMER LE SON</button>' +
+    '</div>' +
+    '<div class="row" style="gap:10px;align-items:center;margin-top:14px">' +
+      '<button class="btn small ghost" type="button" data-reset-type="' + t + '">REPARTIR DE ZÉRO POUR ' + ALERT_LABEL[t] + '</button>' +
+      '<span class="note" data-legacybg style="display:none"></span>' +
+    '</div>';
+  fillAlertTypeBody();
+  paintAlertAssetStatus();
+}
+function fillAlertTypeBody() {
+  const body = $('alertTypeBody');
+  if (!body) return;
+  const c = alertTypes[alertCurType];
+  body.querySelectorAll('[data-k]').forEach(el => {
+    const k = el.dataset.k, v = c[k];
+    if (el.type === 'checkbox') el.checked = v !== false;
+    else if (el.type === 'color') el.value = /^#[0-9a-fA-F]{6}$/.test(String(v || '')) ? v : '#7cc7ff';
+    else el.value = v != null ? v : '';
   });
-  const delBtn=$('btnDelImg_'+tp);
-  if(delBtn) delBtn.addEventListener('click', async()=>{
-    const r=await fetch(API+'/api/alert-image?type='+tp,{method:'DELETE'});
-    const j=await r.json();
-    if(j.ok){ toast('Image '+tp+' supprimée'); const st=$('alertImgStatus_'+tp); if(st) st.textContent='Défaut'; }
+  const vol = body.querySelector('[data-vol]');
+  if (vol) vol.textContent = Math.round(c.soundVolume != null ? +c.soundVolume : 75) + '%';
+}
+function fillAlertGlobal() {
+  document.querySelectorAll('#tab-alertes [data-f]').forEach(el => {
+    const v = alertGlobal[el.dataset.f];
+    if (el.type === 'color') el.value = /^#[0-9a-fA-F]{6}$/.test(String(v || '')) ? v : '#b9bec9';
+    else el.value = v != null ? v : '';
   });
-});
+  const x = $('alertPosXVal'); if (x) x.textContent = Math.round(+alertGlobal.alertPosX) + '%';
+  const s = $('alertScaleVal'); if (s) s.textContent = Math.round(+alertGlobal.alertScale) + '%';
+}
+/* — ce qui part dans la config (global + types + miroir legacy) — */
+function alertMirrorLegacy() {
+  const enabled = {}, durations = {};
+  ALERT_TYPES.forEach(t => {
+    const c = alertTypes[t];
+    const on = c.enabled !== false;
+    const dur = Math.round(Math.max(1, Math.min(30, +c.duration || 6.5)) * 1000);
+    enabled[t] = on; durations[t] = dur;
+  });
+  enabled.community = enabled.gift; enabled.anon = enabled.gift; enabled.prime = enabled.sub;
+  durations.community = durations.gift; durations.anon = durations.gift; durations.prime = durations.sub;
+  let max = 5200;
+  Object.keys(durations).forEach(k => { if (durations[k] > max) max = durations[k]; });
+  return { alertEnabled: enabled, alertDurations: durations, alertDuration: max };
+}
+function alertPayload() {
+  const p = {};
+  ALERT_KEYS.forEach(k => { p[k] = alertGlobal[k]; });
+  p.alertTypes = alertTypes;
+  return Object.assign(p, alertMirrorLegacy());
+}
+async function saveAlerts() {
+  let r = null;
+  try { r = await post(API + '/api/config', alertPayload()); } catch (e) {}
+  if (r && r.ok) toast('Alertes enregistrées ✔ — regarde OBS');
+  else toast('Enregistrement impossible — le pont (node server.js) tourne ?');
+  return r;
+}
+function scheduleAlertSave() { clearTimeout(_alertSaveT); _alertSaveT = setTimeout(saveAlerts, 320); }
+function applyAlertConfig(cfg) {
+  if (!cfg) return;
+  ALERT_KEYS.forEach(k => {
+    if (cfg[k] == null || cfg[k] === '') return;
+    alertGlobal[k] = typeof ALERT_GLOBAL_DEFAULTS[k] === 'number' ? +cfg[k] : String(cfg[k]);
+  });
+  if (cfg.alertTypes) ALERT_TYPES.forEach(t => { alertTypes[t] = Object.assign({}, ALERT_TYPE_DEFAULTS[t], cfg.alertTypes[t] || {}); });
+  renderAlertTabs();
+  fillAlertGlobal();
+  renderAlertTypeBody();
+}
+/* — sons + médias (statuts, upload, suppression) — */
+async function loadAlertAssets() {
+  try { const j = await (await fetch(API + '/api/sounds', { cache: 'no-store' })).json(); _soundsMap = {}; (j.files || []).forEach(f => { _soundsMap[f.type] = f; }); } catch (e) {}
+  try { const j = await (await fetch(API + '/api/alert-media', { cache: 'no-store' })).json(); _mediaMap = {}; (j.files || []).forEach(f => { _mediaMap[f.type] = f; }); } catch (e) {}
+  try { const j = await (await fetch(API + '/api/alert-images', { cache: 'no-store' })).json(); _bgMap = {}; (j.files || []).forEach(f => { _bgMap[f.type] = f; }); } catch (e) {}
+  paintAlertAssetStatus();
+}
+function paintAlertAssetStatus() {
+  const body = $('alertTypeBody');
+  if (!body || !_soundsMap) return;
+  const t = alertCurType;
+  const s = _soundsMap[t];
+  const st = body.querySelector('[data-sstatus]');
+  if (st) {
+    if (s) st.innerHTML = '<span class="ok">Son custom : ' + esc(s.file) + ' ✔</span>';
+    else st.textContent = (t === 'resub' || t === 'gift') ? 'Aucun son propre ici → celui du SUB est joué' : 'Aucun son propre → bruitage par défaut de l\'overlay';
+  }
+  const sd = body.querySelector('.soundDel'); if (sd) sd.style.display = s ? 'inline-flex' : 'none';
+  const m = _mediaMap && _mediaMap[t];
+  const ms = body.querySelector('[data-mstatus]'), mp = body.querySelector('[data-prev]'), md = body.querySelector('.mediaDel');
+  if (ms) {
+    if (m) ms.innerHTML = '<span class="ok">' + (m.kind === 'video' ? 'Vidéo' : m.kind === 'gif' ? 'GIF' : 'Image') + ' custom : ' + esc(m.file) + ' ✔</span>';
+    else ms.textContent = 'Aucun média → icône par défaut du type ' + ALERT_LABEL[t];
+  }
+  if (md) md.style.display = m ? 'inline-flex' : 'none';
+  if (mp) {
+    if (m) {
+      mp.style.display = 'block';
+      const url = API + '/assets/' + encodeURIComponent(m.file) + '?v=' + Date.now();
+      mp.innerHTML = m.kind === 'video' ? '<video src="' + url + '" muted autoplay loop playsinline></video>' : '<img src="' + url + '" alt="">';
+    } else { mp.style.display = 'none'; mp.innerHTML = ''; }
+  }
+  const lb = body.querySelector('[data-legacybg]');
+  const bg = _bgMap && _bgMap[t];
+  if (lb) {
+    if (bg) { lb.style.display = 'inline'; lb.innerHTML = 'Fond photo rien que pour ce type : ' + esc(bg.file) + ' <button class="btn small ghost" type="button" data-bgdel="' + t + '">SUPPRIMER LE FOND</button>'; }
+    else { lb.style.display = 'none'; lb.innerHTML = ''; }
+  }
+}
+async function sendTestAlert(type) {
+  try {
+    const j = await post(API + '/api/alert', ALERT_TEST[type]);
+    if (j && j.ok) toast('Alerte ' + ALERT_LABEL[type] + ' envoyée ▶');
+    else toast('Envoi impossible — le pont tourne ?');
+  } catch (e) { toast('Envoi impossible — le pont tourne ?'); }
+}
+function playSoundPreview(type) {
+  const urls = [];
+  ['mp3', 'wav', 'ogg', 'm4a'].forEach(ext => urls.push(API + '/sounds/alert-' + type + '.' + ext + '?v=' + Date.now()));
+  if (type === 'resub' || type === 'gift' || type === 'raid') urls.push(API + '/sounds/alert-sub.mp3?v=' + Date.now());
+  urls.push(API + '/sounds/alert-follow.mp3?v=' + Date.now());
+  let i = 0;
+  const next = () => {
+    if (i >= urls.length) { toast('Aucun son ' + type + ' — uploade-le d\'abord'); return; }
+    const a = new Audio(urls[i++]);
+    a.volume = ((alertTypes[type].soundVolume != null ? +alertTypes[type].soundVolume : 75) / 100);
+    a.play().then(() => toast('Lecture ▶ ' + urls[i - 1].split('/').pop().split('?')[0])).catch(() => next());
+    a.onerror = () => next();
+  };
+  next();
+}
+async function uploadFileTo(url, type, file, maxMo, okMsg) {
+  if (file.size > maxMo * 1024 * 1024) { toast('Fichier trop gros (max ' + maxMo + ' Mo)'); return false; }
+  const ext = String(file.name).split('.').pop().toLowerCase();
+  const b64 = await fileToBase64(file);
+  const body = { data: b64, ext };
+  if (type) body.type = type;
+  const j = await post(url, body);
+  if (j && j.ok) { toast(okMsg); return true; }
+  toast('Échec : ' + ((j && j.err) || 'format non reconnu'));
+  return false;
+}
+/* — événements (tout est délégué, le panneau par type est généré) — */
+if (alertTabEl) {
+  alertTabEl.addEventListener('input', onAlertEdit);
+  alertTabEl.addEventListener('change', onAlertEdit);
+  alertTabEl.addEventListener('click', onAlertClick);
+  alertTabEl.addEventListener('change', async e => {
+    const el = e.target;
+    if (!el || !el.classList) return;
+    if (el.classList.contains('soundInput')) {
+      const type = el.dataset.type, file = el.files && el.files[0];
+      el.value = '';
+      if (!file) return;
+      if (await uploadFileTo(API + '/api/sounds', type, file, 6, 'Son ' + ALERT_LABEL[type] + ' enregistré ✔')) loadAlertAssets();
+      return;
+    }
+    if (el.classList.contains('mediaInput')) {
+      const type = el.dataset.type, file = el.files && el.files[0];
+      el.value = '';
+      if (!file) return;
+      if (await uploadFileTo(API + '/api/alert-media', type, file, 14, 'Média ' + ALERT_LABEL[type] + ' enregistré ✔')) loadAlertAssets();
+    }
+  });
+}
+function onAlertEdit(e) {
+  const el = e.target;
+  if (!el || !el.dataset) return;
+  if (el.dataset.f) {
+    const k = el.dataset.f;
+    if (el.type === 'number' && el.value === '') return;
+    alertGlobal[k] = (el.type === 'number' || el.type === 'range') ? (+el.value || 0) : el.value;
+    if (k === 'alertPosX') { const n = $('alertPosXVal'); if (n) n.textContent = Math.round(+el.value) + '%'; }
+    if (k === 'alertScale') { const n = $('alertScaleVal'); if (n) n.textContent = Math.round(+el.value) + '%'; }
+    scheduleAlertSave();
+    return;
+  }
+  if (el.dataset.k) {
+    const k = el.dataset.k;
+    if (el.type === 'number' && el.value === '') return;
+    let v;
+    if (el.type === 'checkbox') v = el.checked;
+    else if (el.type === 'number' || el.type === 'range') v = +el.value;
+    else v = el.value;
+    alertTypes[alertCurType][k] = v;
+    if (k === 'soundVolume') { const n = $('alertTypeBody') && $('alertTypeBody').querySelector('[data-vol]'); if (n) n.textContent = Math.round(v) + '%'; }
+    if (k === 'enabled') renderAlertTabs();
+    scheduleAlertSave();
+  }
+}
+async function onAlertClick(e) {
+  const tab = e.target.closest && e.target.closest('[data-tabtype]');
+  if (tab) { alertCurType = tab.dataset.tabtype; renderAlertTabs(); renderAlertTypeBody(); return; }
+  const test = e.target.closest && e.target.closest('[data-alert-test]');
+  if (test) { sendTestAlert(test.dataset.alertTest); return; }
+  const st = e.target.closest && e.target.closest('[data-sound-test]');
+  if (st) { playSoundPreview(st.dataset.soundTest); return; }
+  const bgdel = e.target.closest && e.target.closest('[data-bgdel]');
+  if (bgdel) {
+    if (confirm('Supprimer le fond photo de ce type ? Retour au fond d\'alerte normal.')) {
+      await fetch(API + '/api/alert-image?type=' + encodeURIComponent(bgdel.dataset.bgdel), { method: 'DELETE' }).catch(() => {});
+      toast('Fond supprimé'); loadAlertAssets();
+    }
+    return;
+  }
+  const md = e.target.closest && e.target.closest('.mediaDel');
+  if (md) {
+    if (confirm('Supprimer le média custom ' + ALERT_LABEL[alertCurType] + ' ?')) {
+      await fetch(API + '/api/alert-media?type=' + encodeURIComponent(alertCurType), { method: 'DELETE' }).catch(() => {});
+      toast('Média supprimé'); loadAlertAssets();
+    }
+    return;
+  }
+  const sd = e.target.closest && e.target.closest('.soundDel');
+  if (sd) {
+    if (confirm('Supprimer le son custom ' + ALERT_LABEL[alertCurType] + ' ?')) {
+      await fetch(API + '/api/sounds?type=' + encodeURIComponent(alertCurType), { method: 'DELETE' }).catch(() => {});
+      toast('Son supprimé'); loadAlertAssets();
+    }
+    return;
+  }
+  const rt = e.target.closest && e.target.closest('[data-reset-type]');
+  if (rt) {
+    const t = rt.dataset.resetType;
+    if (confirm('Repartir des réglages d\'origine pour ' + ALERT_LABEL[t] + ' ?')) {
+      alertTypes[t] = Object.assign({}, ALERT_TYPE_DEFAULTS[t]);
+      if (t === alertCurType) renderAlertTypeBody();
+      renderAlertTabs();
+      await saveAlerts();
+    }
+    return;
+  }
+  if (e.target && e.target.id === 'btnAlertResetAll') {
+    if (confirm('Tout ramener aux réglages d\'origine ? Position, tailles, polices, couleurs, durées et médias réglés ici sont remis à zéro. (tes sons et images uploadés sont gardés)')) {
+      alertGlobal = Object.assign({}, ALERT_GLOBAL_DEFAULTS);
+      ALERT_TYPES.forEach(t => { alertTypes[t] = Object.assign({}, ALERT_TYPE_DEFAULTS[t]); });
+      fillAlertGlobal();
+      renderAlertTabs();
+      renderAlertTypeBody();
+      await saveAlerts();
+      sendTestAlert('sub');
+    }
+  }
+}
+renderAlertTabs();
+renderAlertTypeBody();
+loadAlertAssets();
+setInterval(loadAlertAssets, 15000);
 
 
 
@@ -1985,355 +1861,6 @@ if(btnDebat)btnDebat.addEventListener('click',async()=>{
 });
 const btnFinDebat=$('btnFinDebat');
 if(btnFinDebat)btnFinDebat.addEventListener('click',async()=>{await post(API+'/api/end',{});toast('Debat termine');});
-document.querySelectorAll('[data-alert]').forEach(el=>{
-  el.addEventListener('click',async(e)=>{
-    e.preventDefault(); e.stopPropagation();
-    try{
-      const data=JSON.parse(el.dataset.alert);
-      const r=await fetch(API+'/api/alert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-      const j=await r.json();
-      if(j.ok){ toast('Alerte '+data.type+' envoyee ▶'); }
-      else toast('Erreur alerte');
-    }catch(err){ toast('Erreur alerte: '+(err.message||'')); }
-  });
-});
-
-/* — SONS CUSTOM INLINE (sur chaque tuile) — */
-function fileToBase64(file){
-  return new Promise((res,rej)=>{
-    const r=new FileReader();
-    r.onload=()=>{ 
-      try{
-        const result=r.result;
-        // result is data:audio/...;base64,XXXX
-        const b64=result.split(',')[1];
-        res(b64);
-      }catch(e){ rej(e); }
-    };
-    r.onerror=()=>rej(r.error);
-    r.readAsDataURL(file);
-  });
-}
-async function loadSounds(){
-  try{
-    const r=await fetch(API+'/api/sounds',{cache:'no-store'});
-    const j=await r.json();
-    const map={};
-    if(j.files){ j.files.forEach(f=>{ map[f.type]=f; }); }
-    // aussi liste brute pour debug si besoin
-    const allFiles = j.all || [];
-    document.querySelectorAll('.soundStatus').forEach(el=>{
-      const type=el.dataset.status;
-      const has=map[type];
-      if(has){
-        el.textContent='Custom: '+has.file+' ('+type+') ✔';
-        el.style.color='var(--ok)';
-        const delBtn=document.querySelector(`[data-del="${type}"]`);
-        if(delBtn) delBtn.style.display='inline-flex';
-      }else{
-        // si aucun custom pour ce type, mais au moins un fichier custom existe globalement, on le dit
-        if(allFiles.length>0){
-          // cherche fallback sub pour resub/gift
-          if((type==='resub' || type==='gift') && map['sub']){
-            el.textContent='Utilise SUB: '+map['sub'].file+' ✔ (fallback)';
-            el.style.color='var(--ok)';
-          }else{
-            el.textContent='Aucun custom '+type.toUpperCase()+' – son par defaut (fichiers custom: '+allFiles.filter(f=>f.startsWith('alert-')).length+')';
-            el.style.color='var(--muted)';
-          }
-        }else{
-          el.textContent=type==='resub'?'Aucun custom – utilise SUB':(type==='gift'?'Aucun custom – utilise SUB':'Aucun custom – son par defaut');
-          el.style.color='var(--muted)';
-        }
-        const delBtn=document.querySelector(`[data-del="${type}"]`);
-        if(delBtn) delBtn.style.display='none';
-      }
-    });
-    // debug console
-    console.log('[sons] custom detectes', j.files, 'all', allFiles);
-  }catch(e){
-    console.warn('loadSounds fail',e);
-  }
-}
-document.querySelectorAll('.soundInput').forEach(inp=>{
-  inp.addEventListener('change',async()=>{
-    const file=inp.files[0];
-    if(!file) return;
-    const type=inp.dataset.type;
-    if(file.size>6*1024*1024){ toast('Fichier trop gros (max 6 Mo)'); inp.value=''; return; }
-    const allowed=['mp3','wav','ogg','m4a','mp4','webm'];
-    const ext=file.name.split('.').pop().toLowerCase();
-    if(!allowed.includes(ext)){ toast('Format non supporte (mp3/wav/ogg)'); inp.value=''; return; }
-    inp.disabled=true;
-    try{
-      const b64=await fileToBase64(file);
-      const r=await fetch(API+'/api/sounds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,data:b64,ext})});
-      const j=await r.json();
-      if(j.ok){ toast('Son '+type+' enregistre ✔'); loadSounds(); }
-      else toast('Erreur: '+(j.err||'?'));
-    }catch(e){ toast('Erreur upload: '+(e.message||'')); }
-    inp.disabled=false;
-    inp.value='';
-  });
-});
-document.querySelectorAll('[data-playsound]').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    const type=btn.dataset.playsound;
-    const tile=btn.closest('.alertTile');
-    // remove old preview if any
-    if(tile){
-      const oldPrev=tile.querySelector('.audioPreview');
-      if(oldPrev) oldPrev.remove();
-    }
-    const tryUrls=[
-      API+'/sounds/alert-'+type+'.mp3?v='+Date.now(),
-      API+'/sounds/alert-'+type+'.wav?v='+Date.now(),
-      API+'/sounds/alert-'+type+'.ogg?v='+Date.now(),
-      API+'/sounds/alert-'+type+'.m4a?v='+Date.now(),
-      API+'/sounds/alert-sub.mp3?v='+Date.now(),
-      API+'/sounds/alert-follow.mp3?v='+Date.now()
-    ];
-    let idx=0;
-    const audio=new Audio();
-    audio.controls=true;
-    audio.style.cssText='width:100%;margin-top:8px';
-    audio.className='audioPreview';
-    if(tile) tile.appendChild(audio);
-    function tryNext(){
-      if(idx>=tryUrls.length){ toast('Aucun son '+type+' trouve – upload d\'abord'); if(tile){ const ap=tile.querySelector('.audioPreview'); if(ap) ap.remove(); } return; }
-      const url=tryUrls[idx++];
-      audio.src=url;
-      audio.volume=0.75;
-      audio.play().then(()=>{
-        toast('Lecture '+type+' ▶ ('+url.split('/').pop().split('?')[0]+')');
-      }).catch(()=>tryNext());
-      audio.onerror=()=>tryNext();
-    }
-    tryNext();
-  });
-});
-document.querySelectorAll('[data-del]').forEach(btn=>{
-  btn.addEventListener('click',async()=>{
-    const type=btn.dataset.del;
-    if(!confirm('Supprimer son custom '+type+' ?')) return;
-    try{
-      const r=await fetch(API+'/api/sounds?type='+encodeURIComponent(type),{method:'DELETE'});
-      const j=await r.json();
-      if(j.ok){ toast('Son '+type+' supprime'); loadSounds(); }
-    }catch(e){ toast('Erreur suppression'); }
-  });
-});
-loadSounds();
-
-/* ═══ STUDIO ALERTES V35 — options type Streamlabs, injectées dans chaque tuile ═══ */
-const ALERT_STUDIO_TYPES = ['follow','sub','resub','gift','raid'];
-const ALERT_TYPE_DEFAULTS = {
-  follow: { enabled:true, duration:5.2, layout:'above', animationIn:'slide', animationOut:'fade', textAnimation:'none', soundVolume:75, imageScale:100, fontSize:52, fontColor:'#7CC7FF', highlightColor:'#7CC7FF', labelColor:'#B06CFF', label:'NOUVEAU FOLLOW', template:'{name}', subTemplate:'Bienvenue dans le chat !', showMessage:true, showIcon:true, textDelay:0, minAmount:0, videoMuted:true },
-  sub:    { enabled:true, duration:6.5, layout:'above', animationIn:'slide', animationOut:'fade', textAnimation:'none', soundVolume:75, imageScale:100, fontSize:72, fontColor:'#7CC7FF', highlightColor:'#7CC7FF', labelColor:'#B06CFF', label:'NOUVEAU SUB', template:'{name}', subTemplate:'1 mois', showMessage:true, showIcon:true, textDelay:0, minAmount:0, videoMuted:true },
-  resub:  { enabled:true, duration:6.5, layout:'above', animationIn:'slide', animationOut:'fade', textAnimation:'none', soundVolume:75, imageScale:100, fontSize:72, fontColor:'#7CC7FF', highlightColor:'#7CC7FF', labelColor:'#B06CFF', label:'NOUVEAU SUB', template:'{name}', subTemplate:'{streak} mois consécutif — {total} mois total', showMessage:true, showIcon:true, textDelay:0, minAmount:0, videoMuted:true },
-  gift:   { enabled:true, duration:6.5, layout:'above', animationIn:'slide', animationOut:'fade', textAnimation:'none', soundVolume:75, imageScale:100, fontSize:72, fontColor:'#7CC7FF', highlightColor:'#7CC7FF', labelColor:'#B06CFF', label:'NOUVEAU SUB', template:'{name}', subTemplate:'a offert un abonnement à {viewer}', showMessage:true, showIcon:true, textDelay:0, minAmount:0, videoMuted:true },
-  raid:   { enabled:true, duration:6.5, layout:'above', animationIn:'slide', animationOut:'fade', textAnimation:'none', soundVolume:75, imageScale:100, fontSize:62, fontColor:'#7CC7FF', highlightColor:'#7CC7FF', labelColor:'#E7E9EE', label:'RAID', template:'{name}', subTemplate:'arrive avec {amount} spectateurs', showMessage:true, showIcon:true, textDelay:0, minAmount:0, videoMuted:true }
-};
-let alertTypesSaved = JSON.parse(JSON.stringify(ALERT_TYPE_DEFAULTS));
-let _alertTypePrevT = null;
-function selOpts(list, val){ return list.map(([v,l])=>'<option value="'+v+'"'+(v===val?' selected':'')+'>'+l+'</option>').join(''); }
-function buildAlertStudio(tile){
-  const type = tile.dataset.type;
-  if (!type || tile.querySelector('.alertAdv')) return;
-  const tog = document.createElement('button');
-  tog.className = 'btn small ghost';
-  tog.type = 'button';
-  tog.textContent = 'PERSONNALISER ▾';
-  tog.style.marginTop = '10px';
-  tog.addEventListener('click', ()=>{
-    tile.classList.toggle('is-open');
-    tog.textContent = tile.classList.contains('is-open') ? 'PERSONNALISER ▴' : 'PERSONNALISER ▾';
-  });
-  const box = document.createElement('div');
-  box.className = 'alertAdv';
-  box.innerHTML =
-    '<div class="switchRow" style="margin-top:0">'+
-      '<label class="switch"><input type="checkbox" data-k="enabled"><span class="switch__track"><span class="switch__thumb"></span></span></label>'+
-      '<span class="switch__label">Alerte '+type.toUpperCase()+' activée</span>'+
-    '</div>'+
-    '<div class="advGrid" style="margin-top:10px">'+
-      '<div class="field"><label>Durée affichage (sec)</label><input type="number" min="1" max="30" step="0.1" data-k="duration"></div>'+
-      '<div class="field"><label>Volume son (0-100)</label><input type="range" min="0" max="100" step="1" data-k="soundVolume"><div class="note" data-vol></div></div>'+
-      '<div class="field"><label>Layout</label><select data-k="layout">'+selOpts([['above','Image au-dessus'],['below','Image en-dessous'],['left','Image à gauche'],['right','Image à droite'],['overlay','Texte sur image'],['banner','Bannière']], 'above')+'</select></div>'+
-      '<div class="field"><label>Animation entrée</label><select data-k="animationIn">'+selOpts([['fade','Fade'],['slide','Slide (descente)'],['bounce','Bounce'],['zoom','Zoom'],['flip','Flip']], 'slide')+'</select></div>'+
-      '<div class="field"><label>Animation sortie</label><select data-k="animationOut">'+selOpts([['fade','Fade'],['slide','Slide'],['bounce','Bounce'],['zoom','Zoom'],['flip','Flip']], 'fade')+'</select></div>'+
-      '<div class="field"><label>Animation texte</label><select data-k="textAnimation">'+selOpts([['none','Aucune'],['pulse','Pulse'],['bounce','Bounce']], 'none')+'</select></div>'+
-      '<div class="field"><label>Label (titre)</label><input type="text" maxlength="48" data-k="label"></div>'+
-      '<div class="field"><label>Template pseudo</label><input type="text" maxlength="80" data-k="template" placeholder="{name}"></div>'+
-      '<div class="field" style="grid-column:1/-1"><label>Ligne détail</label><input type="text" maxlength="140" data-k="subTemplate"></div>'+
-      '<div class="field"><label>Taille pseudo (px)</label><input type="number" min="18" max="140" step="1" data-k="fontSize"></div>'+
-      '<div class="field"><label>Échelle image (%)</label><input type="number" min="0" max="200" step="5" data-k="imageScale"></div>'+
-      '<div class="field"><label>Couleur pseudo</label><input type="color" data-k="fontColor"></div>'+
-      '<div class="field"><label>Couleur highlight</label><input type="color" data-k="highlightColor"></div>'+
-      '<div class="field"><label>Couleur label</label><input type="color" data-k="labelColor"></div>'+
-      '<div class="field"><label>Délai texte (sec)</label><input type="number" min="0" max="10" step="0.1" data-k="textDelay"></div>'+
-      '<div class="field"><label>Seuil min (raid viewers / gifts)</label><input type="number" min="0" max="100000" step="1" data-k="minAmount"></div>'+
-    '</div>'+
-    '<div class="switchRow" style="margin-top:10px">'+
-      '<label class="switch"><input type="checkbox" data-k="showMessage"><span class="switch__track"><span class="switch__thumb"></span></span></label>'+
-      '<span class="switch__label">Afficher le message perso (sub/raid)</span>'+
-    '</div>'+
-    '<div class="switchRow">'+
-      '<label class="switch"><input type="checkbox" data-k="showIcon"><span class="switch__track"><span class="switch__thumb"></span></span></label>'+
-      '<span class="switch__label">Afficher icône / média</span>'+
-    '</div>'+
-    '<div class="switchRow">'+
-      '<label class="switch"><input type="checkbox" data-k="videoMuted"><span class="switch__track"><span class="switch__thumb"></span></span></label>'+
-      '<span class="switch__label">Couper le son de la vidéo (évite le double avec le son d\'alerte)</span>'+
-    '</div>'+
-    '<div class="field" style="margin-top:12px">'+
-      '<label>Image / GIF / Vidéo custom (remplace l\'icône)</label>'+
-      '<div class="row" style="gap:6px;margin-top:4px">'+
-        '<input type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.webm,.mp4" class="mediaInput" data-type="'+type+'" style="font-size:10px;max-width:220px">'+
-        '<button class="btn small ghost mediaDel" data-type="'+type+'" style="display:none">SUPPR MÉDIA</button>'+
-      '</div>'+
-      '<div class="mediaPrev" data-prev="'+type+'"><img alt=""></div>'+
-      '<div class="note mediaStatus" data-mstatus="'+type+'" style="margin-top:4px;font-size:9px">Aucun média custom – icône par défaut</div>'+
-    '</div>'+
-    '<div class="row" style="margin-top:12px;gap:8px">'+
-      '<button class="btn primary small btnSaveType" type="button">ENREGISTRER '+type.toUpperCase()+'</button>'+
-      '<button class="btn ghost small btnResetType" type="button">RESET TYPE</button>'+
-    '</div>';
-  tile.appendChild(tog);
-  tile.appendChild(box);
-  fillAlertStudio(type);
-  box.querySelectorAll('[data-k]').forEach(el=>{
-    const ev = (el.type === 'checkbox' || el.tagName === 'SELECT') ? 'change' : 'input';
-    el.addEventListener(ev, ()=>{
-      if (el.dataset.k === 'soundVolume') {
-        const n = box.querySelector('[data-vol]');
-        if (n) n.textContent = el.value + '%';
-      }
-      previewAlertTypes();
-    });
-  });
-  const saveBtn = box.querySelector('.btnSaveType');
-  if (saveBtn) saveBtn.addEventListener('click', async ()=>{
-    const f = collectAlertTypes();
-    const r = await post(API+'/api/config', { alertTypes: f });
-    if (r.ok) { alertTypesSaved = JSON.parse(JSON.stringify(f)); toast('Alerte '+type+' enregistrée ✔'); }
-  });
-  const rst = box.querySelector('.btnResetType');
-  if (rst) rst.addEventListener('click', async ()=>{
-    alertTypesSaved[type] = JSON.parse(JSON.stringify(ALERT_TYPE_DEFAULTS[type]));
-    fillAlertStudio(type);
-    const r = await post(API+'/api/config', { alertTypes: collectAlertTypes() });
-    if (r.ok) toast('Type '+type+' réinitialisé');
-    previewAlertTypes();
-  });
-}
-function fillAlertStudio(type, src){
-  const tile = document.querySelector('.alertTile[data-type="'+type+'"]');
-  if (!tile) return;
-  const c = Object.assign({}, ALERT_TYPE_DEFAULTS[type], (src && src[type]) || alertTypesSaved[type] || {});
-  tile.querySelectorAll('[data-k]').forEach(el=>{
-    const k = el.dataset.k;
-    if (el.type === 'checkbox') el.checked = !!c[k];
-    else if (el.type === 'color') el.value = c[k] || '#7CC7FF';
-    else el.value = c[k] != null ? c[k] : '';
-  });
-  const n = tile.querySelector('[data-vol]');
-  if (n) n.textContent = (c.soundVolume != null ? c.soundVolume : 75) + '%';
-}
-function collectAlertTypes(){
-  const out = {};
-  ALERT_STUDIO_TYPES.forEach(type=>{
-    const tile = document.querySelector('.alertTile[data-type="'+type+'"]');
-    const d = Object.assign({}, ALERT_TYPE_DEFAULTS[type], alertTypesSaved[type] || {});
-    if (!tile) { out[type] = d; return; }
-    tile.querySelectorAll('[data-k]').forEach(el=>{
-      const k = el.dataset.k;
-      if (el.type === 'checkbox') d[k] = el.checked;
-      else if (el.type === 'number' || el.type === 'range') d[k] = +el.value;
-      else d[k] = el.value;
-    });
-    out[type] = d;
-  });
-  return out;
-}
-function previewAlertTypes(){
-  clearTimeout(_alertTypePrevT);
-  _alertTypePrevT = setTimeout(()=>{
-    post(API+'/api/config', { alertTypes: collectAlertTypes(), preview:true }).catch(()=>{});
-  }, 180);
-}
-function applyAlertTypesFromConfig(cfg){
-  if (!cfg || !cfg.alertTypes) return;
-  alertTypesSaved = {};
-  ALERT_STUDIO_TYPES.forEach(t=>{
-    alertTypesSaved[t] = Object.assign({}, ALERT_TYPE_DEFAULTS[t], cfg.alertTypes[t] || {});
-    fillAlertStudio(t);
-  });
-}
-async function loadAlertMedia(){
-  try{
-    const r = await fetch(API+'/api/alert-media', { cache:'no-store' });
-    const j = await r.json();
-    const map = {};
-    (j.files||[]).forEach(f=>{ map[f.type]=f; });
-    ALERT_STUDIO_TYPES.forEach(type=>{
-      const st = document.querySelector('[data-mstatus="'+type+'"]');
-      const prev = document.querySelector('[data-prev="'+type+'"]');
-      const del = document.querySelector('.mediaDel[data-type="'+type+'"]');
-      const has = map[type];
-      if (has){
-        if (st){ st.textContent = 'Média custom : '+has.file+' ✔'; st.style.color='var(--ok)'; }
-        if (del) del.style.display='inline-flex';
-        if (prev){
-          prev.style.display='block';
-          const url = API+'/assets/'+has.file+'?v='+Date.now();
-          if (has.kind==='video'){
-            prev.innerHTML = '<video src="'+url+'" muted autoplay loop playsinline></video>';
-          } else {
-            prev.innerHTML = '<img src="'+url+'" alt="">';
-          }
-        }
-      } else {
-        if (st){ st.textContent='Aucun média custom – icône par défaut'; st.style.color='var(--muted)'; }
-        if (del) del.style.display='none';
-        if (prev) prev.style.display='none';
-      }
-    });
-  }catch(e){}
-}
-document.querySelectorAll('.alertTile[data-type]').forEach(buildAlertStudio);
-document.querySelectorAll('.mediaInput').forEach(inp=>{
-  inp.addEventListener('change', async ()=>{
-    const file = inp.files[0];
-    if (!file) return;
-    const type = inp.dataset.type;
-    if (file.size > 14*1024*1024){ toast('Fichier trop gros (max 14 Mo)'); inp.value=''; return; }
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (!['png','jpg','jpeg','gif','webp','webm','mp4'].includes(ext)){ toast('Format: png/jpg/gif/webp/webm/mp4'); inp.value=''; return; }
-    inp.disabled = true;
-    try{
-      const b64 = await fileToBase64(file);
-      const r = await fetch(API+'/api/alert-media', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type, data:b64, ext }) });
-      const j = await r.json();
-      if (j.ok){ toast('Média '+type+' enregistré ✔'); loadAlertMedia(); }
-      else toast('Erreur: '+(j.err||'?'));
-    }catch(e){ toast('Erreur upload média: '+(e.message||'')); }
-    inp.disabled = false;
-    inp.value = '';
-  });
-});
-document.querySelectorAll('.mediaDel').forEach(btn=>{
-  btn.addEventListener('click', async ()=>{
-    const type = btn.dataset.type;
-    if (!confirm('Supprimer le média custom '+type+' ?')) return;
-    try{
-      const r = await fetch(API+'/api/alert-media?type='+encodeURIComponent(type), { method:'DELETE' });
-      const j = await r.json();
-      if (j.ok){ toast('Média '+type+' supprimé'); loadAlertMedia(); }
-    }catch(e){ toast('Erreur suppression'); }
-  });
-});
-loadAlertMedia();
 
 // --- Son local sur PC (panneau) : ecoute les alertes via SSE et joue le son custom si case cochee ---
 let localPCEnabled = localStorage.getItem('alertLocalPC') === '1';
@@ -2557,9 +2084,7 @@ async function init(){
       document.querySelectorAll('.swatch').forEach(sw=>sw.classList.toggle('active',sw.dataset.color.toLowerCase()===acc.toLowerCase()));
       updateGoalAutoUI();
       setVelocityForm(s.config);
-      setAlertForm(s.config);
-      applyAlertTypesFromConfig(s.config);
-      setAlertAdvancedForm(s.config);
+      applyAlertConfig(s.config);
       const et=$('velocityEtat');
       if(et) et.innerHTML='<span class=\"note\">Config chargée – équilibre '+esc(velocitySaved.equilibriumMPM+' MPM')+'</span>';
     }

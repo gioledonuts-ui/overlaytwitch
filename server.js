@@ -240,6 +240,58 @@ function mergeAlertTypes(saved) {
 
 DEFAULT_CONFIG.alertTypes = mergeAlertTypes(null);
 
+/* ═══ MIGRATION V36 → V37 ════════════════════════════════════════
+   L'ancien panneau « Personnalisation avancée » écrivait des clés plates
+   (alertDuration, alertLayout, alertAnimationIn, alertMessageTemplates…).
+   Le panneau n'a plus qu'UN système : les réglages par type (alertTypes),
+   ceux que l'overlay applique réellement. On rapatrie donc une seule fois
+   ce qui avait été réglé à l'ancienne dans alertTypes — sinon le streamer
+   perdrait son look en changeant de version. Le studio par type garde la
+   main dès qu'il a été utilisé (on n'écrase jamais une valeur déjà posée). */
+const LEGACY_ALERT_LAYOUT = { textOver: 'above', textUnder: 'below', side: 'left', middle: 'overlay' };
+const LEGACY_ALERT_ANIM = { slideTop: 'slide', slideLeft: 'slide', slideRight: 'slide', slideBottom: 'slide', fade: 'fade', bounce: 'bounce', zoom: 'zoom', flip: 'flip' };
+function migrateLegacyAlertTypes(saved) {
+  if (!saved || typeof saved !== 'object') return 0;
+  if (saved.alertLegacyMigrated) return 0;
+  if (!saved.alertTypes || typeof saved.alertTypes !== 'object') saved.alertTypes = {};
+  const out = saved.alertTypes;
+  const num = v => (v === undefined || v === null || v === '' || !isFinite(+v)) ? null : +v;
+  const differs = (key) => {
+    const v = saved[key];
+    if (v === undefined || v === null || v === '') return false;
+    return String(v) !== String(DEFAULT_CONFIG[key]);
+  };
+  let moved = 0;
+  const put = (t, key, val) => {
+    if (val === undefined || val === null || val === '') return;
+    if (!out[t] || typeof out[t] !== 'object') out[t] = {};
+    if (out[t][key] !== undefined) return;
+    out[t][key] = val; moved++;
+  };
+  const en = saved.alertEnabled && typeof saved.alertEnabled === 'object' ? saved.alertEnabled : {};
+  const durs = saved.alertDurations && typeof saved.alertDurations === 'object' ? saved.alertDurations : {};
+  const vols = saved.alertSoundsVolume && typeof saved.alertSoundsVolume === 'object' ? saved.alertSoundsVolume : {};
+  const tpl = saved.alertMessageTemplates && typeof saved.alertMessageTemplates === 'object' ? saved.alertMessageTemplates : {};
+  for (const t of ALERT_TYPE_IDS) {
+    if (en[t] !== undefined) put(t, 'enabled', !!en[t]);
+    const d = num(durs[t]) || num(saved.alertDuration);
+    if (d) put(t, 'duration', Math.max(1, Math.min(30, Math.round(d / 100) / 10)));
+    const v = num(vols[t]) != null ? num(vols[t]) : num(vols.default);
+    if (v != null) put(t, 'soundVolume', Math.max(0, Math.min(100, Math.round(v))));
+    if (typeof tpl[t] === 'string' && tpl[t].trim()) put(t, 'subTemplate', tpl[t].trim().slice(0, 140));
+    if (differs('alertLayout')) put(t, 'layout', LEGACY_ALERT_LAYOUT[saved.alertLayout] || 'above');
+    if (differs('alertAnimationIn')) put(t, 'animationIn', LEGACY_ALERT_ANIM[saved.alertAnimationIn] || 'slide');
+    if (differs('alertAnimationOut')) put(t, 'animationOut', LEGACY_ALERT_ANIM[saved.alertAnimationOut] || 'fade');
+    if (differs('alertTextDelay')) { const td = num(saved.alertTextDelay); if (td) put(t, 'textDelay', Math.max(0, Math.min(10, td / 1000))); }
+    if (differs('alertImageSize')) { const is = num(saved.alertImageSize); if (is) put(t, 'imageScale', Math.max(0, Math.min(200, Math.round(is)))); }
+    if (differs('alertFontSizeUser')) put(t, 'fontSize', Math.max(18, Math.min(140, Math.round(num(saved.alertFontSizeUser) || 72))));
+    if (differs('alertColorUser')) put(t, 'fontColor', String(saved.alertColorUser));
+    if (differs('alertColorLabel')) put(t, 'labelColor', String(saved.alertColorLabel));
+  }
+  saved.alertLegacyMigrated = true;
+  return moved;
+}
+
 function normalizeExcludedUsers(v) {
   const raw = Array.isArray(v) ? v.join(',') : String(v == null ? '' : v);
   const list = raw.split(/[,;\s]+/).map(s => String(s).toLowerCase().trim().slice(0, 32)).filter(Boolean);
@@ -251,9 +303,14 @@ function normalizeExcludedUsers(v) {
 }
 
 let appConfig = Object.assign({}, DEFAULT_CONFIG);
+let legacyAlertNeedsSave = false, legacyAlertMovedCount = 0;
 try {
   if (fs.existsSync(PERSIST_FILE)) {
     const saved = JSON.parse(fs.readFileSync(PERSIST_FILE, 'utf8')) || {};
+    if (!saved.alertLegacyMigrated) {
+      legacyAlertMovedCount = migrateLegacyAlertTypes(saved);   // rapporte les anciennes clés plates dans alertTypes
+      legacyAlertNeedsSave = true;
+    }
     appConfig = Object.assign({}, DEFAULT_CONFIG, saved);
     appConfig.alertTypes = mergeAlertTypes(saved.alertTypes);
   }
@@ -263,7 +320,14 @@ if (!appConfig.alertTypes || typeof appConfig.alertTypes !== 'object') {
 } else {
   appConfig.alertTypes = mergeAlertTypes(appConfig.alertTypes);
 }
+/* Vélocité : règles figées — streamer et mods comptent dans le %, seul wisebots est exclu d'office. */
 appConfig.velocityExemptStaff = false;
+if (legacyAlertNeedsSave) {
+  appConfig.alertLegacyMigrated = true;   // la migration ne se rejoue jamais
+  console.log('[migration V37] anciens réglages alertes (clés plates) reportés dans les réglages par type : ' + legacyAlertMovedCount + ' valeur(s)');
+  saveConfig();
+}
+appConfig.velocityExcludedUsers = normalizeExcludedUsers(appConfig.velocityExcludedUsers);
 appConfig.velocityExcludedUsers = normalizeExcludedUsers(appConfig.velocityExcludedUsers);
 function saveConfig() {
   try { fs.writeFileSync(PERSIST_FILE, JSON.stringify(appConfig, null, 2)); } catch (e) {}
