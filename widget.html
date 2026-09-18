@@ -1296,6 +1296,10 @@ function applyConfig(c) {
     }
   }
   if (c.alertGapMs !== undefined) window._alertGapMs = Math.max(0, Math.min(5000, +c.alertGapMs || 0));
+  if (c.ttsEnabled !== undefined || c.ttsVoice !== undefined || c.ttsRate !== undefined || c.ttsVolume !== undefined
+      || c.ttsTemplate !== undefined || c.ttsMaxChars !== undefined || c.ttsCooldownUser !== undefined
+      || c.ttsCooldownGlobal !== undefined || c.ttsDedupeMinutes !== undefined || c.ttsOutput !== undefined
+      || c.ttsQueueMax !== undefined) ttsApplyConfig(c);
   if (c.velocity || c.equilibriumMPM !== undefined || c.velocityEnabled !== undefined || c.velocityAntiSpam !== undefined || c.antiSpam !== undefined || c.excludedUsers !== undefined || c.velocityExcludedUsers !== undefined) {
     if (window.velocityApplyConfig) window.velocityApplyConfig(c);
   }
@@ -1671,6 +1675,171 @@ function alertText(a) {
   return null;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   TTS — lit à voix haute le MESSAGE PERSONNALISÉ d'un sub / re-sub /
+   cadeau / raid. Intelligent : il nettoie le texte (liens, @, emoji,
+   "marrrrci"), ne lit jamais deux fois la même phrase, ne laisse pas un
+   viewer monopoliser la voix, et ne s'empile pas (file courte).
+   Voix : celles du système (OBS/Chromium). Si aucune voix n'est dispo
+   dans la source Navigateur, c'est le pont qui fait parler Windows.
+   ═══════════════════════════════════════════════════════════════ */
+const TTS = {
+  cfg: { enabled:false, voice:'', rate:1, volume:90, template:'{name} a dit : {message}',
+         maxChars:220, cooldownUser:30, cooldownGlobal:3, dedupeMinutes:10, queueMax:2, output:'auto' },
+  queue: [], speaking: false, byUser: new Map(), said: new Map(),
+  lastSpeakAt: 0, engine: '', log: []
+};
+function ttsVoices() { try { return (window.speechSynthesis && window.speechSynthesis.getVoices()) || []; } catch (e) { return []; } }
+function ttsApplyConfig(c) {
+  c = c || {};
+  const g = (k, d) => (c[k] !== undefined && c[k] !== null && c[k] !== '' ? c[k] : d);
+  const cfg = TTS.cfg, prev = cfg.enabled;
+  cfg.enabled = c.ttsEnabled !== undefined ? !!c.ttsEnabled : prev;
+  cfg.voice = String(g('ttsVoice', cfg.voice));
+  cfg.rate = Math.max(0.6, Math.min(1.5, +g('ttsRate', cfg.rate) || 1));
+  cfg.volume = Math.max(0, Math.min(100, Math.round(+g('ttsVolume', cfg.volume))));
+  // « vider » le modèle est un réglage volontaire (lire le message seul) : pas de valeur par défaut
+  cfg.template = c.ttsTemplate !== undefined && c.ttsTemplate !== null ? String(c.ttsTemplate) : cfg.template;
+  cfg.maxChars = Math.max(40, Math.min(400, Math.round(+g('ttsMaxChars', cfg.maxChars)) || 220));
+  cfg.cooldownUser = Math.max(0, Math.min(300, Math.round(+g('ttsCooldownUser', cfg.cooldownUser) || 0)));
+  cfg.cooldownGlobal = Math.max(0, Math.min(30, Math.round(+g('ttsCooldownGlobal', cfg.cooldownGlobal) || 0)));
+  cfg.dedupeMinutes = Math.max(0, Math.min(180, Math.round(+g('ttsDedupeMinutes', cfg.dedupeMinutes) || 0)));
+  cfg.queueMax = Math.max(0, Math.min(5, Math.round(+g('ttsQueueMax', cfg.queueMax) || 0)));
+  cfg.output = ['auto','obs','bridge'].indexOf(String(c.ttsOutput)) >= 0 ? String(c.ttsOutput) : cfg.output;
+  if (!prev && cfg.enabled) console.log('[tts] activé — ' + ttsVoices().length + ' voix dans OBS, sortie : ' + cfg.output);
+}
+/* nettoyage : ce qui est moche ou illisible à haute voix */
+function ttsClean(raw) {
+  let t = String(raw == null ? '' : raw);
+  t = t.replace(/https?:\/\/\S+/gi, ' un lien ')
+       .replace(/www\.\S+/gi, ' un lien ')
+       .replace(/@[A-Za-z0-9_]{1,30}/g, ' ')
+       .replace(/<[^>]{1,80}>/g, ' ')
+       .replace(/[\u{1F000}-\u{1FAFF}\u{2190}-\u{27BF}\u{FE0F}\u{200D}]/gu, ' ')
+       .replace(/\s{2,}/g, ' ').trim();
+  t = t.replace(/(.)\1{3,}/g, '$1$1$1');                       // marrrrci -> marrci
+  const w = t.split(' '), keep = []; let prev = '', run = 0;
+  for (const word of w) {                                        // merci merci merci -> 2x max
+    const k = word.toLowerCase();
+    if (k && k === prev) { run++; if (run > 2) continue; } else { run = 1; prev = k; }
+    keep.push(word);
+  }
+  t = keep.join(' ').replace(/[\s,.;:!?-]+$/,'').trim();
+  const max = TTS.cfg.maxChars;
+  if (t.length > max) t = t.slice(0, max).replace(/\s\S*$/, '') + '…';
+  return t;
+}
+function ttsHash(t) { let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return 'h' + h; }
+function ttsPrune() {
+  const cut = Date.now() - TTS.cfg.dedupeMinutes * 60000;
+  for (const [k, v] of TTS.said) if (v < cut) TTS.said.delete(k);
+  for (const [k, v] of TTS.byUser) if (v < Date.now() - 6 * 3600e3) TTS.byUser.delete(k);
+  while (TTS.said.size > 300) TTS.said.delete(TTS.said.keys().next().value);
+}
+/* retourne la raison pour laquelle la phrase n'est PAS lue (ou null = elle part) */
+function ttsCheck(a) {
+  const cfg = TTS.cfg;
+  if (!cfg.enabled) return 'éteint';
+  const msg = ttsClean(a && a.message);
+  if (msg.replace(/[^\p{L}\p{N}]/gu, '').length < 4) return 'message vide';
+  const now = Date.now();
+  ttsPrune();
+  const user = String((a && a.user) || 'anonyme').toLowerCase();
+  const lastU = TTS.byUser.get(user) || 0;
+  if (cfg.cooldownUser > 0 && now - lastU < cfg.cooldownUser * 1000) return 'viewer trop souvent';
+  const text = (() => {
+    const tpl = String(cfg.template || '');
+    if (!tpl) return msg;
+    const filled = ttsClean(fillAlertTemplate(tpl, Object.assign({}, a, { message: msg })));
+    return filled.length > 3 ? filled : msg;
+  })();
+  const h = ttsHash(text.toLowerCase());
+  if (TTS.said.has(h)) return 'déjà lu';
+  if (TTS.queue.length > Math.max(0, cfg.queueMax)) return 'file pleine';
+  TTS.job = { text, user, h };
+  return null;
+}
+function ttsEnqueue(a) {
+  const why = ttsCheck(a);
+  if (why) { console.log('[tts] ignoré (' + why + ')'); return; }
+  const job = TTS.job; TTS.job = null;
+  const now = Date.now();
+  TTS.said.set(job.h, now); TTS.byUser.set(job.user, now);
+  TTS.queue.push(job);
+  TTS.log.push(now + '|' + job.user + '|' + job.text.slice(0, 30));
+  while (TTS.log.length > 12) TTS.log.shift();
+  ttsPump();
+}
+function ttsPump() {
+  if (TTS.speaking) return;
+  const gap = Math.max(0, TTS.cfg.cooldownGlobal) * 1000;
+  const since = Date.now() - TTS.lastSpeakAt;
+  if (TTS.lastSpeakAt && since < gap) { setTimeout(ttsPump, Math.max(80, gap - since)); return; }
+  const job = TTS.queue.shift();
+  if (!job) return;
+  TTS.lastSpeakAt = Date.now();
+  TTS.speaking = true;
+  ttsSpeak(job.text, () => { TTS.speaking = false; setTimeout(ttsPump, 140); });
+}
+function ttsPickVoice() {
+  const vs = ttsVoices();
+  if (!vs.length) return null;
+  const want = String(TTS.cfg.voice || '').toLowerCase();
+  if (want) {
+    const exact = vs.find(v => String(v.name).toLowerCase() === want) || vs.find(v => String(v.name).toLowerCase().includes(want));
+    if (exact) return exact;
+  }
+  return vs.find(v => /^fr/i.test(String(v.lang || ''))) || vs[0] || null;
+}
+function ttsSpeak(text, done) {
+  let called = false;
+  const finish = () => { if (called) return; called = true; if (done) done(); };
+  const synth = window.speechSynthesis;
+  const nV = ttsVoices().length;
+  const canBrowser = !!synth && typeof window.SpeechSynthesisUtterance === 'function' && nV > 0;
+  // auto : la voix d'OBS si elle existe, sinon le pont · obs : forcé · bridge : forcé (Windows)
+  const useBrowser = TTS.cfg.output === 'bridge' ? false : (TTS.cfg.output === 'obs' ? !!synth : canBrowser);
+  if (useBrowser) {
+    TTS.engine = 'browser';
+    if (!nV && TTS.cfg.output === 'obs' && !TTS.warned) {
+      TTS.warned = true;
+      console.log('[tts] 0 voix detectees dans OBS : lecture forcee quand meme. Si rien ne sort, prends « Windows / le pont » dans le panneau.');
+    }
+    let u;
+    try { u = new window.SpeechSynthesisUtterance(text); } catch (e) { TTS.engine = 'bridge'; return ttsBridge(text, finish); }
+    const v = ttsPickVoice();
+    if (v) { u.voice = v; if (v.lang) u.lang = v.lang; } else u.lang = 'fr-FR';
+    u.rate = TTS.cfg.rate; u.volume = TTS.cfg.volume / 100;   // vitesse + volume ; la hauteur se choisit dans la liste des voix
+
+    let over = false;
+    const fin = () => { if (over) return; over = true; clearTimeout(guard); finish(); };
+    u.onend = fin; u.onerror = fin;
+    // garde-fou : certaines versions de CEF ne renvoient jamais 'onend'
+    const guard = setTimeout(fin, Math.min(25000, 2000 + text.length * 90));
+    try { synth.speak(u); console.log('[tts] ' + text.slice(0, 46)); }
+    catch (e) { clearTimeout(guard); TTS.engine = 'bridge'; return ttsBridge(text, finish); }
+    return;
+  }
+  TTS.engine = 'bridge';
+  console.log('[tts] aucune voix dans OBS (' + nV + ') — lecture par le pont Windows' + (TTS.cfg.output === 'obs' ? ' (tu as forcé OBS : rien ne sortira)' : ''));
+  ttsBridge(text, finish);
+}
+function ttsBridge(text, done) {
+  try {
+    fetch('api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })
+      .catch(() => {});
+    console.log('[tts] lu par le pont : ' + text.slice(0, 46));
+  } catch (e) {}
+  setTimeout(finish, 1400);
+}
+try {
+  if (window.speechSynthesis) {
+    const load = () => { TTS.voicesN = ttsVoices().length; if (TTS.voicesN > 0) TTS.engine = 'browser'; };
+    load();
+    window.speechSynthesis.onvoiceschanged = load;
+  }
+} catch (e) {}
+
 function showAlert(a) {
   const t = alertText(a);
   if (!t) return;
@@ -1816,6 +1985,8 @@ function showAlert(a) {
   if (isPhoto) alertsEl.classList.add('has-photo');
   alertsEl.appendChild(d);
   fitAlertLines(d);
+  // le message du sub est lu à voix haute (même tempo que l'affichage du message)
+  if (textDelayMs > 0) setTimeout(() => ttsEnqueue(a), textDelayMs); else ttsEnqueue(a);
   while (alertsEl.children.length > 1) alertsEl.removeChild(alertsEl.firstChild);
   // debloque l'audio pour OBS (pas de clic utilisateur) – tente resume AudioContext
   try{ 

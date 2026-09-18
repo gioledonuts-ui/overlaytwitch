@@ -470,7 +470,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
       <div class="brand__txt">
         <div class="brand__name">7GIONNY</div>
         <div class="brand__sub">STUDIO</div>
-        <div id="verPill">V38</div>
+        <div id="verPill">V39</div>
       </div>
     </div>
     <nav class="nav">
@@ -721,6 +721,47 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
           <p class="sub">Un onglet par type : activer, durée, layout, animations, volume, son, image/GIF/vidéo, textes. Variables possibles : <span class="mono" style="display:inline;padding:2px 6px">{name} {viewer} {viewers} {amount} {streak} {total} {message}</span></p>
           <div class="aTabs" id="alertTypeTabs"></div>
           <div id="alertTypeBody"></div>
+        </div>
+
+        <div class="card">
+          <h2>MESSAGE DU VIEWER &amp; VOIX (TTS)</h2>
+          <p class="sub">Le message écrit au moment de l'abonnement s'affiche dans l'alerte (case <b>Afficher le message</b> de l'onglet du type) et peut être <b>lu à voix haute</b>. Liens, @, emoji et « marrrrci » sont nettoyés avant la lecture.</p>
+          <div class="switchRow">
+            <label class="switch">
+              <input type="checkbox" id="ttsEnabled" data-f="ttsEnabled">
+              <span class="switch__track"><span class="switch__thumb"></span></span>
+            </label>
+            <span class="switch__label">Lire les messages des subs, re-subs, cadeaux et raids</span>
+          </div>
+          <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-top:12px">
+            <div class="field"><label>Voix</label>
+              <select id="ttsVoice" data-f="ttsVoice"><option value="">Automatique (française si dispo)</option></select>
+              <div class="note" id="ttsVoiceNote">Voix installées sur Windows.</div>
+            </div>
+            <div class="field"><label>Vitesse</label><input id="ttsRate" type="range" min="0.6" max="1.5" step="0.05" data-f="ttsRate"><div class="note"><span id="ttsRateVal">1×</span> · parle plus lentement si c'est trop rapide</div></div>
+            <div class="field"><label>Volume de la voix</label><input id="ttsVolume" type="range" min="0" max="100" step="5" data-f="ttsVolume"><div class="note"><span id="ttsVolumeVal">90%</span> · séparé du volume du son d'alerte</div></div>
+            <div class="field"><label>Longueur max (lettres)</label><input id="ttsMaxChars" type="number" min="40" max="400" step="10" data-f="ttsMaxChars"><div class="note">Coupe proprement à la fin du dernier mot.</div></div>
+            <div class="field" style="grid-column:1 / -1"><label>Phrase lue</label><input id="ttsTemplate" type="text" maxlength="120" data-f="ttsTemplate" placeholder="{name} a dit : {message}"><div class="note">Variables : <span class="mono" style="display:inline;padding:2px 6px">{name} {message} {months} {streak} {total} {viewers}</span> · vide = le message tout seul</div></div>
+          </div>
+          <p class="sub" style="margin:14px 0 0"><b>Anti-spam de la voix</b> — pour que le TTS ne parte pas en boucle sur un chat qui tape fort.</p>
+          <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-top:8px">
+            <div class="field"><label>Un même viewer, 1 fois toutes les (s)</label><input id="ttsCooldownUser" type="number" min="0" max="300" step="5" data-f="ttsCooldownUser"><div class="note">0 = sans limite</div></div>
+            <div class="field"><label>Pause entre deux phrases (s)</label><input id="ttsCooldownGlobal" type="number" min="0" max="30" step="1" data-f="ttsCooldownGlobal"><div class="note">Le temps que la voix respire.</div></div>
+            <div class="field"><label>La même phrase, pas relue pendant (min)</label><input id="ttsDedupeMinutes" type="number" min="0" max="180" step="5" data-f="ttsDedupeMinutes"><div class="note">Copier-coller du même message = lu une seule fois.</div></div>
+            <div class="field"><label>Phrases en attente max</label><input id="ttsQueueMax" type="number" min="0" max="5" step="1" data-f="ttsQueueMax"><div class="note">Au-delà, la phrase est sautée : jamais de retard sur le direct.</div></div>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+            <button class="btn small" type="button" data-tts-test="1">▶ TESTER LA VOIX</button>
+            <div class="field" style="margin:0"><label style="font-size:12px">La voix sort par</label>
+              <select id="ttsOutput" data-f="ttsOutput" style="min-width:250px">
+                <option value="auto">Auto — OBS si des voix existent, sinon Windows</option>
+                <option value="obs">OBS (source Navigateur)</option>
+                <option value="bridge">Windows / le pont (le plus fiable pour les viewers)</option>
+              </select>
+            </div>
+            <span class="note" id="ttsStatus">—</span>
+          </div>
+          <div class="note" style="margin-top:8px">OBS lit la voix dans son propre son : si tes viewers n'entendent rien (ou si la source est muette), choisis <b>Windows / le pont</b> — la voix sort du son du PC et passe donc dans le stream avec le reste.</div>
         </div>
 
         <div class="card">
@@ -1432,10 +1473,10 @@ const ALERT_DESC = {
 };
 const ALERT_TEST = {
   follow: { type: 'follow', user: 'ViewerExemple' },
-  sub: { type: 'sub', user: 'amelie' },
+  sub: { type: 'sub', user: 'amelie', message: 'Content de rejoindre le stream, bonne soirée !' },
   resub: { type: 'resub', user: 'Louna', stints: 2, total: 12, message: 'Toujours la !' },
-  gift: { type: 'gift', user: 'kevin', viewer: 'maeva' },
-  raid: { type: 'raid', user: 'UNAUTRECREATOR', viewers: 1240 }
+  gift: { type: 'gift', user: 'kevin', viewer: 'maeva', message: 'Bienvenue dans la 7G family' },
+  raid: { type: 'raid', user: 'UNAUTRECREATOR', viewers: 1240, message: 'On arrive avec toute la team !' }
 };
 const ALERT_LAYOUTS = [['above', 'Image au-dessus du texte'], ['below', 'Image en-dessous'], ['left', 'Image à gauche'], ['right', 'Image à droite'], ['overlay', 'Texte posé sur l\'image'], ['banner', 'Bannière large']];
 const ALERT_ANIMS = [['fade', 'Fondu'], ['slide', 'Glisse (descente)'], ['bounce', 'Rebond'], ['zoom', 'Zoom'], ['flip', 'Retournement']];
@@ -1450,7 +1491,10 @@ const ALERT_TYPE_DEFAULTS = {
 const ALERT_GLOBAL_DEFAULTS = {
   alertPosX: 58, alertPosY: 140, alertPosYLive: 360, alertWidth: 380, alertPhotoWidth: 340, alertScale: 100, alertGapMs: 400,
   alertFontLabel: 'Bebas Neue', alertFontUser: 'Bebas Neue', alertFontSub: 'Inter',
-  alertFontSizeLabel: 26, alertFontSizeSub: 16, alertColorSub: '#B9BEC9', alertStroke: 2.5
+  alertFontSizeLabel: 26, alertFontSizeSub: 16, alertColorSub: '#B9BEC9', alertStroke: 2.5,
+  /* TTS — la voix qui lit les messages (éteinte par défaut, c'est toi qui l'allumes) */
+  ttsEnabled: false, ttsVoice: '', ttsRate: 1, ttsVolume: 90, ttsTemplate: '{name} a dit : {message}', ttsMaxChars: 220,
+  ttsCooldownUser: 30, ttsCooldownGlobal: 3, ttsDedupeMinutes: 10, ttsQueueMax: 2, ttsOutput: 'auto'
 };
 const ALERT_KEYS = Object.keys(ALERT_GLOBAL_DEFAULTS);
 let alertGlobal = Object.assign({}, ALERT_GLOBAL_DEFAULTS);
@@ -1562,11 +1606,62 @@ function fillAlertTypeBody() {
 function fillAlertGlobal() {
   document.querySelectorAll('#tab-alertes [data-f]').forEach(el => {
     const v = alertGlobal[el.dataset.f];
-    if (el.type === 'color') el.value = /^#[0-9a-fA-F]{6}$/.test(String(v || '')) ? v : '#b9bec9';
+    if (el.type === 'checkbox') el.checked = v === true || v === 'true';
+    else if (el.type === 'color') el.value = /^#[0-9a-fA-F]{6}$/.test(String(v || '')) ? v : '#b9bec9';
     else el.value = v != null ? v : '';
   });
   const x = $('alertPosXVal'); if (x) x.textContent = Math.round(+alertGlobal.alertPosX) + '%';
   const s = $('alertScaleVal'); if (s) s.textContent = Math.round(+alertGlobal.alertScale) + '%';
+  ttsRefreshNotes();
+}
+function ttsRefreshNotes() {
+  const r = $('ttsRateVal'); if (r) r.textContent = (+alertGlobal.ttsRate || 1).toFixed(2).replace(/0$/, '') + '×';
+  const v = $('ttsVolumeVal'); if (v) v.textContent = Math.round(+alertGlobal.ttsVolume || 0) + '%';
+  const st = $('ttsStatus'); if (!st) return;
+  const vs = ttsSysVoices(), out = String(alertGlobal.ttsOutput || 'auto');
+  st.textContent = alertGlobal.ttsEnabled !== true && alertGlobal.ttsEnabled !== 'true' ? 'Voix éteinte'
+    : out === 'bridge' ? '✓ lu par le pont Windows (son du PC → capte par OBS si tu laisses le son du bureau dans le stream)'
+    : vs.length ? '✓ ' + vs.length + ' voix dispo dans ce navigateur' + (out === 'obs' ? ' · lecture forcee dans OBS' : ' · lecture dans OBS')
+    : '✓ aucune voix ici → relais par le pont Windows';
+}
+/* — les voix du système, pour le select + l'état du moteur — */
+function ttsSysVoices() { try { return (window.speechSynthesis && window.speechSynthesis.getVoices()) || []; } catch (e) { return []; } }
+function ttsFillVoices() {
+  const sel = $('ttsVoice'); if (!sel) return;
+  const vs = ttsSysVoices();
+  const cur = alertGlobal.ttsVoice || '';
+  sel.replaceChildren();
+  const o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'Automatique (française si dispo)'; sel.appendChild(o0);
+  vs.slice().sort((a, b) => String(a.name).localeCompare(String(b.name))).forEach(v => {
+    const o = document.createElement('option'); o.value = v.name; o.textContent = v.name + ' · ' + (v.lang || '?'); sel.appendChild(o);
+  });
+  if (cur && vs.some(v => v.name === cur)) sel.value = cur;
+  const n = $('ttsVoiceNote');
+  if (n) n.textContent = vs.length ? vs.length + ' voix installées sur ce PC (' + vs.filter(v => /^fr/i.test(v.lang || '')).length + ' en français).'
+                                    : 'Aucune voix trouvée dans ce navigateur — le pont parlera avec Windows.';
+  ttsRefreshNotes();
+}
+function ttsTest() {
+  const vs = ttsSysVoices();
+  const msg = 'Merci pour ton sub, ça fait vraiment plaisir !';
+  let text = String(alertGlobal.ttsTemplate || '{name} a dit : {message}')
+    .replace(/\{name\}/gi, 'Louna').replace(/\{message\}/gi, msg)
+    .replace(/\{(months|streak|total|viewers|amount|count)\}/gi, '3');
+  if (!text.trim()) text = msg;
+  if (!vs.length) {
+    post(API + '/api/tts', { text }).then(r => toast(r && r.ok ? 'Lu par le pont (Windows) ▶' : 'Aucune voix ici non plus — installe une voix française dans Windows')).catch(() => toast('Le pont ne répond pas'));
+    return;
+  }
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    const want = String(alertGlobal.ttsVoice || '').toLowerCase();
+    const v = (want && vs.find(x => String(x.name).toLowerCase() === want)) || vs.find(x => /^fr/i.test(x.lang || '')) || vs[0];
+    if (v) { u.voice = v; if (v.lang) u.lang = v.lang; }
+    u.rate = +alertGlobal.ttsRate || 1; u.volume = Math.max(0, Math.min(1, (+alertGlobal.ttsVolume || 90) / 100));
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+    toast('Test ▶ ' + (v ? v.name : 'voix auto'));
+  } catch (e) { toast('Ce navigateur refuse la synthèse vocale'); }
 }
 /* — ce qui part dans la config (global + types + miroir legacy) — */
 function alertMirrorLegacy() {
@@ -1601,7 +1696,9 @@ function applyAlertConfig(cfg) {
   if (!cfg) return;
   ALERT_KEYS.forEach(k => {
     if (cfg[k] == null || cfg[k] === '') return;
-    alertGlobal[k] = typeof ALERT_GLOBAL_DEFAULTS[k] === 'number' ? +cfg[k] : String(cfg[k]);
+    const dv = ALERT_GLOBAL_DEFAULTS[k];
+    if (typeof dv === 'boolean') alertGlobal[k] = (cfg[k] === true || cfg[k] === 'true' || cfg[k] === 1);
+    else alertGlobal[k] = typeof dv === 'number' ? +cfg[k] : String(cfg[k]);
   });
   if (cfg.alertTypes) ALERT_TYPES.forEach(t => { alertTypes[t] = Object.assign({}, ALERT_TYPE_DEFAULTS[t], cfg.alertTypes[t] || {}); });
   renderAlertTabs();
@@ -1682,6 +1779,9 @@ async function uploadFileTo(url, type, file, maxMo, okMsg) {
 }
 /* — événements (tout est délégué, le panneau par type est généré) — */
 if (alertTabEl) {
+  /* voix : la liste arrive en asynchrone dans Chrome/Edge → on re-remplit dès qu'elle est prête */
+  ttsFillVoices();
+  try { if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = ttsFillVoices; } catch (e) {}
   alertTabEl.addEventListener('input', onAlertEdit);
   alertTabEl.addEventListener('change', onAlertEdit);
   alertTabEl.addEventListener('click', onAlertClick);
@@ -1709,9 +1809,11 @@ function onAlertEdit(e) {
   if (el.dataset.f) {
     const k = el.dataset.f;
     if (el.type === 'number' && el.value === '') return;
-    alertGlobal[k] = (el.type === 'number' || el.type === 'range') ? (+el.value || 0) : el.value;
+    if (el.type === 'checkbox') alertGlobal[k] = !!el.checked;
+    else alertGlobal[k] = (el.type === 'number' || el.type === 'range') ? (+el.value || 0) : el.value;
     if (k === 'alertPosX') { const n = $('alertPosXVal'); if (n) n.textContent = Math.round(+el.value) + '%'; }
     if (k === 'alertScale') { const n = $('alertScaleVal'); if (n) n.textContent = Math.round(+el.value) + '%'; }
+    if (k === 'ttsEnabled' || k === 'ttsVoice' || k === 'ttsOutput') ttsFillVoices(); else ttsRefreshNotes();
     scheduleAlertSave();
     return;
   }
@@ -1729,6 +1831,8 @@ function onAlertEdit(e) {
   }
 }
 async function onAlertClick(e) {
+  const tt = e.target.closest && e.target.closest('[data-tts-test]');
+  if (tt) { ttsTest(); return; }
   const tab = e.target.closest && e.target.closest('[data-tabtype]');
   if (tab) { alertCurType = tab.dataset.tabtype; renderAlertTabs(); renderAlertTypeBody(); return; }
   const test = e.target.closest && e.target.closest('[data-alert-test]');

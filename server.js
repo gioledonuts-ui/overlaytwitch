@@ -123,6 +123,19 @@ const DEFAULT_CONFIG = {
   },
   alertImages: { follow: '', sub: '', resub: '', gift: '', anon: '', community: '', prime: '', raid: '' },
   alertSoundsVolume: { follow: 75, sub: 75, resub: 75, gift: 75, anon: 75, community: 75, prime: 75, raid: 75, default: 75 },
+  /* ═══ TTS — lit à voix haute le message personnalisé d'un sub/resub/cadeau/raid ═══
+     Éteint par défaut : c'est toi qui l'allumes depuis le panneau (onglet Alertes). */
+  ttsEnabled: false,
+  ttsVoice: '',                 // '' = voix auto (française si disponible)
+  ttsRate: 1,                   // 0.6 .. 1.5
+  ttsVolume: 90,                // %
+  ttsTemplate: '{name} a dit : {message}',
+  ttsMaxChars: 220,
+  ttsCooldownUser: 30,          // s : un même viewer n'est pas lu plus d'1 fois par là
+  ttsCooldownGlobal: 3,         // s : pause minimale entre deux phrases lues
+  ttsDedupeMinutes: 10,         // min : un message déjà lu n'est pas relu
+  ttsQueueMax: 2,               // phrases en attente max (au-delà on coupe, pas d'embouteillage)
+  ttsOutput: 'auto',            // 'auto' = OBS si des voix existent, sinon le pont · 'obs' · 'bridge' (Windows)
   // velocite V5 : seuil % + duree ajout + chrono verrou + fin prevue
   velocityEquilibrium: 20,
   velocityClimb: 0.65,
@@ -383,6 +396,11 @@ function velocityAlertFields(src) {
     alertMessageTemplates: s.alertMessageTemplates,
     alertImages: s.alertImages,
     alertSoundsVolume: s.alertSoundsVolume,
+    ttsEnabled: s.ttsEnabled, ttsVoice: s.ttsVoice, ttsRate: s.ttsRate,
+    ttsVolume: s.ttsVolume, ttsTemplate: s.ttsTemplate, ttsMaxChars: s.ttsMaxChars,
+    ttsCooldownUser: s.ttsCooldownUser, ttsCooldownGlobal: s.ttsCooldownGlobal,
+    ttsDedupeMinutes: s.ttsDedupeMinutes, ttsQueueMax: s.ttsQueueMax,
+    ttsOutput: s.ttsOutput,
     velocity: 1,
     equilibriumMPM: s.velocityEquilibrium,
     climbSensitivity: s.velocityClimb,
@@ -671,13 +689,14 @@ function broadcastAlert(a) {
     total: a.total || undefined,
     viewers: a.viewers || undefined,
     plan: a.plan ? String(a.plan).slice(0, 8) : undefined,
-    message: a.message ? String(a.message).slice(0, 120) : undefined   // message personnalisé du sub/raid
+    message: a.message ? String(a.message).replace(/[\r\n\t]+/g, ' ').trim().slice(0, 300) : undefined   // message personnalisé du sub/raid
   }) + '\n\n';
   for (const res of sse) res.write(payload);
 }
 
 /* — Diffusion du chat Twitch au widget (panneau gauche) — */
 let lastChatBcast = 0;
+let lastBridgeTts = 0;   // TTS de secours : garde-fou anti-mitraillette
 
 /* Reformate l'objet tmi.js { id: ['début-fin', …] } en "id:début-fin/id:début-fin" */
 function rawEmotes(emotesObj) {
@@ -884,9 +903,23 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
     }
   });
   /* — Subs / gifts / raids Twitch → alertes dans l'overlay — */
-  chat.on('subscription', (channel, user, courtesy, stints, message) => {
-    broadcastAlert({ type: stints > 0 ? 'resub' : 'sub', user, stints: stints || 0, message });
-    console.log('[alerte] ' + (stints > 0 ? 'resub R' + (stints + 1) : 'sub') + ' : ' + user);
+  /* tmi.js v1 envoie (channel, userstate, username, months, message) — l'ancien code
+     prenait l'objet userstate pour le pseudo → « [object Object] » dans l'alerte. */
+  chat.on('subscription', (channel, userstate, username, months, message) => {
+    const nick = username || (userstate && (userstate['display-name'] || userstate.username)) || '';
+    const stints = Math.max(0, +months || 0);
+    broadcastAlert({ type: stints > 0 ? 'resub' : 'sub', user: nick, stints, total: (userstate && +userstate['msg-param-cumulative-months']) || stints || undefined,
+                     plan: (userstate && userstate['msg-param-sub-plan']) || undefined, message });
+    console.log('[alerte] ' + (stints > 0 ? 'resub R' + stints : 'sub') + ' : ' + nick + (message ? ' — « ' + String(message).slice(0, 40) + ' »' : ''));
+  });
+  /* un re-sub AVEC message part dans l'événement « resub » (pas « subscription ») :
+     sans ce handler, le message du sub n'arrivait jamais à l'overlay ni au TTS. */
+  chat.on('resub', (channel, username, months, message, userstate) => {
+    const nick = username || (userstate && (userstate['display-name'] || userstate.username)) || '';
+    const stints = Math.max(0, +months || 0);
+    broadcastAlert({ type: 'resub', user: nick, stints: Math.max(0, stints - 1), total: stints,
+                     plan: (userstate && userstate['msg-param-sub-plan']) || undefined, message });
+    console.log('[alerte] resub : ' + nick + ' (' + stints + ' mois)' + (message ? ' — « ' + String(message).slice(0, 40) + ' »' : ''));
   });
   chat.on('subnotice', (channel, userId, nick, msg) => {
     const t = String(msg || '').toLowerCase();
@@ -1746,6 +1779,40 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    /* ── TTS de secours : si le Navigateur OBS ne sait pas parler, le pont fait
+       parler Windows (SAPI, voix du système). Utilisé uniquement quand l'overlay
+       n'a aucune voix dispo — le reste du temps c'est l'overlay qui parle. ── */
+    if (u.pathname === '/api/tts' && req.method === 'POST') {
+      readBody().then(d => {
+        let p = {};
+        try { p = JSON.parse(d || '{}'); } catch (e) {}
+        const txt = String(p.text || '').replace(/[`"'$\\]/g, ' ').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 420);
+        if (!txt) return send(400, 'application/json', JSON.stringify({ ok: false, error: 'vide' }));
+        const now = Date.now();
+        if (now - lastBridgeTts < 1500) return send(429, 'application/json', JSON.stringify({ ok: false, error: 'trop vite' }));
+        lastBridgeTts = now;
+        if (process.platform !== 'win32') return send(501, 'application/json', JSON.stringify({ ok: false, error: 'windows requis' }));
+        try {
+          const rate = Math.max(-10, Math.min(10, Math.round(((+appConfig.ttsRate || 1) - 1) * 10)));
+          const vol = Math.max(0, Math.min(100, Math.round(appConfig.ttsVolume != null ? +appConfig.ttsVolume : 90)));
+          const want = String(appConfig.ttsVoice || '').replace(/[`"'$\\]/g, '').slice(0, 60);
+          const ps = ["$ErrorActionPreference='SilentlyContinue'",
+                      '$sp = New-Object -ComObject SAPI.SpVoice',
+                      '$sp.Volume = ' + vol,
+                      '$sp.Rate = ' + rate];
+          if (want) ps.push("$n = '" + want + "'; foreach ($v in $sp.GetInstalledVoices()) { if ($v.Voice.Description.Name -eq $n) { $sp.Voice = $v.Voice; break } }");
+          ps.push('$sp.Speak("' + txt + '")');
+          const enc = Buffer.from('\ufeff' + ps.join('; '), 'utf16le').toString('base64');
+          const kid = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', enc],
+                            { stdio: 'ignore', windowsHide: true });
+          kid.on('error', () => {});
+          console.log('[tts] lu par le pont (Windows) : ' + txt.slice(0, 46));
+          return send(200, 'application/json', JSON.stringify({ ok: true }));
+        } catch (e) { return send(500, 'application/json', JSON.stringify({ ok: false, error: String((e && e.message) || e) })); }
+      });
+      return;
+    }
+
     /* — Chat : injection externe (test, webhook, panel) — */
     if (u.pathname === '/api/chat' && req.method === 'POST') {
       readBody().then(d => {
@@ -2028,6 +2095,17 @@ const server = http.createServer((req, res) => {
           if (p.alertMessageTemplates !== undefined && typeof p.alertMessageTemplates === 'object') appConfig.alertMessageTemplates = Object.assign({}, appConfig.alertMessageTemplates, p.alertMessageTemplates);
           if (p.alertImages !== undefined && typeof p.alertImages === 'object') appConfig.alertImages = Object.assign({}, appConfig.alertImages || {}, p.alertImages);
           if (p.alertSoundsVolume !== undefined && typeof p.alertSoundsVolume === 'object') appConfig.alertSoundsVolume = Object.assign({}, appConfig.alertSoundsVolume, p.alertSoundsVolume);
+          if (p.ttsEnabled !== undefined) appConfig.ttsEnabled = !!p.ttsEnabled;
+          if (p.ttsOutput !== undefined) appConfig.ttsOutput = (['auto','obs','bridge'].indexOf(String(p.ttsOutput)) >= 0) ? String(p.ttsOutput) : 'auto';
+          if (p.ttsVoice !== undefined) appConfig.ttsVoice = String(p.ttsVoice).slice(0, 80);
+          if (p.ttsTemplate !== undefined) appConfig.ttsTemplate = String(p.ttsTemplate).slice(0, 120);
+          if (p.ttsRate !== undefined) appConfig.ttsRate = Math.max(0.6, Math.min(1.5, +p.ttsRate || 1));
+          if (p.ttsVolume !== undefined) appConfig.ttsVolume = Math.max(0, Math.min(100, Math.round(+p.ttsVolume)));
+          if (p.ttsMaxChars !== undefined) appConfig.ttsMaxChars = Math.max(40, Math.min(400, Math.round(+p.ttsMaxChars)));
+          if (p.ttsCooldownUser !== undefined) appConfig.ttsCooldownUser = Math.max(0, Math.min(300, Math.round(+p.ttsCooldownUser || 0)));
+          if (p.ttsCooldownGlobal !== undefined) appConfig.ttsCooldownGlobal = Math.max(0, Math.min(30, Math.round(+p.ttsCooldownGlobal || 0)));
+          if (p.ttsDedupeMinutes !== undefined) appConfig.ttsDedupeMinutes = Math.max(0, Math.min(180, Math.round(+p.ttsDedupeMinutes || 0)));
+          if (p.ttsQueueMax !== undefined) appConfig.ttsQueueMax = Math.max(0, Math.min(5, Math.round(+p.ttsQueueMax || 0)));
           if (p.velocityAntiSpam !== undefined) appConfig.velocityAntiSpam = !!p.velocityAntiSpam;
           if (p.antiSpam !== undefined) appConfig.velocityAntiSpam = !!p.antiSpam;
           if (p.velocityCooldownSeconds !== undefined) appConfig.velocityCooldownSeconds = Math.max(0, Math.min(120, Math.round(+p.velocityCooldownSeconds || 0)));
