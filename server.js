@@ -109,6 +109,7 @@ const DEFAULT_CONFIG = {
   alertColorUser: '#7CC7FF',
   alertColorSub: '#B9BEC9',
   alertStroke: 2.5,
+  alertsMaster: true,   // V43 : bouton couper TOUTES les alertes
   alertEnabled: { follow: true, sub: true, resub: true, gift: true, anon: true, community: true, prime: true, raid: true },
   alertMessageTemplates: {
     follow: '{name} vient de follow',
@@ -140,13 +141,13 @@ const DEFAULT_CONFIG = {
   velocityClimb: 0.65,
   velocityDecay: 0.14,
   velocityHold: 120,
+  velocityBoostMult: 1,   // V43 : a 100 %, le chrono descend xN (1 = pas d'acceleration)
   velocityBarWidth: 30,
   velocityBarHeight: 700,
   velocityShowMetrics: true,
   velocityEnabled: true,
   velocityGoalThreshold: 90,
   velocityGoalDurationMinutes: 15,
-  velocityHoldDurationSeconds: 120,
   velocityFinHour: 21,
   velocityFinMinute: 30,
   velocityFinEnabled: true,
@@ -154,7 +155,6 @@ const DEFAULT_CONFIG = {
   velocityAntiSpam: true,
   velocityCooldownSeconds: 15,
   velocityMaxPerMinute: 2,
-  velocityExemptStaff: false,
   velocityExcludedUsers: ['wisebots'],
   // alertes V35 : perso type Streamlabs (duree, layout, anim, volume, template, media)
   alertGapMs: 400,
@@ -346,8 +346,15 @@ if (!appConfig.alertTypes || typeof appConfig.alertTypes !== 'object') {
 } else {
   appConfig.alertTypes = mergeAlertTypes(appConfig.alertTypes);
 }
-/* Vélocité : règles figées — streamer et mods comptent dans le %, seul wisebots est exclu d'office. */
-appConfig.velocityExemptStaff = false;
+/* Velocite : regles figees - streamer et mods comptent dans le %, seul wisebots est exclu d'office.
+   V43 : « exempter les mods » n'existe plus (cle supprimee du code, du panneau et de la config).
+   La duree du verrou se regle par UNE seule cle (velocityHold) : le doublon
+   velocityHoldDurationSeconds est retire des fichiers de config existants. */
+if (appConfig.velocityExemptStaff !== undefined || appConfig.velocityHoldDurationSeconds !== undefined) {
+  delete appConfig.velocityExemptStaff; delete appConfig.velocityHoldDurationSeconds;
+  legacyAlertNeedsSave = true;
+  console.log('[config] cles perimees retirees (velocityExemptStaff, velocityHoldDurationSeconds)');
+}
 if (legacyAlertNeedsSave) {
   appConfig.alertLegacyMigrated = true;   // la migration ne se rejoue jamais
   if (legacyAlertMovedCount) console.log('[migration V37] anciens réglages alertes (clés plates) reportés dans les réglages par type : ' + legacyAlertMovedCount + ' valeur(s)');
@@ -355,9 +362,16 @@ if (legacyAlertNeedsSave) {
   saveConfig();
 }
 appConfig.velocityExcludedUsers = normalizeExcludedUsers(appConfig.velocityExcludedUsers);
-appConfig.velocityExcludedUsers = normalizeExcludedUsers(appConfig.velocityExcludedUsers);
 function saveConfig() {
   try { fs.writeFileSync(PERSIST_FILE, JSON.stringify(appConfig, null, 2)); } catch (e) {}
+}
+
+/* Multiplicateur turbo : x1 a x2 par pas de 0,25. Toute autre valeur est ramenee au
+   cran le plus proche ; x1 = pas d'acceleration. */
+function velBoostQuantize(v) {
+  const n = Number(v);
+  if (!isFinite(n)) return 1;
+  return Math.max(1, Math.min(2, Math.round(n * 4) / 4));
 }
 
 function velocityAlertFields(src) {
@@ -397,6 +411,7 @@ function velocityAlertFields(src) {
     ttsCooldownUser: s.ttsCooldownUser, ttsCooldownGlobal: s.ttsCooldownGlobal,
     ttsDedupeMinutes: s.ttsDedupeMinutes, ttsQueueMax: s.ttsQueueMax,
     ttsOutput: s.ttsOutput,
+    alertsMaster: s.alertsMaster !== false,
     velocity: 1,
     equilibriumMPM: s.velocityEquilibrium,
     climbSensitivity: s.velocityClimb,
@@ -411,15 +426,15 @@ function velocityAlertFields(src) {
     finHour: s.velocityFinHour,
     finMinute: s.velocityFinMinute,
     finEnabled: s.velocityFinEnabled,
+    velocityBoostMult: velBoostQuantize(s.velocityBoostMult),
+    boostMult: velBoostQuantize(s.velocityBoostMult),
     velocityAntiSpam: s.velocityAntiSpam,
     velocityCooldownSeconds: s.velocityCooldownSeconds,
     velocityMaxPerMinute: s.velocityMaxPerMinute,
-    velocityExemptStaff: s.velocityExemptStaff,
     velocityExcludedUsers: s.velocityExcludedUsers,
     antiSpam: s.velocityAntiSpam,
     cooldownSeconds: s.velocityCooldownSeconds,
     maxPerMinute: s.velocityMaxPerMinute,
-    exemptStaff: s.velocityExemptStaff,
     excludedUsers: s.velocityExcludedUsers
   };
 }
@@ -2026,7 +2041,9 @@ const server = http.createServer((req, res) => {
               velocityAntiSpam: p.velocityAntiSpam !== undefined ? !!p.velocityAntiSpam : (p.antiSpam !== undefined ? !!p.antiSpam : appConfig.velocityAntiSpam),
               velocityCooldownSeconds: p.velocityCooldownSeconds !== undefined ? Math.round(+p.velocityCooldownSeconds) : (p.cooldownSeconds !== undefined ? Math.round(+p.cooldownSeconds) : appConfig.velocityCooldownSeconds),
               velocityMaxPerMinute: p.velocityMaxPerMinute !== undefined ? Math.round(+p.velocityMaxPerMinute) : (p.maxPerMinute !== undefined ? Math.round(+p.maxPerMinute) : appConfig.velocityMaxPerMinute),
-              velocityExemptStaff: false,
+              alertsMaster: p.alertsMaster !== undefined ? !(p.alertsMaster === false || p.alertsMaster === 'false') : appConfig.alertsMaster,
+              velocityBoostMult: (p.velocityBoostMult !== undefined || p.boostMult !== undefined)
+                ? velBoostQuantize(p.velocityBoostMult !== undefined ? p.velocityBoostMult : p.boostMult) : appConfig.velocityBoostMult,
               velocityExcludedUsers: (p.velocityExcludedUsers !== undefined || p.excludedUsers !== undefined)
                 ? normalizeExcludedUsers(p.velocityExcludedUsers !== undefined ? p.velocityExcludedUsers : p.excludedUsers)
                 : appConfig.velocityExcludedUsers,
@@ -2073,7 +2090,6 @@ const server = http.createServer((req, res) => {
           if (p.decayRate !== undefined) appConfig.velocityDecay = Math.max(0.02, Math.min(5, +p.decayRate || 0.14));
           if (p.velocityHold !== undefined) appConfig.velocityHold = Math.max(5, Math.min(600, Math.round(+p.velocityHold || 120)));
           if (p.holdDurationSeconds !== undefined) appConfig.velocityHold = Math.max(5, Math.min(600, Math.round(+p.holdDurationSeconds || 120)));
-          if (p.velocityHoldDurationSeconds !== undefined) appConfig.velocityHold = Math.max(5, Math.min(600, Math.round(+p.velocityHoldDurationSeconds || 120)));
           if (p.velocityBarWidth !== undefined) appConfig.velocityBarWidth = Math.max(12, Math.min(40, Math.round(+p.velocityBarWidth || 30)));
           if (p.barWidth !== undefined) appConfig.velocityBarWidth = Math.max(12, Math.min(40, Math.round(+p.barWidth || 30)));
           if (p.velocityBarHeight !== undefined) appConfig.velocityBarHeight = Math.max(280, Math.min(900, Math.round(+p.velocityBarHeight || 700)));
@@ -2086,6 +2102,17 @@ const server = http.createServer((req, res) => {
           if (p.velocityGoalDurationMinutes !== undefined) appConfig.velocityGoalDurationMinutes = Math.max(1, Math.min(120, Math.round(+p.velocityGoalDurationMinutes || 15)));
           if (p.goalDurationMinutes !== undefined) appConfig.velocityGoalDurationMinutes = Math.max(1, Math.min(120, Math.round(+p.goalDurationMinutes || 15)));
           if (p.goalDuration !== undefined) appConfig.velocityGoalDurationMinutes = Math.max(1, Math.min(120, Math.round(+p.goalDuration || 15)));
+          // V43 : l'overlay envoie un INCREMENT (velocityFinAdd) et non plus l'heure absolue.
+          // Avant, deux declenchements rapproches pouvaient ecrire une valeur plus vieille que
+          // celle que l'overlay venait de calculer (l'echo SSE lui remis a jour) → FIN PRÉVUE
+          // qui derive de 15 min entre l'ecran et la config. Le calcul est dorenavant ici seul.
+          if (p.velocityFinAdd !== undefined) {
+            const add = Math.max(-1440, Math.min(1440, Math.round(+p.velocityFinAdd || 0)));
+            let tot = appConfig.velocityFinHour * 60 + appConfig.velocityFinMinute + add;
+            tot = ((tot % 1440) + 1440) % 1440;
+            appConfig.velocityFinHour = Math.floor(tot / 60);
+            appConfig.velocityFinMinute = tot % 60;
+          }
           if (p.velocityFinHour !== undefined) appConfig.velocityFinHour = Math.max(0, Math.min(23, Math.round(+p.velocityFinHour || 21)));
           if (p.finHour !== undefined) appConfig.velocityFinHour = Math.max(0, Math.min(23, Math.round(+p.finHour || 21)));
           if (p.velocityFinMinute !== undefined) appConfig.velocityFinMinute = Math.max(0, Math.min(59, Math.round(+p.velocityFinMinute || 30)));
@@ -2130,15 +2157,15 @@ const server = http.createServer((req, res) => {
           if (p.ttsCooldownGlobal !== undefined) appConfig.ttsCooldownGlobal = Math.max(0, Math.min(30, Math.round(+p.ttsCooldownGlobal || 0)));
           if (p.ttsDedupeMinutes !== undefined) appConfig.ttsDedupeMinutes = Math.max(0, Math.min(180, Math.round(+p.ttsDedupeMinutes || 0)));
           if (p.ttsQueueMax !== undefined) appConfig.ttsQueueMax = Math.max(0, Math.min(5, Math.round(+p.ttsQueueMax || 0)));
+          if (p.alertsMaster !== undefined) appConfig.alertsMaster = !(p.alertsMaster === false || p.alertsMaster === 'false' || p.alertsMaster === 0);
+          if (p.velocityBoostMult !== undefined || p.boostMult !== undefined)
+            appConfig.velocityBoostMult = velBoostQuantize(p.velocityBoostMult !== undefined ? p.velocityBoostMult : p.boostMult);
           if (p.velocityAntiSpam !== undefined) appConfig.velocityAntiSpam = !!p.velocityAntiSpam;
           if (p.antiSpam !== undefined) appConfig.velocityAntiSpam = !!p.antiSpam;
           if (p.velocityCooldownSeconds !== undefined) appConfig.velocityCooldownSeconds = Math.max(0, Math.min(120, Math.round(+p.velocityCooldownSeconds || 0)));
           if (p.cooldownSeconds !== undefined) appConfig.velocityCooldownSeconds = Math.max(0, Math.min(120, Math.round(+p.cooldownSeconds || 0)));
           if (p.velocityMaxPerMinute !== undefined) appConfig.velocityMaxPerMinute = Math.max(1, Math.min(30, Math.round(+p.velocityMaxPerMinute || 2)));
           if (p.maxPerMinute !== undefined) appConfig.velocityMaxPerMinute = Math.max(1, Math.min(30, Math.round(+p.maxPerMinute || 2)));
-          appConfig.velocityExemptStaff = false;
-          if (p.velocityExemptStaff !== undefined) appConfig.velocityExemptStaff = false;
-          if (p.exemptStaff !== undefined) appConfig.velocityExemptStaff = false;
           if (p.velocityExcludedUsers !== undefined) appConfig.velocityExcludedUsers = normalizeExcludedUsers(p.velocityExcludedUsers);
           if (p.excludedUsers !== undefined) appConfig.velocityExcludedUsers = normalizeExcludedUsers(p.excludedUsers);
           if (p.alertTypes && typeof p.alertTypes === 'object') {

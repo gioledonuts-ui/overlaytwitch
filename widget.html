@@ -613,6 +613,19 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 }
 .velocity__chrono.is-on{display:block;animation:chronoPulse .9s ease-in-out infinite}
 @keyframes chronoPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.velocity__boost{
+  font-family:'Outfit',sans-serif;font-size:13px;font-weight:900;letter-spacing:.08em;line-height:1;
+  color:#08101C;text-align:center;
+  background:linear-gradient(90deg,#6BE585,#4EE3C4);
+  border:1px solid rgba(122,255,190,.95);border-radius:7px;
+  padding:6px 8px;width:100%;
+  display:none;
+  box-shadow:0 0 20px rgba(110,235,170,.55);
+  font-variant-numeric:tabular-nums;
+}
+.velocity__boost.is-on{display:block;animation:boostIn .34s var(--ease-out) both,boostPulse 1.1s ease-in-out .34s infinite}
+@keyframes boostIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes boostPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.22)}}
 .velocity__fin{
   width:100%;text-align:center;
   font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;letter-spacing:.06em;line-height:1.2;
@@ -639,6 +652,20 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 #velocityWrap.is-goal .velocity__pct{color:#FFB547}
 #velocityWrap.is-overdrive{animation:velPulse .52s var(--ease-out) 3}
 @keyframes velPulse{0%,100%{transform:scale(1)}40%{transform:scale(1.07);filter:brightness(1.32)}70%{transform:scale(.98)}}
+/* turbo actif (barre a 100 %) : toute la carte bascule en vert-menthe, comme le badge */
+#velocityWrap.is-boost{
+  border-color:rgba(110,235,170,.55);
+  box-shadow:0 28px 80px rgba(0,0,0,.68),0 0 46px rgba(110,235,170,.34),inset 0 1px 0 rgba(255,255,255,.10);
+}
+#velocityWrap.is-boost .velocity__pct{color:#8DF3AC}
+#velocityWrap.is-boost .velocity__fill{
+  filter:brightness(1.3) saturate(1.3);
+  box-shadow:0 0 38px rgba(110,235,170,.6),0 0 74px rgba(78,227,196,.34),inset 0 1px 0 rgba(255,255,255,.95);
+}
+#velocityWrap.is-boost .velocity__goal{
+  background:linear-gradient(90deg,#6BE585,#4EE3C4);color:#08101C;border-color:rgba(122,255,190,.95);
+}
+#velocityWrap.is-boost .velocity__chrono{animation-duration:.5s}
 #velocityWrap.no-metrics .velocity__metrics{display:none}
 .velocity__mpm{display:none}
 
@@ -734,6 +761,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
       <span class="velocity__mpm" id="velocityMpm">0 MPM</span>
       <span class="velocity__goal" id="velocityGoal">90% → +15 MIN</span>
       <span class="velocity__chrono" id="velocityChrono">02:00</span>
+      <span class="velocity__boost" id="velocityBoost">×1,25</span>
       <span class="velocity__fin" id="velocityFin">FIN PRÉVUE : 21H30</span>
     </div>
   </div>
@@ -1305,6 +1333,20 @@ function applyConfig(c) {
     }
   }
   if (c.alertGapMs !== undefined) window._alertGapMs = Math.max(0, Math.min(5000, +c.alertGapMs || 0));
+  /* V43 : interrupteur GENERAL — « couper toutes les alertes ». Coupé = plus rien ne s'affiche,
+     plus de son, plus de voix. Les alertes qui arrivent pendant la coupure sont perdues
+     (pas de rattrapage a la reactivation : c'est ce qu'on veut en direct). */
+  if (c.alertsMaster !== undefined) {
+    window._alertsMaster = !(c.alertsMaster === false || c.alertsMaster === 'false' || c.alertsMaster === 0);
+    if (window._alertsMaster === false) {
+      try {
+        alertQueue.length = 0;
+        const ae = document.getElementById('alerts');
+        if (ae) ae.replaceChildren();
+        document.querySelectorAll('.alert').forEach(x => { try { x.remove(); } catch (e) {} });
+      } catch (e) {}
+    }
+  }
   if (c.ttsEnabled !== undefined || c.ttsVoice !== undefined || c.ttsRate !== undefined || c.ttsVolume !== undefined
       || c.ttsTemplate !== undefined || c.ttsMaxChars !== undefined || c.ttsCooldownUser !== undefined
       || c.ttsCooldownGlobal !== undefined || c.ttsDedupeMinutes !== undefined || c.ttsOutput !== undefined
@@ -2186,6 +2228,7 @@ function showAlert(a) {
   }, t.hold);
 }
 function queueAlert(a) {
+  if (window._alertsMaster === false) return;   // V43 : alertes coupées depuis le panneau
   const tc = typeCfgOf(a.alert);
   if (tc && tc.enabled === false) return;  alertQueue.push(a);
   processAlerts();
@@ -2295,6 +2338,7 @@ function setGoal(g) {
   const pctEl = document.getElementById('velocityPct');
   const goalEl = document.getElementById('velocityGoal');
   const chronoEl = document.getElementById('velocityChrono');
+  const boostEl = document.getElementById('velocityBoost');
   const finEl = document.getElementById('velocityFin');
   if (!wrap || !fill) return;
 
@@ -2309,13 +2353,13 @@ function setGoal(g) {
     goalThreshold: 90,
     goalDurationMinutes: 15,
     holdDurationSeconds: 120,
+    boostMult: 1,
     finHour: 21,
     finMinute: 30,
     finEnabled: true,
     antiSpam: true,
     cooldownSeconds: 15,
     maxPerMinute: 2,
-    exemptStaff: false,
     excludedUsers: ['wisebots']
   };
   const userHits = new Map(); // user -> { last, times[] }
@@ -2324,8 +2368,10 @@ function setGoal(g) {
   let displayed = 0;
   let mpmScore = 0;
   let lastFrame = performance.now();
-  let aboveStart = 0; // quand on a passé le seuil
+  let held = 0;            // secondes « tenues » au-dessus du seuil (déjà multipliées)
+  let aboveStart = 0;      // compat : instant où le seuil a été franchi
   let isOverdrive = false;
+  let excludedCache = null;
 
   function applyVisualConfig() {
     wrap.style.setProperty('--vel-w', cfg.barWidth + 'px');
@@ -2340,10 +2386,11 @@ function setGoal(g) {
       wrap.setAttribute('aria-hidden','false');
     }
 
-    // objectif simple : seuil → +durée
+    // objectif simple : seuil → +durée (+ rappel du turbo armé, qui ne s'affiche qu'à 100 %)
     if (goalEl) {
       goalEl.textContent = cfg.goalThreshold + '% → +' + cfg.goalDurationMinutes + ' MIN';
     }
+    if (boostEl) boostEl.textContent = fmtMult(cfg.boostMult);   // texte pré-remplié ; il ne s'AFFICHE qu'à 100 %
 
     // fin prévue fonctionnelle
     if (finEl) {
@@ -2363,11 +2410,19 @@ function setGoal(g) {
     }
   }
 
+  function fmtMult(n) {
+    const v = Math.round(n * 100) / 100;
+    return '×' + String(v).replace('.', ',');   // ×1,25 à la française
+  }
   function parseExcluded(v) {
     const raw = Array.isArray(v) ? v.join(',') : String(v == null ? '' : v);
     const list = raw.split(/[,;\s]+/).map(s => s.toLowerCase().trim()).filter(Boolean);
     if (!list.includes('wisebots')) list.push('wisebots');
     return list;
+  }
+  function excludedList() {
+    if (!excludedCache) excludedCache = parseExcluded(cfg.excludedUsers);
+    return excludedCache;
   }
   function shouldCountVelocity(m) {
     if (!cfg.antiSpam) return true;
@@ -2377,9 +2432,9 @@ function setGoal(g) {
     if (text.startsWith('!')) return false;
     const user = String(m.user || '').toLowerCase().slice(0, 64);
     if (!user) return false;
-    const excluded = parseExcluded(cfg.excludedUsers);
+    const excluded = excludedList();
     if (excluded.includes(user)) return false;
-    if (cfg.exemptStaff && (m.role === 'me' || m.role === 'mod')) return false;
+    // regle figee : le streamer et les mods comptent comme tout le monde (aucune exemption)
     const now = Date.now();
     let rec = userHits.get(user);
     if (!rec) rec = { last: 0, times: [] };
@@ -2394,6 +2449,7 @@ function setGoal(g) {
     return true;
   }
   function pushTimestamp(m) {
+    if (!cfg.velocityEnabled) return;   // barre cachee = rien ne s'accumule pour rien
     if (!shouldCountVelocity(m)) return;
     mpmScore += 1;
   }
@@ -2401,8 +2457,9 @@ function setGoal(g) {
 
   function resetVelocity(full) {
     if (full) { mpmScore = 0; userHits.clear(); }
-    velocity = 0; displayed = 0; aboveStart = 0; isOverdrive = false;
-    wrap.classList.remove('is-overdrive','is-hot','is-goal');
+    velocity = 0; displayed = 0; aboveStart = 0; held = 0; isOverdrive = false;
+    wrap.classList.remove('is-overdrive','is-hot','is-goal','is-boost');
+    if (boostEl) boostEl.classList.remove('is-on');
     if (fill) fill.style.height = '0%';
     if (glow) { glow.style.bottom='0%'; glow.style.opacity='0'; }
     if (pctEl) pctEl.textContent='0%';
@@ -2458,7 +2515,11 @@ function setGoal(g) {
     if (src.velocityGoalDuration !== undefined) cfg.goalDurationMinutes = Math.max(1, Math.min(120, Math.round(toNum(src.velocityGoalDuration, 15))));
     if (src.holdDurationSeconds !== undefined) cfg.holdDurationSeconds = Math.max(5, Math.min(600, Math.round(toNum(src.holdDurationSeconds, 120))));
     if (src.velocityHold !== undefined) cfg.holdDurationSeconds = Math.max(5, Math.min(600, Math.round(toNum(src.velocityHold, 120))));
-    if (src.velocityHoldDurationSeconds !== undefined) cfg.holdDurationSeconds = Math.max(5, Math.min(600, Math.round(toNum(src.velocityHoldDurationSeconds, 120))));
+    if (src.velocityBoostMult !== undefined || src.boostMult !== undefined) {
+      const bm = Number(src.velocityBoostMult !== undefined ? src.velocityBoostMult : src.boostMult);
+      cfg.boostMult = isFinite(bm) ? Math.max(1, Math.min(2, Math.round(bm * 4) / 4)) : 1;
+    }
+    if (src.excludedUsers !== undefined || src.velocityExcludedUsers !== undefined) excludedCache = null;   // V43 : le cache des exclus est invalide
     if (src.finHour !== undefined) cfg.finHour = Math.max(0, Math.min(23, Math.round(toNum(src.finHour, 21))));
     if (src.velocityFinHour !== undefined) cfg.finHour = Math.max(0, Math.min(23, Math.round(toNum(src.velocityFinHour, 21))));
     if (src.finMinute !== undefined) cfg.finMinute = Math.max(0, Math.min(59, Math.round(toNum(src.finMinute, 30))));
@@ -2478,10 +2539,9 @@ function setGoal(g) {
     if (src.velocityCooldownSeconds !== undefined) cfg.cooldownSeconds = Math.max(0, Math.min(120, Math.round(toNum(src.velocityCooldownSeconds, 15))));
     if (src.maxPerMinute !== undefined) cfg.maxPerMinute = Math.max(1, Math.min(30, Math.round(toNum(src.maxPerMinute, 2))));
     if (src.velocityMaxPerMinute !== undefined) cfg.maxPerMinute = Math.max(1, Math.min(30, Math.round(toNum(src.velocityMaxPerMinute, 2))));
-    if (src.exemptStaff !== undefined) cfg.exemptStaff = !!src.exemptStaff;
-    if (src.velocityExemptStaff !== undefined) cfg.exemptStaff = !!src.velocityExemptStaff;
     if (src.excludedUsers !== undefined) cfg.excludedUsers = parseExcluded(src.excludedUsers);
     if (src.velocityExcludedUsers !== undefined) cfg.excludedUsers = parseExcluded(src.velocityExcludedUsers);
+    excludedCache = null;
     // debug
     try { console.log('[velocite] config appliquee', cfg); } catch(e){}
     applyVisualConfig();
@@ -2521,6 +2581,7 @@ function setGoal(g) {
     let vis = displayed;
     if (mpmScore > 0.6 && vis < 10) vis = 10;
     if (mpmScore > 1.5 && vis < 16) vis = 16;
+    if (vis > 99.5) vis = 100;   // V43 : la barre parait pleine dès que le % affiché est 100
 
     fill.style.height = vis.toFixed(2)+'%';
     if (glow) {
@@ -2541,12 +2602,19 @@ function setGoal(g) {
     }
     if (mpmEl) mpmEl.textContent = Math.round(mpmScore)+' MPM';
 
-    // chrono verrou au dessus du seuil
+    /* chrono verrou au dessus du seuil.
+       V43 : a 100 % de barre, le temps s'ecoule xN fois plus vite (multiplicateur choisi dans
+       le panneau, x1 a x2 par pas de 0,25). Le cumul se fait par petits pas (held) plutot qu'en
+       mesurant le temps ecoule : des qu'on repasse sous 100 %, le chrono retrouve sa vitesse
+       normale SANS repartir de zero. Le badge xN n'apparait qu'a 100 % : pas d'indicateur en
+       vitesse normale, comme demande. */
     const th = cfg.goalThreshold;
+    const at100 = Math.round(displayed) >= 100;
+    const boosting = at100 && cfg.boostMult > 1;
     if (displayed >= th) {
       if (!aboveStart) aboveStart = now;
-      const elapsed = (now - aboveStart)/1000;
-      const remain = Math.max(0, cfg.holdDurationSeconds - elapsed);
+      held += dt * (boosting ? cfg.boostMult : 1);
+      const remain = Math.max(0, cfg.holdDurationSeconds - held);
       if (chronoEl) {
         const mm = String(Math.floor(remain/60)).padStart(2,'0');
         const ss = String(Math.floor(remain%60)).padStart(2,'0');
@@ -2554,16 +2622,19 @@ function setGoal(g) {
         chronoEl.classList.add('is-on');
       }
       wrap.classList.add('is-goal','is-hot');
-      if (elapsed >= cfg.holdDurationSeconds && !isOverdrive) {
+      if (boostEl) boostEl.classList.toggle('is-on', boosting);
+      wrap.classList.toggle('is-boost', boosting);
+      if (held >= cfg.holdDurationSeconds && !isOverdrive) {
         isOverdrive = true;
         triggerGoal();
         setTimeout(()=>{ isOverdrive=false; }, 1000);
       }
     } else {
-      aboveStart = 0;
+      aboveStart = 0; held = 0;
       if (chronoEl) chronoEl.classList.remove('is-on');
-      wrap.classList.remove('is-goal');
-      wrap.classList.toggle('is-hot', displayed>=78);
+      if (boostEl) boostEl.classList.remove('is-on');
+      wrap.classList.remove('is-goal','is-boost');
+      wrap.classList.toggle('is-hot', displayed >= Math.max(60, th - 12));
     }
 
     requestAnimationFrame(frame);

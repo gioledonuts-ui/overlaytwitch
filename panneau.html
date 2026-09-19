@@ -118,6 +118,30 @@ input,textarea,.mono,.note,.hist,#versionInfo,#liveQ,.sub,p,span.badge{user-sele
 }
 /* versionInfo fixed height to avoid jump */
 #versionInfo{min-height:84px;transition:opacity .15s}
+/* V43 — carte interrupteur general des alertes */
+.masterCard{border-color:rgba(124,92,255,.45);background:linear-gradient(180deg,rgba(124,92,255,.10),rgba(16,16,26,.9))}
+.masterCard.is-off{border-color:rgba(255,92,72,.6);background:linear-gradient(180deg,rgba(255,92,72,.14),rgba(24,12,14,.92))}
+.masterCard h2{margin:0;font-size:13px;letter-spacing:.06em}
+.masterCard .mState{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:.04em;line-height:1;margin-top:4px}
+.masterCard.is-off .mState{color:#FF7B6B}
+.btnMaster{padding:14px 20px;font-size:14px;border-radius:12px}
+/* V43 — pastilles du multiplicateur turbo */
+.velMult{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.velMult__b{flex:1;min-width:72px;padding:11px 8px 9px;border-radius:12px;border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.05);color:#fff;cursor:pointer;text-align:center;transition:.18s var(--ease-out,ease)}
+.velMult__b b{display:block;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.04em;line-height:1}
+.velMult__b i{display:block;font-style:normal;font-size:9px;letter-spacing:.12em;opacity:.6;margin-top:3px;text-transform:uppercase}
+.velMult__b:hover{border-color:rgba(110,235,170,.55);transform:translateY(-1px)}
+.velMult__b.is-sel{background:linear-gradient(90deg,#6BE585,#4EE3C4);color:#08101C;border-color:rgba(122,255,190,.95);box-shadow:0 0 20px rgba(110,235,170,.38)}
+.velMult__b.is-sel i{opacity:.8}
+#masterPill{
+  display:none;margin-left:10px;padding:5px 11px;border-radius:999px;
+  font-family:'Outfit',sans-serif;font-size:10px;font-weight:800;letter-spacing:.1em;
+  color:#0A0A0C;background:linear-gradient(90deg,#FF7B6B,#FFB547);
+  box-shadow:0 0 18px rgba(255,110,90,.5);animation:masterBlink 1.6s ease-in-out infinite;
+}
+#masterPill.is-on{display:inline-flex}
+@keyframes masterBlink{0%,100%{opacity:1}50%{opacity:.62}}
 #verPill{
   display:inline-flex;
   margin-top:8px;
@@ -470,7 +494,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
       <div class="brand__txt">
         <div class="brand__name">7GIONNY</div>
         <div class="brand__sub">STUDIO</div>
-        <div id="verPill">V42</div>
+        <div id="verPill">V43</div>
       </div>
     </div>
     <nav class="nav">
@@ -489,6 +513,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
   <div class="main">
     <div class="topbar">
       <div class="topbar__title">PANNEAU DE CONTROLE</div>
+      <span id="masterPill" title="État de l'interrupteur « Toutes les alertes » (onglet Alertes)" style="display:none">🔇 ALERTES COUPÉES</span>
       <div id="statut"></div>
     </div>
     <div class="content">
@@ -672,6 +697,25 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
         </div>
       </section>
       <section class="tab" id="tab-alertes">
+        <div class="card masterCard" id="alertsMasterCard">
+          <div class="row" style="align-items:center;gap:16px;justify-content:space-between;flex-wrap:wrap">
+            <div style="min-width:230px">
+              <h2>🚦 TOUTES LES ALERTES</h2>
+              <div class="mState" id="alertsMasterState">ACTIVÉES</div>
+              <div class="note" id="alertsMasterNote" style="margin-top:6px;max-width:46ch">Follow, sub, re-sub, cadeaux, raids : tout s'affiche et se joue dans OBS.</div>
+            </div>
+            <div class="row" style="gap:12px;align-items:center">
+              <button class="btn btnMaster" id="btnAlertsMaster" type="button">COUPER TOUTES LES ALERTES</button>
+              <div class="switchRow" style="margin:0">
+                <label class="switch">
+                  <input type="checkbox" id="alertsMaster" data-f="alertsMaster">
+                  <span class="switch__track"><span class="switch__thumb"></span></span>
+                </label>
+                <span class="switch__label">Alertes activées</span>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="card">
           <h2>ALERTES — FOLLOW / SUB / RESUB / GIFT / RAID</h2>
           <p class="sub">Chaque champ est enregistré et envoyé dans OBS dès que tu le touches — aucun bouton « enregistrer ». « Tester » envoie une fausse alerte pour voir tout de suite.</p>
@@ -830,6 +874,18 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
               <div class="note" style="margin-top:4px">20 MPM = 50%, 40 = 92% ambre.</div>
             </div>
           </div>
+          <div class="card" style="margin-top:14px;background:#10101a;border-color:rgba(110,235,170,.28)">
+            <h2 style="font-size:11px">⚡ TURBO À 100 % — le chrono s'accélère</h2>
+            <p class="sub">Quand la barre est à <b>100 %</b>, le chrono du verrou descend <b>×N</b> fois plus vite. Dès que ça redescend, il revient à la vitesse normale (sans repartir de zéro). Aucun indicateur à ×1 : le badge <b>×N</b> n'apparaît que quand le turbo tourne.</p>
+            <div class="velMult" id="velMultRow">
+              <button type="button" class="velMult__b" data-mult="1"><b>×1</b><i>off</i></button>
+              <button type="button" class="velMult__b" data-mult="1.25"><b>×1,25</b><i>+25 %</i></button>
+              <button type="button" class="velMult__b" data-mult="1.5"><b>×1,5</b><i>+50 %</i></button>
+              <button type="button" class="velMult__b" data-mult="1.75"><b>×1,75</b><i>+75 %</i></button>
+              <button type="button" class="velMult__b" data-mult="2"><b>×2</b><i>+100 %</i></button>
+            </div>
+            <div class="note" id="velMultNote" style="margin-top:9px"></div>
+          </div>
           <div class="card" style="margin-top:14px;background:#10101a;border-color:var(--line2)">
             <h2 style="font-size:11px">🕘 FIN PRÉVUE – blanc ombré, heure/minutes séparés, édition rapide</h2>
             <div class="row grow">
@@ -912,7 +968,8 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
           <div class="note" style="margin-top:10px;line-height:1.6">
             Logique V5 : leaky bucket exp(-dt/42) sans rebond minute. % = 0→eq 0-50%, eq→2.4eq 50-100% pow 0.66 → rouge 95-100%.<br>
             Quand % ≥ seuil pendant durée verrou (ex 2 min à 90%), chrono décompte visible, puis +durée (ex +15) s'additionne à FIN PRÉVUE (21h30 → 21h45), reset % nouveau tour, MPM conservé.<br>
-            Overlay : 180×700, barre 30px, % 52px lisible, goal 13px, fin 14px blanc ombré. Pas de croix, pas de FAITES GRIMPER, pas de hint, pas d'éclair quand éteint.
+            Overlay : 180×700, barre 30px, % 52px lisible, goal 13px, fin 14px blanc ombré. Pas de croix, pas de FAITES GRIMPER, pas de hint, pas d'éclair quand éteint.<br>
+            <b>V43 — turbo :</b> à <b>100 %</b> de barre, le chrono du verrou descend ×N (x1 à x2 par pas de 0,25, carte ⚡ ci-dessus). Sous 100 %, vitesse normale sans repartir de zéro. Aucun badge à ×1 : le ×N ne s'affiche que quand il tourne.
           </div>
           <div id="velocityEtat" class="note" style="margin-top:10px"></div>
         </div>
@@ -1326,20 +1383,38 @@ if(btnAnnulerTitre)btnAnnulerTitre.addEventListener('click',async()=>{
 });
 
 /* ═══ VÉLOCITÉ V3 — panneau config % + objectif ═══ */
+let velMultSel=1;
 const velocityDef={
-  equilibriumMPM:20,climbSensitivity:0.65,decayRate:0.14,holdDurationSeconds:120,
+  equilibriumMPM:20,climbSensitivity:0.65,decayRate:0.14,holdDurationSeconds:120,boostMult:1,
   barWidth:30,barHeight:700,showMetrics:true,velocityEnabled:true,
   goalThreshold:90,goalDurationMinutes:15,finHour:21,finMinute:30,finEnabled:true,
-  antiSpam:true,cooldownSeconds:15,maxPerMinute:2,exemptStaff:false,excludedUsers:'wisebots'
+  antiSpam:true,cooldownSeconds:15,maxPerMinute:2,excludedUsers:'wisebots'
 };
 let velocitySaved={...velocityDef};
 let _velPrevT=null;
+function fmtMultPill(n){ const v=Math.round(n*100)/100; return '×'+String(v).replace('.', ','); }
+function paintVelMult(){
+  const row=$('velMultRow'); if(!row) return;
+  [...row.querySelectorAll('.velMult__b')].forEach(b=>b.classList.toggle('is-sel', Math.abs((+b.dataset.mult)-velMultSel)<0.001));
+  const note=$('velMultNote');
+  if(note){
+    const hold=Math.max(5, Math.round(+$('velocityHold') && +$('velocityHold').value || velocityDef.holdDurationSeconds));
+    if(velMultSel<=1) note.innerHTML='Turbo désactivé : le chrono descend à vitesse normale, quel que soit le pourcentage.';
+    else {
+      const secs=Math.round(hold/velMultSel);
+      const mm=Math.floor(secs/60), ss=secs%60;
+      note.innerHTML='À 100 %, un verrou de <b>'+hold+' s</b> se tient en <b>'+fmtSec(mm,ss)+'</b> au lieu de '+fmtSec(Math.floor(hold/60),hold%60)+' — badge <b>'+fmtMultPill(velMultSel)+'</b> affiché dans l\'overlay tant que la barre reste à 100 %.';
+    }
+  }
+}
+function fmtSec(mm,ss){ return (mm>0 ? mm+' min ' : '') + ss + ' s'; }
 function getVelocityForm(){
   return {
     equilibriumMPM: Math.max(1, Math.round(+$('velocityEquilibrium').value || velocityDef.equilibriumMPM)),
     climbSensitivity: Math.max(0.05, +$('velocityClimb').value || velocityDef.climbSensitivity),
     decayRate: Math.max(0.02, +$('velocityDecay').value || velocityDef.decayRate),
     holdDurationSeconds: Math.max(5, Math.min(600, Math.round(+$('velocityHold').value || velocityDef.holdDurationSeconds))),
+    boostMult: velMultSel, velocityBoostMult: velMultSel,
     barWidth: Math.max(12, Math.min(40, Math.round(+$('velocityBarWidth').value || velocityDef.barWidth))),
     barHeight: Math.max(280, Math.min(900, Math.round(+$('velocityBarHeight').value || velocityDef.barHeight))),
     showMetrics: !!$('velocityShowMetrics').checked,
@@ -1352,7 +1427,6 @@ function getVelocityForm(){
     antiSpam: $('velocityAntiSpam') ? !!$('velocityAntiSpam').checked : true,
     cooldownSeconds: Math.max(0, Math.min(120, Math.round($('velocityCooldown') ? +$('velocityCooldown').value : velocityDef.cooldownSeconds) || 0)),
     maxPerMinute: Math.max(1, Math.min(30, Math.round($('velocityMaxPerMin') ? +$('velocityMaxPerMin').value : velocityDef.maxPerMinute) || 2)),
-    exemptStaff: false,
     excludedUsers: $('velocityExcludedUsers') ? $('velocityExcludedUsers').value : 'wisebots'
   };
 }
@@ -1362,6 +1436,8 @@ function setVelocityForm(c){
   const climb=s.velocityClimb!=null?s.velocityClimb:(s.climbSensitivity!=null?s.climbSensitivity:velocityDef.climbSensitivity);
   const decay=s.velocityDecay!=null?s.velocityDecay:(s.decayRate!=null?s.decayRate:velocityDef.decayRate);
   const hold=s.velocityHold!=null?s.velocityHold:(s.holdDurationSeconds!=null?s.holdDurationSeconds:velocityDef.holdDurationSeconds);
+  const bm=s.velocityBoostMult!=null?s.velocityBoostMult:(s.boostMult!=null?s.boostMult:velocityDef.boostMult);
+  velMultSel=Math.max(1,Math.min(2,Math.round((+bm||1)*4)/4));
   const bw=s.velocityBarWidth!=null?s.velocityBarWidth:(s.barWidth!=null?s.barWidth:velocityDef.barWidth);
   const bh=s.velocityBarHeight!=null?s.velocityBarHeight:(s.barHeight!=null?s.barHeight:velocityDef.barHeight);
   const sm=s.velocityShowMetrics!=null?s.velocityShowMetrics:(s.showMetrics!=null?s.showMetrics:velocityDef.showMetrics);
@@ -1375,6 +1451,7 @@ function setVelocityForm(c){
   if($('velocityClimb'))$('velocityClimb').value=climb;
   if($('velocityDecay'))$('velocityDecay').value=decay;
   if($('velocityHold'))$('velocityHold').value=hold;
+  paintVelMult();
   if($('velocityBarWidth'))$('velocityBarWidth').value=bw;
   if($('velocityBarHeight'))$('velocityBarHeight').value=bh;
   if($('velocityShowMetrics'))$('velocityShowMetrics').checked=!!sm;
@@ -1393,7 +1470,7 @@ function setVelocityForm(c){
   if($('velocityCooldown'))$('velocityCooldown').value=cd;
   if($('velocityMaxPerMin'))$('velocityMaxPerMin').value=mx;
   if($('velocityExcludedUsers'))$('velocityExcludedUsers').value=exclStr;
-  velocitySaved={equilibriumMPM:eq,climbSensitivity:climb,decayRate:decay,holdDurationSeconds:hold,barWidth:bw,barHeight:bh,showMetrics:!!sm,velocityEnabled:!!en,goalThreshold:gth,goalDurationMinutes:gdur,finHour:finH,finMinute:finM,finEnabled:!!finEn,antiSpam:!!spam,cooldownSeconds:cd,maxPerMinute:mx,exemptStaff:false,excludedUsers:exclStr};
+  velocitySaved={equilibriumMPM:eq,climbSensitivity:climb,decayRate:decay,holdDurationSeconds:hold,barWidth:bw,barHeight:bh,showMetrics:!!sm,velocityEnabled:!!en,goalThreshold:gth,goalDurationMinutes:gdur,finHour:finH,finMinute:finM,finEnabled:!!finEn,antiSpam:!!spam,cooldownSeconds:cd,maxPerMinute:mx,excludedUsers:exclStr,boostMult:velMultSel};
 }
 function apercuVelocity(){
   clearTimeout(_velPrevT);
@@ -1436,11 +1513,25 @@ if(velEnabledEl){
     setTimeout(()=>sauverVelocityImmediate(), 200);
   });
 }
+const vhEl=$('velocityHold');
+if(vhEl) vhEl.addEventListener('input',()=>paintVelMult());
+const velMultRow=$('velMultRow');
+if(velMultRow) velMultRow.addEventListener('click',async e=>{
+  const b=e.target.closest && e.target.closest('.velMult__b'); if(!b) return;
+  velMultSel=Math.max(1,Math.min(2,Math.round((+b.dataset.mult||1)*4)/4));
+  paintVelMult();
+  try{
+    const f=getVelocityForm();
+    const r=await post(API+'/api/config',f);
+    if(r&&r.ok){ velocitySaved={...f}; toast(velMultSel<=1?'Turbo désactivé':'⚡ Turbo '+fmtMultPill(velMultSel)+' — actif dès que la barre est à 100 %'); }
+    else toast('Enregistrement impossible — le pont tourne ?');
+  }catch(err){ toast('Enregistrement impossible — le pont tourne ?'); }
+});
 const btnSauverVelocity=$('btnSauverVelocity');
 if(btnSauverVelocity) btnSauverVelocity.addEventListener('click',async()=>{
   const f=getVelocityForm();
   const r=await post(API+'/api/config',f);
-  if(r.ok){ velocitySaved={...f}; toast('Vélocité enregistrée'); const et=$('velocityEtat'); if(et) et.innerHTML='<span class=\"ok\">Enregistré ✔</span>'; }
+  if(r.ok){ velocitySaved={...f}; paintVelMult(); toast('Vélocité enregistrée'); const et=$('velocityEtat'); if(et) et.innerHTML='<span class=\"ok\">Enregistré ✔</span>'; }
 });
 const btnAnnulerVelocity=$('btnAnnulerVelocity');
 if(btnAnnulerVelocity) btnAnnulerVelocity.addEventListener('click',async()=>{
@@ -1501,6 +1592,7 @@ const ALERT_TYPE_DEFAULTS = {
   raid:   { enabled: true, duration: 6.5, layout: 'above', animationIn: 'slide', animationOut: 'fade', textAnimation: 'none', soundVolume: 75, imageScale: 100, fontSize: 62, fontColor: '#7CC7FF', highlightColor: '#7CC7FF', labelColor: '#E7E9EE', label: 'RAID', template: '{name}', subTemplate: 'arrive avec {amount} spectateurs', showMessage: true, showIcon: true, textDelay: 0, minAmount: 0, videoMuted: true }
 };
 const ALERT_GLOBAL_DEFAULTS = {
+  alertsMaster: true,
   alertPosX: 58, alertPosY: 140, alertPosYLive: 360, alertWidth: 380, alertPhotoWidth: 340, alertScale: 100, alertGapMs: 400,
   alertFontSizeLabel: 26, alertFontSizeSub: 16, alertColorSub: '#B9BEC9', alertStroke: 2.5,
   /* TTS — la voix qui lit les messages (éteinte par défaut, c'est toi qui l'allumes) */
@@ -1623,8 +1715,39 @@ function fillAlertGlobal() {
   });
   const x = $('alertPosXVal'); if (x) x.textContent = Math.round(+alertGlobal.alertPosX) + '%';
   const s = $('alertScaleVal'); if (s) s.textContent = Math.round(+alertGlobal.alertScale) + '%';
+  paintAlertsMaster();
   ttsRefreshNotes();
 }
+/* — V43 : couper/remettre TOUTES les alertes en un clic (utile juste avant le direct) — */
+function paintAlertsMaster() {
+  const on = alertGlobal.alertsMaster !== false;
+  const card = $('alertsMasterCard'); if (card) card.classList.toggle('is-off', !on);
+  const st = $('alertsMasterState'); if (st) st.textContent = on ? 'ACTIVÉES' : 'COUPÉES';
+  const nt = $('alertsMasterNote');
+  if (nt) nt.innerHTML = on
+    ? 'Follow, sub, re-sub, cadeaux, raids : tout s\'affiche et se joue dans OBS.'
+    : '<b>Rien ne s\'affichera dans OBS</b> — ni image, ni son, ni voix. Les alertes reçues pendant la coupure sont perdues (pas de rattrapage).';
+  const bt = $('btnAlertsMaster');
+  if (bt) {
+    bt.textContent = on ? 'COUPER TOUTES LES ALERTES' : 'REMETTRE LES ALERTES';
+    bt.classList.toggle('primary', !on);
+    bt.classList.toggle('ghost', on);
+  }
+  const sw = $('alertsMaster'); if (sw) sw.checked = on;
+  const pill = $('masterPill'); if (pill) pill.classList.toggle('is-on', !on);   // visible depuis n'importe quel onglet
+}
+async function setAlertsMaster(on) {
+  alertGlobal.alertsMaster = !!on;
+  paintAlertsMaster();
+  try {
+    const r = await post(API + '/api/config', { alertsMaster: !!on });
+    if (r && r.ok) toast(on ? '🔔 Alertes réactivées dans OBS' : '🔇 Toutes les alertes sont coupées');
+    else toast('Le pont ne répond pas — rien n\'a été changé');
+  } catch (e) { toast('Le pont ne répond pas — rien n\'a été changé'); }
+}
+const btnAlertsMaster = $('btnAlertsMaster');
+if (btnAlertsMaster) btnAlertsMaster.addEventListener('click', () => setAlertsMaster(alertGlobal.alertsMaster === false));
+
 function ttsRefreshNotes() {
   const r = $('ttsRateVal'); if (r) r.textContent = (+alertGlobal.ttsRate || 1).toFixed(2).replace(/0$/, '') + '×';
   const v = $('ttsVolumeVal'); if (v) v.textContent = Math.round(+alertGlobal.ttsVolume || 0) + '%';
@@ -1673,6 +1796,7 @@ function ttsSpeakHere() {
   } catch (e) { toast('Ce navigateur refuse la synthèse vocale'); }
 }
 function ttsTest() {
+  if (alertGlobal.alertsMaster === false) { toast('⚠ Alertes COUPÉES — remets-les pour entendre la voix'); return; }
   // Test FIDÈLE : une vraie alerte de re-sub avec un message, envoyée au pont.
   // C'est donc l'overlay (ou le pont Windows selon ton réglage) qui parle, pas le panneau.
   post(API + '/api/alert', {
@@ -1764,6 +1888,8 @@ function paintAlertAssetStatus() {
   }
 }
 async function sendTestAlert(type) {
+  // V43 : si tout est coupé, un test ne montrera rien -> on le dit au lieu de laisser croire a une panne
+  if (alertGlobal.alertsMaster === false) { toast('⚠ Alertes COUPÉES — remets-les (bouton tout en haut de l’onglet) pour tester'); return; }
   try {
     const j = await post(API + '/api/alert', ALERT_TEST[type]);
     if (j && j.ok) toast('Alerte ' + ALERT_LABEL[type] + ' envoyée ▶');
@@ -1845,6 +1971,7 @@ function onAlertEdit(e) {
     else alertGlobal[k] = (el.type === 'number' || el.type === 'range') ? (+el.value || 0) : el.value;
     if (k === 'alertPosX') { const n = $('alertPosXVal'); if (n) n.textContent = Math.round(+el.value) + '%'; }
     if (k === 'alertScale') { const n = $('alertScaleVal'); if (n) n.textContent = Math.round(+el.value) + '%'; }
+    if (k === 'alertsMaster') paintAlertsMaster();
     if (k === 'ttsEnabled' || k === 'ttsVoice' || k === 'ttsOutput') ttsFillVoices(); else ttsRefreshNotes();
     scheduleAlertSave();
     return;
@@ -2091,6 +2218,18 @@ if(btnDelAlertBg){
         const m=JSON.parse(e.data);
         if(m.alert){
           playLocalAlertSound(m.alert);
+        }
+        /* V43 : le pont vient de changer la config (autre onglet ouvert, telephone, mise a
+           jour) -> on rafraichit l'etat, SANS jamais ecraser un champ en cours de frappe. */
+        if(m.cfg){
+          const ae=document.activeElement;
+          const busy=ae&&ae.closest&&ae.closest('#tab-alertes, #tab-velocite');
+          if(!busy){
+            if(m.alertsMaster!==undefined){ alertGlobal.alertsMaster=!(m.alertsMaster===false||m.alertsMaster==='false'); paintAlertsMaster(); }
+            const bm=m.velocityBoostMult!==undefined?m.velocityBoostMult:m.boostMult;
+            if(bm!==undefined){ velMultSel=Math.max(1,Math.min(2,Math.round((+bm||1)*4)/4)); paintVelMult(); }
+            loadAlertAssets();
+          }
         }
       }catch(err){}
     };
