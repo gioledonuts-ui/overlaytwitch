@@ -118,13 +118,6 @@ input,textarea,.mono,.note,.hist,#versionInfo,#liveQ,.sub,p,span.badge{user-sele
 }
 /* versionInfo fixed height to avoid jump */
 #versionInfo{min-height:84px;transition:opacity .15s}
-/* V43 — carte interrupteur general des alertes */
-.masterCard{border-color:rgba(124,92,255,.45);background:linear-gradient(180deg,rgba(124,92,255,.10),rgba(16,16,26,.9))}
-.masterCard.is-off{border-color:rgba(255,92,72,.6);background:linear-gradient(180deg,rgba(255,92,72,.14),rgba(24,12,14,.92))}
-.masterCard h2{margin:0;font-size:13px;letter-spacing:.06em}
-.masterCard .mState{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:.04em;line-height:1;margin-top:4px}
-.masterCard.is-off .mState{color:#FF7B6B}
-.btnMaster{padding:14px 20px;font-size:14px;border-radius:12px}
 /* V43 — pastilles du multiplicateur turbo */
 .velMult{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .velMult__b{flex:1;min-width:72px;padding:11px 8px 9px;border-radius:12px;border:1px solid rgba(255,255,255,.14);
@@ -134,14 +127,6 @@ input,textarea,.mono,.note,.hist,#versionInfo,#liveQ,.sub,p,span.badge{user-sele
 .velMult__b:hover{border-color:rgba(110,235,170,.55);transform:translateY(-1px)}
 .velMult__b.is-sel{background:linear-gradient(90deg,#6BE585,#4EE3C4);color:#08101C;border-color:rgba(122,255,190,.95);box-shadow:0 0 20px rgba(110,235,170,.38)}
 .velMult__b.is-sel i{opacity:.8}
-#masterPill{
-  display:none;margin-left:10px;padding:5px 11px;border-radius:999px;
-  font-family:'Outfit',sans-serif;font-size:10px;font-weight:800;letter-spacing:.1em;
-  color:#0A0A0C;background:linear-gradient(90deg,#FF7B6B,#FFB547);
-  box-shadow:0 0 18px rgba(255,110,90,.5);animation:masterBlink 1.6s ease-in-out infinite;
-}
-#masterPill.is-on{display:inline-flex}
-@keyframes masterBlink{0%,100%{opacity:1}50%{opacity:.62}}
 #verPill{
   display:inline-flex;
   margin-top:8px;
@@ -424,27 +409,6 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
 .swatch{width:30px;height:30px;border-radius:4px;cursor:pointer;border:2px solid transparent;flex:none;transition:transform .12s,border-color .12s}
 .swatch:hover{transform:translateY(-1px)}
 .swatch.active{border-color:#fff}
-/* alerts */
-/* ═══ ALERTES V37 — studio compact, chaque réglage à UN seul endroit ═══ */
-.aH{display:flex;align-items:center;gap:10px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line2)}
-.aH h3{font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;letter-spacing:.10em;text-transform:uppercase;color:var(--acc)}
-.aGrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:8px}
-.aGrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 14px;margin-top:8px}
-.aGrid .field,.aGrid3 .field{margin-top:6px}
-.aTabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
-.aTab{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid var(--line);border-radius:5px;background:var(--surface2);color:var(--muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;letter-spacing:.10em;cursor:pointer;transition:border-color .12s,color .12s,background .12s}
-.aTab:hover{border-color:var(--line2);color:var(--text)}
-.aTab.is-on{border-color:var(--acc);color:#fff;background:var(--acc-soft)}
-.aTab i{width:6px;height:6px;border-radius:50%;background:var(--ok);flex:none}
-.aTab.is-off i{background:var(--bad)}
-.aPrev{max-width:120px;max-height:84px;overflow:hidden;border-radius:4px;border:1px solid var(--line2);display:none;background:#000}
-.aPrev img,.aPrev video{width:100%;height:auto;display:block;max-height:82px;object-fit:contain;background:#000}
-#alertBgPreview{max-width:110px;max-height:140px}
-#alertBgPreview img{max-height:138px}
-.aFile{font-size:10px;padding:6px}
-.aHelp{margin-top:12px;border:1px solid var(--line2);border-radius:5px;padding:10px 12px;background:#0f0f18}
-.aHelp summary{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);cursor:pointer}
-.aHelp[open] summary{margin-bottom:8px;color:var(--acc)}
 .tok{font-family:Consolas,monospace;font-size:9px;background:#0c0c14;border:1px solid var(--line2);border-radius:3px;padding:1px 5px;color:var(--acc)}
 /* mono */
 .mono{font-family:Consolas,monospace;font-size:10px;background:#0c0c14;border:1px solid var(--line2);border-radius:4px;padding:8px 9px;word-break:break-all;cursor:pointer;position:relative;transition:all .12s}
@@ -482,7 +446,6 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
   .topbar__title{flex:1 1 100%}
   .content{overflow:visible;padding:12px}
   .row.grow{grid-template-columns:1fr}
-  .aGrid,.aGrid3{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -494,15 +457,14 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
       <div class="brand__txt">
         <div class="brand__name">7GIONNY</div>
         <div class="brand__sub">STUDIO</div>
-        <div id="verPill">V44</div>
+        <div id="verPill">V45</div>
       </div>
     </div>
     <nav class="nav">
       <button class="navbtn active" data-tab="debat"><span class="ico">01</span>DEBAT</button>
       <button class="navbtn" data-tab="objectif"><span class="ico">02</span>OBJECTIF</button>
       <button class="navbtn" data-tab="ambiance"><span class="ico">03</span>AMBIANCE</button>
-      <button class="navbtn" data-tab="alertes"><span class="ico">04</span>ALERTES</button>
-      <button class="navbtn" data-tab="velocite"><span class="ico">05</span>VÉLOCITÉ</button>
+      <button class="navbtn" data-tab="velocite"><span class="ico">04</span>VÉLOCITÉ</button>
     </nav>
     <div class="sideFoot">
       <span id="dotPont" class="off"></span>
@@ -513,7 +475,6 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
   <div class="main">
     <div class="topbar">
       <div class="topbar__title">PANNEAU DE CONTROLE</div>
-      <span id="masterPill" title="État de l'interrupteur « Toutes les alertes » (onglet Alertes)" style="display:none">🔇 ALERTES COUPÉES</span>
       <div id="statut"></div>
     </div>
     <div class="content">
@@ -694,139 +655,6 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
             <button class="btn primary" id="btnSauverAmbiance">ENREGISTRER</button>
             <button class="btn" id="btnAnnulerAmbiance">ANNULER</button>
           </div>
-        </div>
-      </section>
-      <section class="tab" id="tab-alertes">
-        <div class="card masterCard" id="alertsMasterCard">
-          <div class="row" style="align-items:center;gap:16px;justify-content:space-between;flex-wrap:wrap">
-            <div style="min-width:230px">
-              <h2>🚦 TOUTES LES ALERTES</h2>
-              <div class="mState" id="alertsMasterState">ACTIVÉES</div>
-              <div class="note" id="alertsMasterNote" style="margin-top:6px;max-width:46ch">Follow, sub, re-sub, cadeaux, raids : tout s'affiche et se joue dans OBS.</div>
-            </div>
-            <div class="row" style="gap:12px;align-items:center">
-              <button class="btn btnMaster" id="btnAlertsMaster" type="button">COUPER TOUTES LES ALERTES</button>
-              <div class="switchRow" style="margin:0">
-                <label class="switch">
-                  <input type="checkbox" id="alertsMaster" data-f="alertsMaster">
-                  <span class="switch__track"><span class="switch__thumb"></span></span>
-                </label>
-                <span class="switch__label">Alertes activées</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="card">
-          <h2>ALERTES — FOLLOW / SUB / RESUB / GIFT / RAID</h2>
-          <p class="sub">Chaque champ est enregistré et envoyé dans OBS dès que tu le touches — aucun bouton « enregistrer ». « Tester » envoie une fausse alerte pour voir tout de suite.</p>
-
-          <div class="aH"><h3>📍 Emplacement &amp; taille — les 5 types ensemble</h3></div>
-          <div class="aGrid">
-            <div class="field"><label>Position horizontale</label><input id="alertPosX" type="range" min="0" max="100" step="1" data-f="alertPosX"><div class="note"><span id="alertPosXVal">58%</span> · 0% = bord gauche, 100% = bord droit</div></div>
-            <div class="field"><label>Échelle (zoom de toute l'alerte)</label><input id="alertScale" type="range" min="50" max="150" step="5" data-f="alertScale"><div class="note"><span id="alertScaleVal">100%</span> · box + image + texte d'un coup. Laisse 100 % si la largeur te va : c'est elle qui donne la taille.</div></div>
-            <div class="field"><label>Hauteur en haut (px)</label><input id="alertPosY" type="number" min="0" max="800" step="10" data-f="alertPosY"></div>
-            <div class="field"><label>Hauteur pendant un sondage (px)</label><input id="alertPosYLive" type="number" min="0" max="800" step="10" data-f="alertPosYLive"></div>
-            <div class="field"><label>Largeur d'une alerte (px)</label><input id="alertWidth" type="number" min="200" max="800" step="10" data-f="alertWidth"><div class="note">C'est LA taille de l'alerte. Le texte d'un prénom se rétrécit tout seul s'il ne rentre pas, il ne se coupe plus en deux.</div></div>
-            <div class="field"><label>Pause entre 2 alertes (ms)</label><input id="alertGapMs" type="number" min="0" max="5000" step="50" data-f="alertGapMs"><div class="note">400 = enchaîné, 1500 = plus d'air</div></div>
-          </div>
-
-          <div class="aH"><h3>🔤 Polices, tailles et contour</h3></div>
-          <div class="aGrid3">
-            <div class="field"><label>Taille du titre (px)</label><input id="alertFontSizeLabel" type="number" min="8" max="80" step="1" data-f="alertFontSizeLabel"><div class="note">Le petit mot au-dessus du pseudo (FOLLOW, RAID…).</div></div>
-            <div class="field"><label>Taille des détails (px)</label><input id="alertFontSizeSub" type="number" min="8" max="60" step="1" data-f="alertFontSizeSub"><div class="note">Sert aussi au <b>message du sub</b>.</div></div>
-            <div class="field"><label>Contour du pseudo (px)</label><input id="alertStroke" type="number" min="0" max="10" step="0.5" data-f="alertStroke"></div>
-            <div class="field"><label>Couleur du détail</label><input id="alertColorSub" type="color" data-f="alertColorSub"></div>
-            <div class="note" style="grid-column:span 2;align-self:end">Polices fixes : Bebas Neue pour les titres et le pseudo, Inter pour les détails et le message (comme dans OBS). La couleur du titre et du pseudo se règle par type, dans les onglets plus bas.</div>
-          </div>
-
-          <div class="aH"><h3>🖼️ Fond photo (option)</h3></div>
-          <div class="note" id="alertBgStatus">Chargement…</div>
-          <div class="row" style="gap:12px;align-items:flex-start;margin-top:8px">
-            <div class="aPrev" id="alertBgPreview" style="max-width:120px;max-height:150px"><img id="alertBgImg" alt=""></div>
-            <div style="flex:1;min-width:230px">
-              <label>Choisir une photo JPG, PNG (max 10 Mo) — gardée dans <span class="mono" style="display:inline;padding:2px 6px">assets/</span>, elle survit aux mises à jour et aux relances</label>
-              <input type="file" accept=".jpg,.jpeg,.png" id="alertBgInput" class="aFile">
-              <div class="row"><button class="btn small ghost" id="btnDelAlertBg" type="button" style="display:none">SUPPRIMER LA PHOTO</button></div>
-            </div>
-            <div class="field" style="flex:0 0 170px"><label>Largeur en mode photo (px)</label><input id="alertPhotoWidth" type="number" min="180" max="600" step="10" data-f="alertPhotoWidth"><div class="note">Avec une image 4:5, l'alerte garde ce ratio et grandit si le texte a besoin de place.</div></div>
-          </div>
-          <div class="note" style="margin-top:6px">Avec une photo, l'alerte devient une carte 4:5 : remerciement en haut, pseudo en bas, texte blanc contour noir. Sans photo, c'est le fond violet par défaut.</div>
-
-          <div class="row" style="margin-top:14px">
-            <button class="btn small ghost" id="btnAlertResetAll" type="button">RAMENER TOUTES LES ALERTES AUX RÉGLAGES D'ORIGINE</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <h2>RÉGLAGES PAR TYPE</h2>
-          <p class="sub">Un onglet par type : activer, durée, layout, animations, volume, son, image/GIF/vidéo, textes. Variables possibles : <span class="mono" style="display:inline;padding:2px 6px">{name} {viewer} {viewers} {amount} {streak} {total} {message}</span></p>
-          <div class="aTabs" id="alertTypeTabs"></div>
-          <div id="alertTypeBody"></div>
-        </div>
-
-        <div class="card">
-          <h2>MESSAGE DU VIEWER &amp; VOIX (TTS)</h2>
-          <p class="sub">Le message écrit au moment de l'abonnement s'affiche dans l'alerte (case <b>Afficher le message</b> de l'onglet du type) et peut être <b>lu à voix haute</b>. Liens, @, emoji et « marrrrci » sont nettoyés avant la lecture.</p>
-          <div class="switchRow">
-            <label class="switch">
-              <input type="checkbox" id="ttsEnabled" data-f="ttsEnabled">
-              <span class="switch__track"><span class="switch__thumb"></span></span>
-            </label>
-            <span class="switch__label">Lire les messages des subs, re-subs, cadeaux et raids</span>
-          </div>
-          <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-top:12px">
-            <div class="field"><label>Voix</label>
-              <select id="ttsVoice" data-f="ttsVoice"><option value="">Automatique (française si dispo)</option></select>
-              <div class="note" id="ttsVoiceNote">Voix installées sur Windows.</div>
-            </div>
-            <div class="field"><label>Vitesse</label><input id="ttsRate" type="range" min="0.6" max="1.5" step="0.05" data-f="ttsRate"><div class="note"><span id="ttsRateVal">1×</span> · parle plus lentement si c'est trop rapide</div></div>
-            <div class="field"><label>Volume de la voix</label><input id="ttsVolume" type="range" min="0" max="100" step="5" data-f="ttsVolume"><div class="note"><span id="ttsVolumeVal">90%</span> · séparé du volume du son d'alerte</div></div>
-            <div class="field"><label>Longueur max (lettres)</label><input id="ttsMaxChars" type="number" min="40" max="400" step="10" data-f="ttsMaxChars"><div class="note">Coupe proprement à la fin du dernier mot.</div></div>
-            <div class="field" style="grid-column:1 / -1"><label>Phrase lue</label><input id="ttsTemplate" type="text" maxlength="120" data-f="ttsTemplate" placeholder="{name} a dit : {message}"><div class="note">Variables : <span class="mono" style="display:inline;padding:2px 6px">{name} {message} {months} {streak} {total} {viewers}</span> · vide = le message tout seul</div></div>
-          </div>
-          <p class="sub" style="margin:14px 0 0"><b>Anti-spam de la voix</b> — pour que le TTS ne parte pas en boucle sur un chat qui tape fort.</p>
-          <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-top:8px">
-            <div class="field"><label>Un même viewer, 1 fois toutes les (s)</label><input id="ttsCooldownUser" type="number" min="0" max="300" step="5" data-f="ttsCooldownUser"><div class="note">0 = sans limite</div></div>
-            <div class="field"><label>Pause entre deux phrases (s)</label><input id="ttsCooldownGlobal" type="number" min="0" max="30" step="1" data-f="ttsCooldownGlobal"><div class="note">Le temps que la voix respire.</div></div>
-            <div class="field"><label>La même phrase, pas relue pendant (min)</label><input id="ttsDedupeMinutes" type="number" min="0" max="180" step="5" data-f="ttsDedupeMinutes"><div class="note">Copier-coller du même message = lu une seule fois.</div></div>
-            <div class="field"><label>Phrases en attente max</label><input id="ttsQueueMax" type="number" min="0" max="5" step="1" data-f="ttsQueueMax"><div class="note">Au-delà, la phrase est sautée : jamais de retard sur le direct.</div></div>
-          </div>
-          <div style="margin-top:12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
-            <button class="btn small" type="button" data-tts-test="1">▶ TESTER (alerte + voix, comme en vrai)</button>
-            <button class="btn small ghost" type="button" data-tts-local="1" title="Entendre la voix choisie juste ici, sans OBS">entendre dans ce navigateur</button>
-            <div class="field" style="margin:0"><label style="font-size:12px">La voix sort par</label>
-              <select id="ttsOutput" data-f="ttsOutput" style="min-width:250px">
-                <option value="auto">Auto — OBS si des voix existent, sinon Windows</option>
-                <option value="obs">OBS (source Navigateur)</option>
-                <option value="bridge">Windows / le pont (le plus fiable pour les viewers)</option>
-              </select>
-            </div>
-            <span class="note" id="ttsStatus">—</span>
-          </div>
-          <div class="note" style="margin-top:8px">OBS lit la voix dans son propre son : si tes viewers n'entendent rien (ou si la source est muette), choisis <b>Windows / le pont</b> — la voix sort du son du PC et passe donc dans le stream avec le reste.</div>
-        </div>
-
-        <div class="card">
-          <h2>SON DES ALERTES</h2>
-          <p class="sub">Un son par type, indépendant : l'onglet du type → « Son de ce type » → choisis ton fichier. Ça s'écrit dans <span class="mono" style="display:inline;padding:2px 6px">sounds/alert-{type}.mp3</span> (mp3, wav, ogg, m4a, aac, flac — max 12 Mo). <b>L'overlay le prend tout de suite</b>, sans relancer OBS ; re-détection de secours toutes les 10 s. Bouton <b>▶ ÉCOUTER LE SON</b> pour vérifier, et « SUPPRIMER LE SON » pour revenir au bruitage court de l'overlay.</p>
-          <div class="switchRow" style="margin-top:4px">
-            <label class="switch">
-              <input type="checkbox" id="alertLocalPC">
-              <span class="switch__track"><span class="switch__thumb"></span></span>
-            </label>
-            <span class="switch__label">Entendre aussi les alertes sur ce PC (via le panneau)</span>
-          </div>
-          <div class="note" style="margin-top:6px">À cocher seulement si la source Navigateur d'OBS n'est PAS en « Monitoring et sortie », sinon tu entends tout en double.</div>
-          <details class="aHelp">
-            <summary>Personne n'entend les alertes dans OBS — la check-list</summary>
-            <div class="note" style="line-height:1.7">
-              1. OBS → clic droit sur la source Navigateur (widget.html) → Propriétés → cocher <b>Contrôler le son via OBS</b>.<br>
-              2. Dans le mélangeur audio, la source Navigateur passe en <b>Monitoring et sortie</b>, volume monté, pas muette.<br>
-              3. OBS → Paramètres → Audio → <b>Périphérique de monitoring</b> = ton casque.<br>
-              4. URL de la source : <span class="mono" style="display:inline;padding:2px 6px">http://localhost:8321/widget.html</span> <b>sans ?mute=1</b>.<br>
-              5. Un clic dans l'aperçu OBS débloque la lecture auto du son.
-            </div>
-          </details>
         </div>
       </section>
             <section class="tab" id="tab-velocite">
@@ -1556,502 +1384,6 @@ if(btnResetVelocity) btnResetVelocity.addEventListener('click',async()=>{
   }catch(e){ toast('Erreur reset'); }
 });
 
-/* ═══ ALERTES V37 — une seule page pour tout, auto-sauvegarde ═══════════
-   • Partie haute : ce qui est COMMUN aux 5 types (position, taille, polices, fond photo).
-   • Onglets : ce qui est PROPRE à chaque type (activer, durée, disposition, animations,
-     volume, son, image/GIF/vidéo, textes, couleurs).
-   • Chaque changement part sur /api/config → sauvegardé dans config-perso.json ET
-     poussé à OBS dans la foulée. D'où zéro bouton « enregistrer » / « aperçu ».
-   • alertEnabled + alertDurations (clés plates) restent synchronisées : l'overlay
-     s'en sert encore pour les types dérivés (anon / community / prime). */
-const ALERT_TYPES = ['follow', 'sub', 'resub', 'gift', 'raid'];
-const ALERT_LABEL = { follow: 'FOLLOW', sub: 'SUB', resub: 'RESUB', gift: 'GIFT', raid: 'RAID' };
-const ALERT_DESC = {
-  follow: 'Quelqu\'un vient de follow.',
-  sub: 'Nouvel abonnement.',
-  resub: 'Abonné fidèle — sans son propre, c\'est celui du SUB qui joue.',
-  gift: 'Abonnement offert à un viewer.',
-  raid: 'Une autre chaîne envoie son public.'
-};
-/* Ce que voit l'overlay quand tu testes : exactement les mêmes champs que le pont
-   reçoit de Twitch (plan, mois d'affilée, mois au total, viewers, message). */
-const ALERT_TEST = {
-  follow: { type: 'follow', user: 'ViewerExemple' },
-  sub:    { type: 'sub', user: 'amelie', plan: '1000', stints: 0, total: 1, message: 'Content de rejoindre le stream, bonne soirée !' },
-  resub:  { type: 'resub', user: 'Louna', plan: '1000', stints: 2, total: 12, message: 'Toujours la ! 3 mois d’affilée, et le message un peu long pour vérifier qu’il s’affiche bien en entier, sans points de suspension.' },
-  gift:   { type: 'gift', user: 'kevin', viewer: 'maeva', plan: '1000', total: 1, message: 'Bienvenue dans la 7G family' },
-  raid:   { type: 'raid', user: 'UNAUTRECREATOR', viewers: 1240, message: 'On arrive avec toute la team !' }
-};
-const ALERT_LAYOUTS = [['above', 'Image au-dessus du texte'], ['below', 'Image en-dessous'], ['left', 'Image à gauche'], ['right', 'Image à droite'], ['overlay', 'Texte posé sur l\'image'], ['banner', 'Bannière large']];
-const ALERT_ANIMS = [['fade', 'Fondu'], ['slide', 'Glisse (descente)'], ['bounce', 'Rebond'], ['zoom', 'Zoom'], ['flip', 'Retournement']];
-const ALERT_TEXT_ANIMS = [['none', 'Aucune'], ['pulse', 'Pulse'], ['bounce', 'Rebond']];
-const ALERT_TYPE_DEFAULTS = {
-  follow: { enabled: true, duration: 5.2, layout: 'above', animationIn: 'slide', animationOut: 'fade', textAnimation: 'none', soundVolume: 75, imageScale: 100, fontSize: 52, fontColor: '#7CC7FF', highlightColor: '#7CC7FF', labelColor: '#B06CFF', label: 'NOUVEAU FOLLOW', template: '{name}', subTemplate: 'Bienvenue dans le chat !', showMessage: true, showIcon: true, textDelay: 0, minAmount: 0, videoMuted: true },
-  sub:    { enabled: true, duration: 6.5, layout: 'above', animationIn: 'slide', animationOut: 'fade', textAnimation: 'none', soundVolume: 75, imageScale: 100, fontSize: 72, fontColor: '#7CC7FF', highlightColor: '#7CC7FF', labelColor: '#B06CFF', label: 'NOUVEAU SUB', template: '{name}', subTemplate: '1 mois', showMessage: true, showIcon: true, textDelay: 0, minAmount: 0, videoMuted: true },
-  resub:  { enabled: true, duration: 6.5, layout: 'above', animationIn: 'slide', animationOut: 'fade', textAnimation: 'none', soundVolume: 75, imageScale: 100, fontSize: 72, fontColor: '#7CC7FF', highlightColor: '#7CC7FF', labelColor: '#B06CFF', label: 'NOUVEAU SUB', template: '{name}', subTemplate: '{streak} mois consécutif — {total} mois total', showMessage: true, showIcon: true, textDelay: 0, minAmount: 0, videoMuted: true },
-  gift:   { enabled: true, duration: 6.5, layout: 'above', animationIn: 'slide', animationOut: 'fade', textAnimation: 'none', soundVolume: 75, imageScale: 100, fontSize: 72, fontColor: '#7CC7FF', highlightColor: '#7CC7FF', labelColor: '#B06CFF', label: 'NOUVEAU SUB', template: '{name}', subTemplate: 'a offert un abonnement à {viewer}', showMessage: true, showIcon: true, textDelay: 0, minAmount: 0, videoMuted: true },
-  raid:   { enabled: true, duration: 6.5, layout: 'above', animationIn: 'slide', animationOut: 'fade', textAnimation: 'none', soundVolume: 75, imageScale: 100, fontSize: 62, fontColor: '#7CC7FF', highlightColor: '#7CC7FF', labelColor: '#E7E9EE', label: 'RAID', template: '{name}', subTemplate: 'arrive avec {amount} spectateurs', showMessage: true, showIcon: true, textDelay: 0, minAmount: 0, videoMuted: true }
-};
-const ALERT_GLOBAL_DEFAULTS = {
-  alertsMaster: true,
-  alertPosX: 58, alertPosY: 140, alertPosYLive: 360, alertWidth: 380, alertPhotoWidth: 340, alertScale: 100, alertGapMs: 400,
-  alertFontSizeLabel: 26, alertFontSizeSub: 16, alertColorSub: '#B9BEC9', alertStroke: 2.5,
-  /* TTS — la voix qui lit les messages (éteinte par défaut, c'est toi qui l'allumes) */
-  ttsEnabled: false, ttsVoice: '', ttsRate: 1, ttsVolume: 90, ttsTemplate: '{name} a dit : {message}', ttsMaxChars: 220,
-  ttsCooldownUser: 30, ttsCooldownGlobal: 3, ttsDedupeMinutes: 10, ttsQueueMax: 2, ttsOutput: 'auto'
-};
-const ALERT_KEYS = Object.keys(ALERT_GLOBAL_DEFAULTS);
-let alertGlobal = Object.assign({}, ALERT_GLOBAL_DEFAULTS);
-let alertTypes = {};
-ALERT_TYPES.forEach(t => { alertTypes[t] = Object.assign({}, ALERT_TYPE_DEFAULTS[t]); });
-let alertCurType = 'follow';
-let _alertSaveT = null, _soundsMap = null, _mediaMap = null, _bgMap = null;
-const alertTabEl = $('tab-alertes');
-
-function fileToBase64(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => { try { res(String(r.result).split(',')[1]); } catch (e) { rej(e); } };
-    r.onerror = () => rej(r.error);
-    r.readAsDataURL(file);
-  });
-}
-/* — petits générateurs de champs (un seul modèle pour les 5 types) — */
-function aWrap(label, inner, hint) { return '<div class="field"><label>' + label + '</label>' + inner + (hint ? '<div class="note">' + hint + '</div>' : '') + '</div>'; }
-function aNum(label, key, min, max, step, hint) { return aWrap(label, '<input type="number" min="' + min + '" max="' + max + '" step="' + step + '" data-k="' + key + '">', hint); }
-function aText(label, key, maxlen, ph, hint) { return aWrap(label, '<input type="text" maxlength="' + maxlen + '" data-k="' + key + '" placeholder="' + ph + '">', hint); }
-function aColor(label, key) { return aWrap(label, '<input type="color" data-k="' + key + '">'); }
-function aSel(label, key, list) { return aWrap(label, '<select data-k="' + key + '">' + list.map(o => '<option value="' + o[0] + '">' + o[1] + '</option>').join('') + '</select>'); }
-function aSwitch(key, text) {
-  return '<div class="switchRow" style="margin-top:0"><label class="switch"><input type="checkbox" data-k="' + key + '">' +
-    '<span class="switch__track"><span class="switch__thumb"></span></span></label><span class="switch__label">' + text + '</span></div>';
-}
-/* — onglets FOLLOW / SUB / RESUB / GIFT / RAID — */
-function renderAlertTabs() {
-  const tabs = $('alertTypeTabs');
-  if (!tabs) return;
-  tabs.innerHTML = ALERT_TYPES.map(t => {
-    const off = alertTypes[t].enabled === false;
-    return '<button type="button" class="aTab' + (t === alertCurType ? ' is-on' : '') + (off ? ' is-off' : '') + '" data-tabtype="' + t + '"><i></i>' + ALERT_LABEL[t] + '</button>';
-  }).join('');
-}
-function renderAlertTypeBody() {
-  const body = $('alertTypeBody');
-  if (!body) return;
-  const t = alertCurType;
-  const seuil = t === 'raid'
-    ? aNum('Ne rien afficher en dessous de (vues du raid)', 'minAmount', 0, 100000, 1)
-    : (t === 'gift')
-      ? aNum('Ne rien afficher en dessous de (subs offerts)', 'minAmount', 0, 100000, 1)
-      : '';
-  body.innerHTML =
-    '<div class="note" style="margin-top:12px">' + ALERT_DESC[t] + '</div>' +
-    '<div class="row" style="gap:12px;align-items:center;margin-top:8px">' +
-      '<label class="switch"><input type="checkbox" data-k="enabled"><span class="switch__track"><span class="switch__thumb"></span></span></label>' +
-      '<span class="switch__label">Alerte ' + ALERT_LABEL[t] + ' activée</span>' +
-      '<span style="flex:1"></span>' +
-      '<button class="btn small" type="button" data-alert-test="' + t + '">▶ TESTER L\'ALERTE</button>' +
-      '<button class="btn small ghost" type="button" data-sound-test="' + t + '">▶ ÉCOUTER LE SON</button>' +
-    '</div>' +
-    '<div class="aGrid">' +
-      aNum('Durée affichée (secondes)', 'duration', 1, 30, 0.1) +
-      aWrap('Volume du son', '<input type="range" min="0" max="100" step="1" data-k="soundVolume"><div class="note" data-vol>75%</div>') +
-      aSel('Disposition image / texte', 'layout', ALERT_LAYOUTS) +
-      aSel('Animation d\'entrée', 'animationIn', ALERT_ANIMS) +
-      aSel('Animation de sortie', 'animationOut', ALERT_ANIMS) +
-      aSel('Effet sur le pseudo', 'textAnimation', ALERT_TEXT_ANIMS) +
-      aText('Petit titre au-dessus', 'label', 48, 'NOUVEAU SUB') +
-      aText('Ligne du pseudo', 'template', 80, '{name}') +
-      aText('Ligne de détail', 'subTemplate', 140, '{streak} mois, {total} au total', 'Variables : {name} {viewer} {viewers} {amount} {streak} {total} {message}') +
-      aNum('Taille du pseudo (px)', 'fontSize', 18, 140, 1) +
-      aWrap('Taille de l\'image / vidéo (%)', '<input type="number" min="0" max="200" step="5" data-k="imageScale">', '100 = l\'image garde sa taille dans la limite de la largeur de l\'alerte') +
-      aColor('Couleur du pseudo', 'fontColor') +
-      aColor('Couleur du titre', 'labelColor') +
-      aColor('Couleur surlignée', 'highlightColor') +
-      aNum('Texte visible après (secondes)', 'textDelay', 0, 10, 0.1) +
-      seuil +
-    '</div>' +
-    '<div class="row" style="gap:18px;margin-top:14px">' +
-      aSwitch('showMessage', 'Afficher le message du viewer') +
-      aSwitch('showIcon', 'Afficher l\'image ou la vidéo') +
-      aSwitch('videoMuted', 'Couper le son de la vidéo (sinon doublon avec le son d\'alerte)') +
-    '</div>' +
-    '<div class="aH"><h3>Image / GIF / vidéo de ce type</h3></div>' +
-    '<div class="row" style="gap:12px;align-items:flex-start;margin-top:6px">' +
-      '<div class="aPrev" data-prev></div>' +
-      '<div style="flex:1;min-width:230px"><input type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.webm,.mp4" class="aFile mediaInput" data-type="' + t + '"><div class="note" data-mstatus></div></div>' +
-      '<button class="btn small ghost mediaDel" type="button" style="display:none">SUPPRIMER LE MÉDIA</button>' +
-    '</div>' +
-    '<div class="aH"><h3>Son de ce type</h3></div>' +
-    '<div class="row" style="gap:12px;align-items:center;margin-top:6px">' +
-      '<div style="flex:1;min-width:230px"><input type="file" accept=".mp3,.wav,.ogg,.m4a,.aac,.flac" class="aFile soundInput" data-type="' + t + '"><div class="note" data-sstatus></div></div>' +
-      '<button class="btn small ghost soundDel" type="button" style="display:none">SUPPRIMER LE SON</button>' +
-    '</div>' +
-    '<div class="row" style="gap:10px;align-items:center;margin-top:14px">' +
-      '<button class="btn small ghost" type="button" data-reset-type="' + t + '">REPARTIR DE ZÉRO POUR ' + ALERT_LABEL[t] + '</button>' +
-      '<span class="note" data-legacybg style="display:none"></span>' +
-    '</div>';
-  fillAlertTypeBody();
-  paintAlertAssetStatus();
-}
-function fillAlertTypeBody() {
-  const body = $('alertTypeBody');
-  if (!body) return;
-  const c = alertTypes[alertCurType];
-  body.querySelectorAll('[data-k]').forEach(el => {
-    const k = el.dataset.k, v = c[k];
-    if (el.type === 'checkbox') el.checked = v !== false;
-    else if (el.type === 'color') el.value = /^#[0-9a-fA-F]{6}$/.test(String(v || '')) ? v : '#7cc7ff';
-    else el.value = v != null ? v : '';
-  });
-  const vol = body.querySelector('[data-vol]');
-  if (vol) vol.textContent = Math.round(c.soundVolume != null ? +c.soundVolume : 75) + '%';
-}
-function fillAlertGlobal() {
-  document.querySelectorAll('#tab-alertes [data-f]').forEach(el => {
-    const v = alertGlobal[el.dataset.f];
-    if (el.type === 'checkbox') el.checked = v === true || v === 'true';
-    else if (el.type === 'color') el.value = /^#[0-9a-fA-F]{6}$/.test(String(v || '')) ? v : '#b9bec9';
-    else el.value = v != null ? v : '';
-  });
-  const x = $('alertPosXVal'); if (x) x.textContent = Math.round(+alertGlobal.alertPosX) + '%';
-  const s = $('alertScaleVal'); if (s) s.textContent = Math.round(+alertGlobal.alertScale) + '%';
-  paintAlertsMaster();
-  ttsRefreshNotes();
-}
-/* — V43 : couper/remettre TOUTES les alertes en un clic (utile juste avant le direct) — */
-function paintAlertsMaster() {
-  const on = alertGlobal.alertsMaster !== false;
-  const card = $('alertsMasterCard'); if (card) card.classList.toggle('is-off', !on);
-  const st = $('alertsMasterState'); if (st) st.textContent = on ? 'ACTIVÉES' : 'COUPÉES';
-  const nt = $('alertsMasterNote');
-  if (nt) nt.innerHTML = on
-    ? 'Follow, sub, re-sub, cadeaux, raids : tout s\'affiche et se joue dans OBS.'
-    : '<b>Rien ne s\'affichera dans OBS</b> — ni image, ni son, ni voix. Les alertes reçues pendant la coupure sont perdues (pas de rattrapage).';
-  const bt = $('btnAlertsMaster');
-  if (bt) {
-    bt.textContent = on ? 'COUPER TOUTES LES ALERTES' : 'REMETTRE LES ALERTES';
-    bt.classList.toggle('primary', !on);
-    bt.classList.toggle('ghost', on);
-  }
-  const sw = $('alertsMaster'); if (sw) sw.checked = on;
-  const pill = $('masterPill'); if (pill) pill.classList.toggle('is-on', !on);   // visible depuis n'importe quel onglet
-}
-async function setAlertsMaster(on) {
-  alertGlobal.alertsMaster = !!on;
-  paintAlertsMaster();
-  try {
-    const r = await post(API + '/api/config', { alertsMaster: !!on });
-    if (r && r.ok) toast(on ? '🔔 Alertes réactivées dans OBS' : '🔇 Toutes les alertes sont coupées');
-    else toast('Le pont ne répond pas — rien n\'a été changé');
-  } catch (e) { toast('Le pont ne répond pas — rien n\'a été changé'); }
-}
-const btnAlertsMaster = $('btnAlertsMaster');
-if (btnAlertsMaster) btnAlertsMaster.addEventListener('click', () => setAlertsMaster(alertGlobal.alertsMaster === false));
-
-function ttsRefreshNotes() {
-  const r = $('ttsRateVal'); if (r) r.textContent = (+alertGlobal.ttsRate || 1).toFixed(2).replace(/0$/, '') + '×';
-  const v = $('ttsVolumeVal'); if (v) v.textContent = Math.round(+alertGlobal.ttsVolume || 0) + '%';
-  const st = $('ttsStatus'); if (!st) return;
-  const vs = ttsSysVoices(), out = String(alertGlobal.ttsOutput || 'auto');
-  st.textContent = alertGlobal.ttsEnabled !== true && alertGlobal.ttsEnabled !== 'true' ? 'Voix éteinte'
-    : out === 'bridge' ? '✓ lu par le pont Windows (son du PC → capte par OBS si tu laisses le son du bureau dans le stream)'
-    : vs.length ? '✓ ' + vs.length + ' voix dispo dans ce navigateur' + (out === 'obs' ? ' · lecture forcee dans OBS' : ' · lecture dans OBS')
-    : '✓ aucune voix ici → relais par le pont Windows';
-}
-/* — les voix du système, pour le select + l'état du moteur — */
-function ttsSysVoices() { try { return (window.speechSynthesis && window.speechSynthesis.getVoices()) || []; } catch (e) { return []; } }
-function ttsFillVoices() {
-  const sel = $('ttsVoice'); if (!sel) return;
-  const vs = ttsSysVoices();
-  const cur = alertGlobal.ttsVoice || '';
-  sel.replaceChildren();
-  const o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'Automatique (française si dispo)'; sel.appendChild(o0);
-  vs.slice().sort((a, b) => String(a.name).localeCompare(String(b.name))).forEach(v => {
-    const o = document.createElement('option'); o.value = v.name; o.textContent = v.name + ' · ' + (v.lang || '?'); sel.appendChild(o);
-  });
-  if (cur && vs.some(v => v.name === cur)) sel.value = cur;
-  const n = $('ttsVoiceNote');
-  if (n) n.textContent = vs.length ? vs.length + ' voix installées sur ce PC (' + vs.filter(v => /^fr/i.test(v.lang || '')).length + ' en français).'
-                                    : 'Aucune voix trouvée dans ce navigateur — le pont parlera avec Windows.';
-  ttsRefreshNotes();
-}
-/* Test fidèle : on envoie une VRAIE alerte de re-sub avec un message au pont.
-   C'est donc l'overlay (ou le pont, selon ton réglage) qui parle, exactement
-   comme en direct — pas une voix du navigateur du panneau. */
-function ttsSpeakHere() {
-  const vs = ttsSysVoices();
-  const msg = 'Merci pour le sub, ça fait vraiment plaisir !';
-  let text = String(alertGlobal.ttsTemplate || '')
-    .replace(/\{name\}/gi, 'Louna').replace(/\{message\}/gi, msg)
-    .replace(/\{(months|streak|total|viewers|amount|count)\}/gi, '3').trim() || msg;
-  if (!vs.length) { toast('Aucune voix dans ce navigateur : installe une voix française dans Windows'); return; }
-  try {
-    const u = new SpeechSynthesisUtterance(text);
-    const want = String(alertGlobal.ttsVoice || '').toLowerCase();
-    const v = (want && vs.find(x => String(x.name).toLowerCase() === want)) || vs.find(x => /^fr/i.test(x.lang || '')) || vs[0];
-    if (v) { u.voice = v; if (v.lang) u.lang = v.lang; }
-    u.rate = +alertGlobal.ttsRate || 1; u.volume = Math.max(0, Math.min(1, (+alertGlobal.ttsVolume || 90) / 100));
-    window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
-    toast('Test dans ce navigateur ▶ ' + (v ? v.name : 'voix auto'));
-  } catch (e) { toast('Ce navigateur refuse la synthèse vocale'); }
-}
-function ttsTest() {
-  if (alertGlobal.alertsMaster === false) { toast('⚠ Alertes COUPÉES — remets-les pour entendre la voix'); return; }
-  // Test FIDÈLE : une vraie alerte de re-sub avec un message, envoyée au pont.
-  // C'est donc l'overlay (ou le pont Windows selon ton réglage) qui parle, pas le panneau.
-  post(API + '/api/alert', {
-    type: 'resub', user: 'Louna', plan: '1000', stints: 2, total: 12,
-    message: 'Test de la voix : merci pour le sub, tout est bon !'
-  }).then(j => toast(j && j.ok
-    ? '▶ Alerte envoyée — écoute OBS. Rien ? mets « La voix sort par » sur Windows / le pont.'
-    : 'Le pont ne répond pas : ni alerte, ni voix'));
-}
-/* — ce qui part dans la config (global + types + miroir legacy) — */
-function alertMirrorLegacy() {
-  const enabled = {}, durations = {};
-  ALERT_TYPES.forEach(t => {
-    const c = alertTypes[t];
-    const on = c.enabled !== false;
-    const dur = Math.round(Math.max(1, Math.min(30, +c.duration || 6.5)) * 1000);
-    enabled[t] = on; durations[t] = dur;
-  });
-  enabled.community = enabled.gift; enabled.anon = enabled.gift; enabled.prime = enabled.sub;
-  durations.community = durations.gift; durations.anon = durations.gift; durations.prime = durations.sub;
-  let max = 5200;
-  Object.keys(durations).forEach(k => { if (durations[k] > max) max = durations[k]; });
-  return { alertEnabled: enabled, alertDurations: durations, alertDuration: max };
-}
-function alertPayload() {
-  const p = {};
-  ALERT_KEYS.forEach(k => { p[k] = alertGlobal[k]; });
-  p.alertTypes = alertTypes;
-  return Object.assign(p, alertMirrorLegacy());
-}
-async function saveAlerts() {
-  let r = null;
-  try { r = await post(API + '/api/config', alertPayload()); } catch (e) {}
-  if (r && r.ok) toast('Alertes enregistrées ✔ — regarde OBS');
-  else toast('Enregistrement impossible — le pont (node server.js) tourne ?');
-  return r;
-}
-function scheduleAlertSave() { clearTimeout(_alertSaveT); _alertSaveT = setTimeout(saveAlerts, 320); }
-function applyAlertConfig(cfg) {
-  if (!cfg) return;
-  ALERT_KEYS.forEach(k => {
-    if (cfg[k] == null || cfg[k] === '') return;
-    const dv = ALERT_GLOBAL_DEFAULTS[k];
-    if (typeof dv === 'boolean') alertGlobal[k] = (cfg[k] === true || cfg[k] === 'true' || cfg[k] === 1);
-    else alertGlobal[k] = typeof dv === 'number' ? +cfg[k] : String(cfg[k]);
-  });
-  if (cfg.alertTypes) ALERT_TYPES.forEach(t => { alertTypes[t] = Object.assign({}, ALERT_TYPE_DEFAULTS[t], cfg.alertTypes[t] || {}); });
-  renderAlertTabs();
-  fillAlertGlobal();
-  renderAlertTypeBody();
-}
-/* — sons + médias (statuts, upload, suppression) — */
-async function loadAlertAssets() {
-  try { const j = await (await fetch(API + '/api/sounds', { cache: 'no-store' })).json(); _soundsMap = {}; (j.files || []).forEach(f => { _soundsMap[f.type] = f; }); } catch (e) {}
-  try { const j = await (await fetch(API + '/api/alert-media', { cache: 'no-store' })).json(); _mediaMap = {}; (j.files || []).forEach(f => { _mediaMap[f.type] = f; }); } catch (e) {}
-  try { const j = await (await fetch(API + '/api/alert-images', { cache: 'no-store' })).json(); _bgMap = {}; (j.files || []).forEach(f => { _bgMap[f.type] = f; }); } catch (e) {}
-  paintAlertAssetStatus();
-}
-function paintAlertAssetStatus() {
-  const body = $('alertTypeBody');
-  if (!body || !_soundsMap) return;
-  const t = alertCurType;
-  const s = _soundsMap[t];
-  const st = body.querySelector('[data-sstatus]');
-  if (st) {
-    if (s) st.innerHTML = '<span class="ok">Son custom : ' + esc(s.file) + (s.size ? ' (' + Math.max(1, Math.round(s.size / 1024)) + ' Ko)' : '') + ' ✔ — joué dès la prochaine alerte</span>';
-    else st.textContent = (t === 'resub' || t === 'gift') ? 'Aucun son propre ici → celui du SUB est joué' : 'Aucun son propre → petit bruitage par défaut de l\'overlay (envoie un .mp3 ou .wav ci-dessus pour le remplacer)';
-  }
-  const sd = body.querySelector('.soundDel'); if (sd) sd.style.display = s ? 'inline-flex' : 'none';
-  const m = _mediaMap && _mediaMap[t];
-  const ms = body.querySelector('[data-mstatus]'), mp = body.querySelector('[data-prev]'), md = body.querySelector('.mediaDel');
-  if (ms) {
-    if (m) ms.innerHTML = '<span class="ok">' + (m.kind === 'video' ? 'Vidéo' : m.kind === 'gif' ? 'GIF' : 'Image') + ' custom : ' + esc(m.file) + ' ✔</span>';
-    else ms.textContent = 'Aucun média → icône par défaut du type ' + ALERT_LABEL[t];
-  }
-  if (md) md.style.display = m ? 'inline-flex' : 'none';
-  if (mp) {
-    if (m) {
-      mp.style.display = 'block';
-      const url = API + '/assets/' + encodeURIComponent(m.file) + '?v=' + Date.now();
-      mp.innerHTML = m.kind === 'video' ? '<video src="' + url + '" muted autoplay loop playsinline></video>' : '<img src="' + url + '" alt="">';
-    } else { mp.style.display = 'none'; mp.innerHTML = ''; }
-  }
-  const lb = body.querySelector('[data-legacybg]');
-  const bg = _bgMap && _bgMap[t];
-  if (lb) {
-    if (bg) { lb.style.display = 'inline'; lb.innerHTML = 'Fond photo rien que pour ce type : ' + esc(bg.file) + ' <button class="btn small ghost" type="button" data-bgdel="' + t + '">SUPPRIMER LE FOND</button>'; }
-    else { lb.style.display = 'none'; lb.innerHTML = ''; }
-  }
-}
-async function sendTestAlert(type) {
-  // V43 : si tout est coupé, un test ne montrera rien -> on le dit au lieu de laisser croire a une panne
-  if (alertGlobal.alertsMaster === false) { toast('⚠ Alertes COUPÉES — remets-les (bouton tout en haut de l’onglet) pour tester'); return; }
-  try {
-    const j = await post(API + '/api/alert', ALERT_TEST[type]);
-    if (j && j.ok) toast('Alerte ' + ALERT_LABEL[type] + ' envoyée ▶');
-    else toast('Envoi impossible — le pont tourne ?');
-  } catch (e) { toast('Envoi impossible — le pont tourne ?'); }
-}
-function playSoundPreview(type) {
-  const urls = [];
-  const known = (_soundsMap && _soundsMap[type] && _soundsMap[type].file) ? [ _soundsMap[type].file ] : [];
-  known.forEach(f => urls.push(API + '/sounds/' + f + '?v=' + Date.now()));   // V41 : le fichier réellement en stock
-  ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].forEach(ext => urls.push(API + '/sounds/alert-' + type + '.' + ext + '?v=' + Date.now()));
-  ['resub','gift','raid','follow'].forEach(() => {});
-  if (type !== 'sub' && type !== 'follow') {
-    const fb = (_soundsMap && _soundsMap.sub && _soundsMap.sub.file) ? _soundsMap.sub.file : null;
-    urls.push(API + '/sounds/' + (fb || 'alert-sub.mp3') + '?v=' + Date.now());
-  }
-  let i = 0;
-  const next = () => {
-    if (i >= urls.length) { toast('Aucun son ' + type + ' — uploade-le d\'abord'); return; }
-    const a = new Audio(urls[i++]);
-    a.volume = ((alertTypes[type].soundVolume != null ? +alertTypes[type].soundVolume : 75) / 100);
-    a.play().then(() => toast('Lecture ▶ ' + urls[i - 1].split('/').pop().split('?')[0])).catch(() => next());
-    a.onerror = () => next();
-  };
-  next();
-}
-async function uploadFileTo(url, type, file, maxMo, okMsg) {
-  if (!file) { toast('Aucun fichier choisi'); return false; }
-  if (file.size > maxMo * 1024 * 1024) { toast('Fichier trop gros : ' + (file.size/1048576).toFixed(1) + ' Mo (max ' + maxMo + ' Mo) — coupe-le ou baisse la qualite'); return false; }
-  if (file.size < 200) { toast('Fichier vide ou illisible : ' + file.name); return false; }
-  try {
-    const ext = String(file.name).split('.').pop().toLowerCase();
-    toast('Envoi de ' + file.name + ' (' + (file.size/1024).toFixed(0) + ' Ko)…');
-    const b64 = await fileToBase64(file);
-    const body = { data: b64, ext };
-    if (type) body.type = type;
-    const j = await postFile(url, body);
-    if (j && j.ok) { toast(okMsg); return true; }
-    toast('Échec : ' + ((j && j.err) || 'format non reconnu'));
-    return false;
-  } catch (e) {
-    toast('Échec de l’envoi : ' + (e && e.message || e));
-    return false;
-  }
-}
-/* — événements (tout est délégué, le panneau par type est généré) — */
-if (alertTabEl) {
-  /* voix : la liste arrive en asynchrone dans Chrome/Edge → on re-remplit dès qu'elle est prête */
-  ttsFillVoices();
-  try { if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = ttsFillVoices; } catch (e) {}
-  alertTabEl.addEventListener('input', onAlertEdit);
-  alertTabEl.addEventListener('change', onAlertEdit);
-  alertTabEl.addEventListener('click', onAlertClick);
-  alertTabEl.addEventListener('change', async e => {
-    const el = e.target;
-    if (!el || !el.classList) return;
-    if (el.classList.contains('soundInput')) {
-      const type = el.dataset.type, file = el.files && el.files[0];
-      el.value = '';
-      if (!file) return;
-      if (await uploadFileTo(API + '/api/sounds', type, file, 12, 'Son ' + ALERT_LABEL[type] + ' enregistré ✔ — OBS le joue immédiatement')) loadAlertAssets(); else loadAlertAssets();
-      return;
-    }
-    if (el.classList.contains('mediaInput')) {
-      const type = el.dataset.type, file = el.files && el.files[0];
-      el.value = '';
-      if (!file) return;
-      if (await uploadFileTo(API + '/api/alert-media', type, file, 14, 'Média ' + ALERT_LABEL[type] + ' enregistré ✔')) loadAlertAssets();
-    }
-  });
-}
-function onAlertEdit(e) {
-  const el = e.target;
-  if (!el || !el.dataset) return;
-  if (el.dataset.f) {
-    const k = el.dataset.f;
-    if (el.type === 'number' && el.value === '') return;
-    if (el.type === 'checkbox') alertGlobal[k] = !!el.checked;
-    else alertGlobal[k] = (el.type === 'number' || el.type === 'range') ? (+el.value || 0) : el.value;
-    if (k === 'alertPosX') { const n = $('alertPosXVal'); if (n) n.textContent = Math.round(+el.value) + '%'; }
-    if (k === 'alertScale') { const n = $('alertScaleVal'); if (n) n.textContent = Math.round(+el.value) + '%'; }
-    if (k === 'alertsMaster') paintAlertsMaster();
-    if (k === 'ttsEnabled' || k === 'ttsVoice' || k === 'ttsOutput') ttsFillVoices(); else ttsRefreshNotes();
-    scheduleAlertSave();
-    return;
-  }
-  if (el.dataset.k) {
-    const k = el.dataset.k;
-    if (el.type === 'number' && el.value === '') return;
-    let v;
-    if (el.type === 'checkbox') v = el.checked;
-    else if (el.type === 'number' || el.type === 'range') v = +el.value;
-    else v = el.value;
-    alertTypes[alertCurType][k] = v;
-    if (k === 'soundVolume') { const n = $('alertTypeBody') && $('alertTypeBody').querySelector('[data-vol]'); if (n) n.textContent = Math.round(v) + '%'; }
-    if (k === 'enabled') renderAlertTabs();
-    scheduleAlertSave();
-  }
-}
-async function onAlertClick(e) {
-  const tt = e.target.closest && e.target.closest('[data-tts-test]');
-  if (tt) { ttsTest(); return; }
-  const tl = e.target.closest && e.target.closest('[data-tts-local]');
-  if (tl) { ttsSpeakHere(); return; }
-  const tab = e.target.closest && e.target.closest('[data-tabtype]');
-  if (tab) { alertCurType = tab.dataset.tabtype; renderAlertTabs(); renderAlertTypeBody(); return; }
-  const test = e.target.closest && e.target.closest('[data-alert-test]');
-  if (test) { sendTestAlert(test.dataset.alertTest); return; }
-  const st = e.target.closest && e.target.closest('[data-sound-test]');
-  if (st) { playSoundPreview(st.dataset.soundTest); return; }
-  const bgdel = e.target.closest && e.target.closest('[data-bgdel]');
-  if (bgdel) {
-    if (confirm('Supprimer le fond photo de ce type ? Retour au fond d\'alerte normal.')) {
-      await fetch(API + '/api/alert-image?type=' + encodeURIComponent(bgdel.dataset.bgdel), { method: 'DELETE' }).catch(() => {});
-      toast('Fond supprimé'); loadAlertAssets();
-    }
-    return;
-  }
-  const md = e.target.closest && e.target.closest('.mediaDel');
-  if (md) {
-    if (confirm('Supprimer le média custom ' + ALERT_LABEL[alertCurType] + ' ?')) {
-      await fetch(API + '/api/alert-media?type=' + encodeURIComponent(alertCurType), { method: 'DELETE' }).catch(() => {});
-      toast('Média supprimé'); loadAlertAssets();
-    }
-    return;
-  }
-  const sd = e.target.closest && e.target.closest('.soundDel');
-  if (sd) {
-    if (confirm('Supprimer le son custom ' + ALERT_LABEL[alertCurType] + ' ?')) {
-      await fetch(API + '/api/sounds?type=' + encodeURIComponent(alertCurType), { method: 'DELETE' }).catch(() => {});
-      toast('Son supprimé'); loadAlertAssets();
-    }
-    return;
-  }
-  const rt = e.target.closest && e.target.closest('[data-reset-type]');
-  if (rt) {
-    const t = rt.dataset.resetType;
-    if (confirm('Repartir des réglages d\'origine pour ' + ALERT_LABEL[t] + ' ?')) {
-      alertTypes[t] = Object.assign({}, ALERT_TYPE_DEFAULTS[t]);
-      if (t === alertCurType) renderAlertTypeBody();
-      renderAlertTabs();
-      await saveAlerts();
-    }
-    return;
-  }
-  if (e.target && e.target.id === 'btnAlertResetAll') {
-    if (confirm('Tout ramener aux réglages d\'origine ? Position, tailles, polices, couleurs, durées et médias réglés ici sont remis à zéro. (tes sons et images uploadés sont gardés)')) {
-      alertGlobal = Object.assign({}, ALERT_GLOBAL_DEFAULTS);
-      ALERT_TYPES.forEach(t => { alertTypes[t] = Object.assign({}, ALERT_TYPE_DEFAULTS[t]); });
-      fillAlertGlobal();
-      renderAlertTabs();
-      renderAlertTypeBody();
-      await saveAlerts();
-      sendTestAlert('sub');
-    }
-  }
-}
-renderAlertTabs();
-renderAlertTypeBody();
-loadAlertAssets();
-setInterval(loadAlertAssets, 15000);
 
 
 
@@ -2128,108 +1460,21 @@ if(btnDebat)btnDebat.addEventListener('click',async()=>{
 const btnFinDebat=$('btnFinDebat');
 if(btnFinDebat)btnFinDebat.addEventListener('click',async()=>{await post(API+'/api/end',{});toast('Debat termine');});
 
-// --- Son local sur PC (panneau) : ecoute les alertes via SSE et joue le son custom si case cochee ---
-let localPCEnabled = localStorage.getItem('alertLocalPC') === '1';
-const localPCCheck=$('alertLocalPC');
-if(localPCCheck){
-  localPCCheck.checked=localPCEnabled;
-  localPCCheck.addEventListener('change',()=>{
-    localPCEnabled=localPCCheck.checked;
-    localStorage.setItem('alertLocalPC', localPCEnabled?'1':'0');
-    toast(localPCEnabled?'Son local PC active – attention double si Monitoring OBS':'Son local PC desactive');
-  });
-}
-function playLocalAlertSound(type){
-  if(!localPCEnabled) return;
-  const urls=[
-    API+'/sounds/alert-'+type+'.mp3?v='+Date.now(),
-    API+'/sounds/alert-'+type+'.wav?v='+Date.now(),
-    API+'/sounds/alert-'+type+'.ogg?v='+Date.now(),
-    API+'/sounds/alert-'+type+'.m4a?v='+Date.now(),
-    API+'/sounds/'+type+'.mp3?v='+Date.now(),
-    API+'/sounds/alert-sub.mp3?v='+Date.now()
-  ];
-  let i=0;
-  function tryNext(){
-    if(i>=urls.length) return;
-    const a=new Audio(urls[i++]);
-    a.volume=0.75;
-    a.play().then(()=>{}).catch(()=>tryNext());
-    a.onerror=()=>tryNext();
-  }
-  tryNext();
-}
-/* — FOND ALERTE PHOTO — */
-async function loadAlertBg(){
-  try{
-    const r=await fetch(API+'/api/alert-bg',{cache:'no-store'});
-    const j=await r.json();
-    const el=$('alertBgStatus'), prev=$('alertBgPreview'), img=$('alertBgImg'), delBtn=$('btnDelAlertBg');
-    if(j.files && j.files.length){
-      const f=j.files[0];
-      el.innerHTML='<span class="ok">Custom photo: '+esc(f.file)+' ('+Math.round((f.size||0)/1024)+' Ko) ✔</span>';
-      if(img){ img.src=API+'/assets/'+f.file+'?v='+Date.now(); if(prev) prev.style.display='block'; }
-      if(delBtn) delBtn.style.display='inline-flex';
-    }else{
-      el.innerHTML='<span class="note">Aucune photo custom – fond par défaut (alert-bg.png)</span>';
-      if(prev) prev.style.display='none';
-      if(delBtn) delBtn.style.display='none';
-    }
-  }catch(e){ console.warn('loadAlertBg fail',e); }
-}
-loadAlertBg();
-const alertBgInput=$('alertBgInput');
-if(alertBgInput){
-  alertBgInput.addEventListener('change',async()=>{
-    const file=alertBgInput.files[0];
-    if(!file) return;
-    if(file.size>10*1024*1024){ toast('Fichier trop gros (max 10 Mo)'); alertBgInput.value=''; return; }
-    const ext=file.name.split('.').pop().toLowerCase();
-    if(!['jpg','jpeg','png'].includes(ext)){ toast('Format JPG/PNG uniquement'); alertBgInput.value=''; return; }
-    alertBgInput.disabled=true;
-    try{
-      const b64=await fileToBase64(file);
-      const r=await fetch(API+'/api/alert-bg',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:b64,ext})});
-      const j=await r.json();
-      if(j.ok){ toast('Photo alerte enregistrée ✔ – visible dans OBS'); loadAlertBg(); }
-      else toast('Erreur: '+(j.err||'?'));
-    }catch(e){ toast('Erreur upload photo: '+(e.message||'')); }
-    alertBgInput.disabled=false;
-    alertBgInput.value='';
-  });
-}
-const btnDelAlertBg=$('btnDelAlertBg');
-if(btnDelAlertBg){
-  btnDelAlertBg.addEventListener('click',async()=>{
-    if(!confirm('Supprimer photo custom alerte ? Retour au fond par défaut.')) return;
-    try{
-      const r=await fetch(API+'/api/alert-bg',{method:'DELETE'});
-      const j=await r.json();
-      if(j.ok){ toast('Photo alerte supprimée – fond par défaut'); loadAlertBg(); }
-    }catch(e){ toast('Erreur suppression'); }
-  });
-}
-
-// branche SSE pour alertes (si pas deja connecte)
-(function connectAlertSSE(){
+// branche SSE du panneau : suit la config poussee par le pont
+(function connectPanelSSE(){
   try{
     const es=new EventSource(API+'/events');
     es.onmessage=(e)=>{
       try{
         const m=JSON.parse(e.data);
-        if(m.alert){
-          playLocalAlertSound(m.alert);
-        }
         /* V43 : le pont vient de changer la config (autre onglet ouvert, telephone, mise a
            jour) -> on rafraichit l'etat, SANS jamais ecraser un champ en cours de frappe. */
         if(m.cfg){
           const ae=document.activeElement;
-          const busy=ae&&ae.closest&&ae.closest('#tab-alertes, #tab-velocite');
+          const busy=ae&&ae.closest&&ae.closest('#tab-velocite');
           if(!busy){
-            if(m.alertsMaster!==undefined){ alertGlobal.alertsMaster=!(m.alertsMaster===false||m.alertsMaster==='false'); paintAlertsMaster(); }
             const bm=m.velocityBoostMult!==undefined?m.velocityBoostMult:m.boostMult;
             if(bm!==undefined){ velMultSel=Math.max(1,Math.min(2,Math.round((+bm||1)*4)/4)); paintVelMult(); }
-            loadAlertAssets();
           }
         }
       }catch(err){}
@@ -2362,7 +1607,6 @@ async function init(){
       document.querySelectorAll('.swatch').forEach(sw=>sw.classList.toggle('active',sw.dataset.color.toLowerCase()===acc.toLowerCase()));
       updateGoalAutoUI();
       setVelocityForm(s.config);
-      applyAlertConfig(s.config);
       const et=$('velocityEtat');
       if(et) et.innerHTML='<span class=\"note\">Config chargée – équilibre '+esc(velocitySaved.equilibriumMPM+' MPM')+'</span>';
     }

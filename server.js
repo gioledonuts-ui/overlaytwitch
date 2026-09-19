@@ -84,58 +84,6 @@ const DEFAULT_CONFIG = {
   subGoalHistory: [], // [{label,target,completedAt,currentAtCompletion}]
   chatTitle: 'CHAT DE 7GIONNY',
   accent: '#9146FF',
-  // alertes V33 : position & taille reglables depuis panneau, sauvegarde comme sons
-  alertPosX: 58, // % left (0-100)
-  alertPosY: 140, // px top
-  alertPosYLive: 360, // px top quand sondage live (sous sondage)
-  alertWidth: 380, // px largeur alerte normale
-  alertPhotoWidth: 340, // px largeur alerte photo (4:5)
-  alertScale: 100, // % echelle globale (100 = normal)
-  alertDuration: 6500,
-  alertDurations: { follow: 5200, sub: 6500, resub: 6500, gift: 6500, anon: 6500, community: 6500, prime: 6500, raid: 6500 },
-  alertTextDelay: 0,
-  alertDelay: 0,
-  alertImageSize: 100,
-  alertLayout: 'textOver',
-  alertAnimationIn: 'slideTop',
-  alertAnimationOut: 'slideTop',
-  alertAnimationDuration: 550,
-  // polices figées (Bebas Neue pour les titres/pseudo, Inter pour les détails) :
-  // OBS n'a pas besoin d'un réglage pour ça, et le panneau n'avait que des titres dispo.
-  alertFontSizeLabel: 26,
-  alertFontSizeUser: 72,
-  alertFontSizeSub: 16,
-  alertColorLabel: '#B06CFF',
-  alertColorUser: '#7CC7FF',
-  alertColorSub: '#B9BEC9',
-  alertStroke: 2.5,
-  alertsMaster: true,   // V43 : bouton couper TOUTES les alertes
-  alertEnabled: { follow: true, sub: true, resub: true, gift: true, anon: true, community: true, prime: true, raid: true },
-  alertMessageTemplates: {
-    follow: '{name} vient de follow',
-    sub: '{name} – {months}',
-    resub: '{name} – {streak} mois consécutif, {total} total',
-    gift: '{name} a offert un sub à {viewer}',
-    anon: 'Anonyme a offert à {viewer}',
-    community: '{name} a offert {total} subs',
-    prime: '{name} – Prime',
-    raid: '{name} raid {viewers} viewers'
-  },
-  alertImages: { follow: '', sub: '', resub: '', gift: '', anon: '', community: '', prime: '', raid: '' },
-  alertSoundsVolume: { follow: 75, sub: 75, resub: 75, gift: 75, anon: 75, community: 75, prime: 75, raid: 75, default: 75 },
-  /* ═══ TTS — lit à voix haute le message personnalisé d'un sub/resub/cadeau/raid ═══
-     Éteint par défaut : c'est toi qui l'allumes depuis le panneau (onglet Alertes). */
-  ttsEnabled: false,
-  ttsVoice: '',                 // '' = voix auto (française si disponible)
-  ttsRate: 1,                   // 0.6 .. 1.5
-  ttsVolume: 90,                // %
-  ttsTemplate: '{name} a dit : {message}',
-  ttsMaxChars: 220,
-  ttsCooldownUser: 30,          // s : un même viewer n'est pas lu plus d'1 fois par là
-  ttsCooldownGlobal: 3,         // s : pause minimale entre deux phrases lues
-  ttsDedupeMinutes: 10,         // min : un message déjà lu n'est pas relu
-  ttsQueueMax: 2,               // phrases en attente max (au-delà on coupe, pas d'embouteillage)
-  ttsOutput: 'auto',            // 'auto' = OBS si des voix existent, sinon le pont · 'obs' · 'bridge' (Windows)
   // velocite V5 : seuil % + duree ajout + chrono verrou + fin prevue
   velocityEquilibrium: 20,
   velocityClimb: 0.65,
@@ -156,165 +104,11 @@ const DEFAULT_CONFIG = {
   velocityCooldownSeconds: 15,
   velocityMaxPerMinute: 2,
   velocityExcludedUsers: [],   // V44 : plus aucun pseudo impose d'office — c'est TOI qui decides (champ « Pseudos exclus » du panneau)
-  // alertes V35 : perso type Streamlabs (duree, layout, anim, volume, template, media)
-  alertGapMs: 400,
-  alertTypes: {}
 };
-
-const ALERT_TYPE_IDS = ['follow', 'sub', 'resub', 'gift', 'raid'];
-const ALERT_LAYOUTS = ['above', 'below', 'left', 'right', 'overlay', 'banner'];
-const ALERT_ANIMS = ['fade', 'slide', 'bounce', 'zoom', 'flip'];
-const ALERT_TEXT_ANIMS = ['none', 'pulse', 'bounce'];
-
-function defaultAlertType(type) {
-  const labels = {
-    follow: 'NOUVEAU FOLLOW',
-    sub: 'NOUVEAU SUB',
-    resub: 'NOUVEAU SUB',
-    gift: 'NOUVEAU SUB',
-    raid: 'RAID'
-  };
-  const subs = {
-    follow: 'Bienvenue dans le chat !',
-    sub: '1 mois',
-    resub: '{streak} mois consécutif — {total} mois total',
-    gift: 'a offert un abonnement à {viewer}',
-    raid: 'arrive avec {amount} spectateurs'
-  };
-  const fontSize = (type === 'sub' || type === 'resub') ? 72 : (type === 'raid' ? 62 : 52);
-  return {
-    enabled: true,
-    duration: type === 'follow' ? 5.2 : 6.5,
-    layout: 'above',
-    animationIn: 'slide',
-    animationOut: 'fade',
-    textAnimation: 'none',
-    soundVolume: 75,
-    imageScale: 100,
-    fontSize,
-    fontColor: '#7CC7FF',
-    highlightColor: '#7CC7FF',
-    labelColor: type === 'raid' ? '#E7E9EE' : '#B06CFF',
-    label: labels[type] || 'ALERTE',
-    template: '{name}',
-    subTemplate: subs[type] || '',
-    showMessage: true,
-    showIcon: true,
-    textDelay: 0,
-    minAmount: 0,
-    videoMuted: true
-  };
-}
-
 function clampNum(n, min, max, d) {
   const v = +n;
   if (!isFinite(v)) return d;
   return Math.max(min, Math.min(max, v));
-}
-
-function sanitizeAlertType(type, p) {
-  const d = defaultAlertType(type);
-  const src = p && typeof p === 'object' ? p : {};
-  const hex = (v, fb) => {
-    const s = String(v == null ? fb : v).trim();
-    return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(s) ? s : fb;
-  };
-  return {
-    enabled: src.enabled !== undefined ? !!src.enabled : d.enabled,
-    duration: clampNum(src.duration, 1, 30, d.duration),
-    layout: ALERT_LAYOUTS.includes(src.layout) ? src.layout : d.layout,
-    animationIn: ALERT_ANIMS.includes(src.animationIn) ? src.animationIn : d.animationIn,
-    animationOut: ALERT_ANIMS.includes(src.animationOut) ? src.animationOut : d.animationOut,
-    textAnimation: ALERT_TEXT_ANIMS.includes(src.textAnimation) ? src.textAnimation : d.textAnimation,
-    soundVolume: clampNum(src.soundVolume, 0, 100, d.soundVolume),
-    imageScale: clampNum(src.imageScale, 0, 200, d.imageScale),
-    fontSize: clampNum(src.fontSize, 18, 140, d.fontSize),
-    fontColor: hex(src.fontColor, d.fontColor),
-    highlightColor: hex(src.highlightColor, d.highlightColor),
-    labelColor: hex(src.labelColor, d.labelColor),
-    label: String(src.label != null ? src.label : d.label).slice(0, 48),
-    template: String(src.template != null ? src.template : d.template).slice(0, 80),
-    subTemplate: String(src.subTemplate != null ? src.subTemplate : d.subTemplate).slice(0, 140),
-    showMessage: src.showMessage !== undefined ? !!src.showMessage : d.showMessage,
-    showIcon: src.showIcon !== undefined ? !!src.showIcon : d.showIcon,
-    textDelay: clampNum(src.textDelay, 0, 10, d.textDelay),
-    minAmount: clampNum(src.minAmount, 0, 100000, d.minAmount),
-    videoMuted: src.videoMuted !== undefined ? !!src.videoMuted : d.videoMuted
-  };
-}
-
-/* V38 — échelle globale : avant, elle n'agissait QUE pendant l'animation (la taille
-   « sautait » à la fin puis au départ). Elle s'applique maintenant en permanence.
-   Comme beaucoup l'avaient baissée pour compenser le bug de la V34, on la remet à
-   100 % une seule fois : la largeur réglée dans le panneau reste LA taille de l'alerte,
-   l'affichage ne change pas d'un cheveu, et le curseur redevient utilisable. */
-function normalizeAlertScale(saved) {
-  if (!saved || typeof saved !== 'object' || saved.alertScaleNormalized) return false;
-  saved.alertScaleNormalized = true;
-  const v = +saved.alertScale;
-  if (isFinite(v) && v !== 100 && v > 0) { saved.alertScale = 100; return true; }
-  return false;
-}
-
-function mergeAlertTypes(saved) {
-  const out = {};
-  const src = saved && typeof saved === 'object' ? saved : {};
-  for (const t of ALERT_TYPE_IDS) out[t] = sanitizeAlertType(t, src[t]);
-  return out;
-}
-
-DEFAULT_CONFIG.alertTypes = mergeAlertTypes(null);
-
-/* ═══ MIGRATION V36 → V37 ════════════════════════════════════════
-   L'ancien panneau « Personnalisation avancée » écrivait des clés plates
-   (alertDuration, alertLayout, alertAnimationIn, alertMessageTemplates…).
-   Le panneau n'a plus qu'UN système : les réglages par type (alertTypes),
-   ceux que l'overlay applique réellement. On rapatrie donc une seule fois
-   ce qui avait été réglé à l'ancienne dans alertTypes — sinon le streamer
-   perdrait son look en changeant de version. Le studio par type garde la
-   main dès qu'il a été utilisé (on n'écrase jamais une valeur déjà posée). */
-const LEGACY_ALERT_LAYOUT = { textOver: 'above', textUnder: 'below', side: 'left', middle: 'overlay' };
-const LEGACY_ALERT_ANIM = { slideTop: 'slide', slideLeft: 'slide', slideRight: 'slide', slideBottom: 'slide', fade: 'fade', bounce: 'bounce', zoom: 'zoom', flip: 'flip' };
-function migrateLegacyAlertTypes(saved) {
-  if (!saved || typeof saved !== 'object') return 0;
-  if (saved.alertLegacyMigrated) return 0;
-  if (!saved.alertTypes || typeof saved.alertTypes !== 'object') saved.alertTypes = {};
-  const out = saved.alertTypes;
-  const num = v => (v === undefined || v === null || v === '' || !isFinite(+v)) ? null : +v;
-  const differs = (key) => {
-    const v = saved[key];
-    if (v === undefined || v === null || v === '') return false;
-    return String(v) !== String(DEFAULT_CONFIG[key]);
-  };
-  let moved = 0;
-  const put = (t, key, val) => {
-    if (val === undefined || val === null || val === '') return;
-    if (!out[t] || typeof out[t] !== 'object') out[t] = {};
-    if (out[t][key] !== undefined) return;
-    out[t][key] = val; moved++;
-  };
-  const en = saved.alertEnabled && typeof saved.alertEnabled === 'object' ? saved.alertEnabled : {};
-  const durs = saved.alertDurations && typeof saved.alertDurations === 'object' ? saved.alertDurations : {};
-  const vols = saved.alertSoundsVolume && typeof saved.alertSoundsVolume === 'object' ? saved.alertSoundsVolume : {};
-  const tpl = saved.alertMessageTemplates && typeof saved.alertMessageTemplates === 'object' ? saved.alertMessageTemplates : {};
-  for (const t of ALERT_TYPE_IDS) {
-    if (en[t] !== undefined) put(t, 'enabled', !!en[t]);
-    const d = num(durs[t]) || num(saved.alertDuration);
-    if (d) put(t, 'duration', Math.max(1, Math.min(30, Math.round(d / 100) / 10)));
-    const v = num(vols[t]) != null ? num(vols[t]) : num(vols.default);
-    if (v != null) put(t, 'soundVolume', Math.max(0, Math.min(100, Math.round(v))));
-    if (typeof tpl[t] === 'string' && tpl[t].trim()) put(t, 'subTemplate', tpl[t].trim().slice(0, 140));
-    if (differs('alertLayout')) put(t, 'layout', LEGACY_ALERT_LAYOUT[saved.alertLayout] || 'above');
-    if (differs('alertAnimationIn')) put(t, 'animationIn', LEGACY_ALERT_ANIM[saved.alertAnimationIn] || 'slide');
-    if (differs('alertAnimationOut')) put(t, 'animationOut', LEGACY_ALERT_ANIM[saved.alertAnimationOut] || 'fade');
-    if (differs('alertTextDelay')) { const td = num(saved.alertTextDelay); if (td) put(t, 'textDelay', Math.max(0, Math.min(10, td / 1000))); }
-    if (differs('alertImageSize')) { const is = num(saved.alertImageSize); if (is) put(t, 'imageScale', Math.max(0, Math.min(200, Math.round(is)))); }
-    if (differs('alertFontSizeUser')) put(t, 'fontSize', Math.max(18, Math.min(140, Math.round(num(saved.alertFontSizeUser) || 72))));
-    if (differs('alertColorUser')) put(t, 'fontColor', String(saved.alertColorUser));
-    if (differs('alertColorLabel')) put(t, 'labelColor', String(saved.alertColorLabel));
-  }
-  saved.alertLegacyMigrated = true;
-  return moved;
 }
 
 function normalizeExcludedUsers(v) {
@@ -327,39 +121,35 @@ function normalizeExcludedUsers(v) {
 }
 
 let appConfig = Object.assign({}, DEFAULT_CONFIG);
-let legacyAlertNeedsSave = false, legacyAlertMovedCount = 0, legacyAlertScaleFixed = false;
+let legacyNeedsSave = false;
 try {
   if (fs.existsSync(PERSIST_FILE)) {
     const saved = JSON.parse(fs.readFileSync(PERSIST_FILE, 'utf8')) || {};
-    if (!saved.alertLegacyMigrated) {
-      legacyAlertMovedCount = migrateLegacyAlertTypes(saved);   // rapporte les anciennes clés plates dans alertTypes
-      legacyAlertNeedsSave = true;
-    }
-    if (normalizeAlertScale(saved)) { legacyAlertNeedsSave = true; legacyAlertScaleFixed = true; }
     appConfig = Object.assign({}, DEFAULT_CONFIG, saved);
-    appConfig.alertTypes = mergeAlertTypes(saved.alertTypes);
   }
 } catch (e) { console.warn('[config] config-perso.json illisible :', e.message); }
-if (!appConfig.alertTypes || typeof appConfig.alertTypes !== 'object') {
-  appConfig.alertTypes = mergeAlertTypes(null);
-} else {
-  appConfig.alertTypes = mergeAlertTypes(appConfig.alertTypes);
-}
 /* Velocite : regles figees - streamer et mods comptent dans le % ; la liste des exclus vient uniquement du panneau (V44 : plus aucun pseudo force d'office).
    V43 : « exempter les mods » n'existe plus (cle supprimee du code, du panneau et de la config).
    La duree du verrou se regle par UNE seule cle (velocityHold) : le doublon
    velocityHoldDurationSeconds est retire des fichiers de config existants. */
 if (appConfig.velocityExemptStaff !== undefined || appConfig.velocityHoldDurationSeconds !== undefined) {
   delete appConfig.velocityExemptStaff; delete appConfig.velocityHoldDurationSeconds;
-  legacyAlertNeedsSave = true;
+  legacyNeedsSave = true;
   console.log('[config] cles perimees retirees (velocityExemptStaff, velocityHoldDurationSeconds)');
 }
-if (legacyAlertNeedsSave) {
-  appConfig.alertLegacyMigrated = true;   // la migration ne se rejoue jamais
-  if (legacyAlertMovedCount) console.log('[migration V37] anciens réglages alertes (clés plates) reportés dans les réglages par type : ' + legacyAlertMovedCount + ' valeur(s)');
-  if (legacyAlertScaleFixed) console.log('[migration V38] échelle globale remise à 100 % (elle n\'agissait que pendant l\'animation — la taille vient de la largeur réglée dans le panneau)');
-  saveConfig();
+/* V45 : les alertes ont ete retirees de l'application. Les reglages qu'elles avaient
+   laisses dans config-perso.json (alert*, tts*) sont effaces une bonne fois : plus
+   aucune trace, et le fichier ne traine pas de cles qui ne servent plus a rien.
+   Tout le reste du fichier (debat, sub goal, ambiance, velocite) est conserve tel quel. */
+{
+  const morts = Object.keys(appConfig).filter(k => /^alert/i.test(k) || /^tts/i.test(k));
+  if (morts.length) {
+    for (const k of morts) delete appConfig[k];
+    legacyNeedsSave = true;
+    console.log('[config] reglages d\'alertes effaces (' + morts.length + ' cles) - la fonctionnalite a ete retiree');
+  }
 }
+if (legacyNeedsSave) saveConfig();
 appConfig.velocityExcludedUsers = normalizeExcludedUsers(appConfig.velocityExcludedUsers);
 function saveConfig() {
   try { fs.writeFileSync(PERSIST_FILE, JSON.stringify(appConfig, null, 2)); } catch (e) {}
@@ -373,44 +163,9 @@ function velBoostQuantize(v) {
   return Math.max(1, Math.min(2, Math.round(n * 4) / 4));
 }
 
-function velocityAlertFields(src) {
+function velocityConfigFields(src) {
   const s = src || appConfig;
   return {
-    alert: 1,
-    alertPosX: s.alertPosX,
-    alertPosY: s.alertPosY,
-    alertPosYLive: s.alertPosYLive,
-    alertWidth: s.alertWidth,
-    alertPhotoWidth: s.alertPhotoWidth,
-    alertScale: s.alertScale,
-    alertGapMs: s.alertGapMs,
-    alertTypes: s.alertTypes,
-    alertDuration: s.alertDuration,
-    alertDurations: s.alertDurations,
-    alertTextDelay: s.alertTextDelay,
-    alertDelay: s.alertDelay,
-    alertImageSize: s.alertImageSize,
-    alertLayout: s.alertLayout,
-    alertAnimationIn: s.alertAnimationIn,
-    alertAnimationOut: s.alertAnimationOut,
-    alertAnimationDuration: s.alertAnimationDuration,
-    alertFontSizeLabel: s.alertFontSizeLabel,
-    alertFontSizeUser: s.alertFontSizeUser,
-    alertFontSizeSub: s.alertFontSizeSub,
-    alertColorLabel: s.alertColorLabel,
-    alertColorUser: s.alertColorUser,
-    alertColorSub: s.alertColorSub,
-    alertStroke: s.alertStroke,
-    alertEnabled: s.alertEnabled,
-    alertMessageTemplates: s.alertMessageTemplates,
-    alertImages: s.alertImages,
-    alertSoundsVolume: s.alertSoundsVolume,
-    ttsEnabled: s.ttsEnabled, ttsVoice: s.ttsVoice, ttsRate: s.ttsRate,
-    ttsVolume: s.ttsVolume, ttsTemplate: s.ttsTemplate, ttsMaxChars: s.ttsMaxChars,
-    ttsCooldownUser: s.ttsCooldownUser, ttsCooldownGlobal: s.ttsCooldownGlobal,
-    ttsDedupeMinutes: s.ttsDedupeMinutes, ttsQueueMax: s.ttsQueueMax,
-    ttsOutput: s.ttsOutput,
-    alertsMaster: s.alertsMaster !== false,
     velocity: 1,
     equilibriumMPM: s.velocityEquilibrium,
     climbSensitivity: s.velocityClimb,
@@ -689,24 +444,8 @@ function checkAndSwitchGoal() {
 // init au demarrage : calcule upcoming/history selon current
 try { recomputeGoalsFromCount(); } catch(e){ console.warn('init goal recompute', e.message); }
 
-/* — Alertes (follow / sub / gift / raid) : diffuses au widget — */
-function broadcastAlert(a) {
-  const payload = 'data: ' + JSON.stringify({
-    alert: a.type,
-    user: String(a.user || '').slice(0, 64),
-    viewer: a.viewer ? String(a.viewer).slice(0, 64) : undefined,
-    stints: a.stints || undefined,
-    total: a.total || undefined,
-    viewers: a.viewers || undefined,
-    plan: a.plan ? String(a.plan).slice(0, 8) : undefined,
-    message: a.message ? String(a.message).replace(/[\r\n\t]+/g, ' ').trim().slice(0, 300) : undefined   // message personnalisé du sub/raid
-  }) + '\n\n';
-  for (const res of sse) res.write(payload);
-}
-
 /* — Diffusion du chat Twitch au widget (panneau gauche) — */
 let lastChatBcast = 0;
-let lastBridgeTts = 0;   // TTS de secours : garde-fou anti-mitraillette
 
 /* Reformate l'objet tmi.js { id: ['début-fin', …] } en "id:début-fin/id:début-fin" */
 function rawEmotes(emotesObj) {
@@ -933,39 +672,6 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
       console.log('[chat] message épinglé → ' + t.slice(0, 40));
     }
   });
-  /* — Subs / gifts / raids Twitch → alertes dans l'overlay — */
-  /* tmi.js v1 envoie (channel, userstate, username, months, message) — l'ancien code
-     prenait l'objet userstate pour le pseudo → « [object Object] » dans l'alerte. */
-  chat.on('subscription', (channel, userstate, username, months, message) => {
-    const nick = username || (userstate && (userstate['display-name'] || userstate.username)) || '';
-    const stints = Math.max(0, +months || 0);
-    broadcastAlert({ type: stints > 0 ? 'resub' : 'sub', user: nick, stints, total: (userstate && +userstate['msg-param-cumulative-months']) || stints || undefined,
-                     plan: (userstate && userstate['msg-param-sub-plan']) || undefined, message });
-    console.log('[alerte] ' + (stints > 0 ? 'resub R' + stints : 'sub') + ' : ' + nick + (message ? ' — « ' + String(message).slice(0, 40) + ' »' : ''));
-  });
-  /* un re-sub AVEC message part dans l'événement « resub » (pas « subscription ») :
-     sans ce handler, le message du sub n'arrivait jamais à l'overlay ni au TTS. */
-  chat.on('resub', (channel, username, months, message, userstate) => {
-    const nick = username || (userstate && (userstate['display-name'] || userstate.username)) || '';
-    const stints = Math.max(0, +months || 0);
-    broadcastAlert({ type: 'resub', user: nick, stints: Math.max(0, stints - 1), total: stints,
-                     plan: (userstate && userstate['msg-param-sub-plan']) || undefined, message });
-    console.log('[alerte] resub : ' + nick + ' (' + stints + ' mois)' + (message ? ' — « ' + String(message).slice(0, 40) + ' »' : ''));
-  });
-  chat.on('subnotice', (channel, userId, nick, msg) => {
-    const t = String(msg || '').toLowerCase();
-    let type = 'gift';
-    if (t.includes('mass-gift') || t.includes('mass gift')) type = 'community';
-    else if (t.includes('anon')) type = 'anon';
-    else if (t.includes('prime')) type = 'prime';
-    broadcastAlert({ type, user: nick });
-    console.log('[alerte] sub-notice (' + type + ') : ' + nick);
-  });
-  chat.on('raid', (channel, user, viewers, msg) => {
-    broadcastAlert({ type: 'raid', user, viewers, message: msg });
-    console.log('[alerte] raid : ' + user + ' (' + viewers + ' spectateurs)');
-  });
-
   chat.on('message', (channel, userstate, message, self) => {
     // Signature tmi.js : (channel, userstate, message, self)
     //   userstate = les "tags" du message (pseudo, badges, emotes, réponses…)
@@ -1268,115 +974,12 @@ async function syncSubGoal() {
   }
 }
 
-/* ═══ FOLLOWS + SUBS + RAIDS (EventSub WebSocket, temps réel) ═══════════
-   Twitch n'envoie PAS les follows via IRC : on utilise EventSub WebSocket
-   (channel.follow v2). On ajoute aussi sub, gift, raid pour garantir les alertes
-   même si tmi.js rate un event. */
-function connectFollows() {
-  if (!CLIENT_ID || !POLL_OAUTH || !resolvedBroadcasterId) return;
-  let ws = null;
-  const token = POLL_OAUTH;
-  async function subscribeAll(sessionId) {
-    const types = [
-      { type: 'channel.follow', version: '2', condition: { broadcaster_user_id: resolvedBroadcasterId, moderator_user_id: resolvedBroadcasterId } },
-      { type: 'channel.subscribe', version: '1', condition: { broadcaster_user_id: resolvedBroadcasterId } },
-      { type: 'channel.subscription.gift', version: '1', condition: { broadcaster_user_id: resolvedBroadcasterId } },
-      { type: 'channel.subscription.message', version: '1', condition: { broadcaster_user_id: resolvedBroadcasterId } },
-      { type: 'channel.raid', version: '1', condition: { to_broadcaster_user_id: resolvedBroadcasterId } }
-    ];
-    for (const sub of types) {
-      try {
-        const r = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
-          method: 'POST',
-          headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: sub.type, version: sub.version,
-            condition: sub.condition,
-            transport: { method: 'websocket', session_id: sessionId }
-          })
-        });
-        if (r.ok) console.log(`[eventsub] ${sub.type} OK`);
-        else {
-          const txt = await r.text().catch(()=> '');
-          console.warn(`[eventsub] ${sub.type} fail ${r.status} ${txt.slice(0,120)}`);
-        }
-      } catch (e) { console.warn(`[eventsub] ${sub.type} error`, e.message); }
-    }
-    console.log('[eventsub] WebSocket connecté — alertes follow/sub/gift/raid actives');
-  }
-  function ouvrir(url) {
-    try { ws = new WebSocket(url || 'wss://eventsub.wss.twitch.tv:443'); }
-    catch (e) { console.warn('[follows] WebSocket indisponible (Node trop ancien) :', e.message); return; }
-    ws.onopen = () => {};
-    ws.onmessage = async (ev) => {
-      let msg; try { msg = JSON.parse(ev.data); } catch (e) { return; }
-      const t = msg.metadata && msg.metadata.message_type;
-      if (t === 'session_welcome') {
-        const sessionId = msg.payload.session.id;
-        await subscribeAll(sessionId);
-      } else if (t === 'notification') {
-        const subType = msg.metadata && msg.metadata.subscription_type;
-        const evt = msg.payload && msg.payload.event;
-        if (!evt) return;
-        if (subType === 'channel.follow') {
-          const nom = evt.user_name || evt.user_login || 'un viewer';
-          broadcastAlert({ type: 'follow', user: nom });
-          console.log('[alerte] follow : ' + nom);
-        } else if (subType === 'channel.subscribe') {
-          const nom = evt.user_name || evt.user_login || 'viewer';
-          const isResub = (evt.cumulative_months || 0) > 1 || (evt.streak_months || 0) > 0;
-          if (isResub) {
-            broadcastAlert({ type: 'resub', user: nom, stints: (evt.streak_months||1)-1, total: evt.cumulative_months||1, message: evt.message && evt.message.text });
-            console.log('[alerte] resub EventSub : ' + nom);
-          } else {
-            broadcastAlert({ type: 'sub', user: nom, message: evt.message && evt.message.text });
-            console.log('[alerte] sub EventSub : ' + nom);
-          }
-        } else if (subType === 'channel.subscription.gift') {
-          const nom = evt.user_name || evt.user_login || 'viewer';
-          const isAnon = evt.is_anonymous;
-          const total = evt.total || 1;
-          if (isAnon) {
-            // anonyme : on garde total pour afficher "a offert X subs"
-            broadcastAlert({ type: 'anon', viewer: total>1 ? String(total)+' subs' : (evt.recipient_user_name || 'un spectateur'), total: total });
-            console.log('[alerte] gift anon EventSub x'+total);
-          } else {
-            if (total > 1) {
-              broadcastAlert({ type: 'community', user: nom, total: total, viewers: total });
-              console.log('[alerte] community gift EventSub : ' + nom + ' x' + total);
-            } else {
-              broadcastAlert({ type: 'gift', user: nom, viewer: evt.recipient_user_name || 'un spectateur' });
-              console.log('[alerte] gift EventSub : ' + nom + ' → ' + (evt.recipient_user_name||'?'));
-            }
-          }
-        } else if (subType === 'channel.subscription.message') {
-          const nom = evt.user_name || evt.user_login || 'viewer';
-          broadcastAlert({ type: 'resub', user: nom, stints: (evt.streak_months||1)-1, total: evt.cumulative_months||1, message: evt.message && evt.message.text });
-          console.log('[alerte] resub message EventSub : ' + nom);
-        } else if (subType === 'channel.raid') {
-          const nom = evt.from_broadcaster_user_name || evt.from_broadcaster_user_login || 'raideur';
-          broadcastAlert({ type: 'raid', user: nom, viewers: evt.viewers || 0 });
-          console.log('[alerte] raid EventSub : ' + nom + ' (' + (evt.viewers||0) + ')');
-        }
-      } else if (t === 'session_reconnect') {
-        const u = msg.payload.session && msg.payload.session.reconnect_url;
-        try { ws.close(); } catch (e) {}
-        ouvrir(u);
-      }
-    };
-    ws.onclose = () => { if (ws) setTimeout(() => ouvrir(), 10000); };
-    ws.onerror = () => { try { ws.close(); } catch (e) {} };
-  }
-  ouvrir();
-}
-
-/* — Lancement des connexions "données" (sub goal + follows) — */
+/* — Lancement des connexions "données" (sub goal) — */
 if (CLIENT_ID && POLL_OAUTH) {
   (async () => {
     if (await resolveBroadcaster()) {
       syncSubGoal();
       setInterval(syncSubGoal, 60 * 1000);   // sub goal toutes les minutes
-      connectFollows();
     }
   })();
 }
@@ -1409,7 +1012,7 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    /* — Assets statiques (demo/ + assets/ : GIFs, fonds d'alertes) — */
+    /* — Assets statiques (demo/ + assets/ : GIFs, images) — */
     for (const dir of ['demo', 'assets']) {
       if (u.pathname.startsWith('/' + dir + '/')) {
         const f = path.join(__dirname, dir, path.basename(u.pathname));
@@ -1466,7 +1069,7 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    /* — Bruitages (WAV/MP3 rendus localement, custom alert-{type}.* inclus) — */
+    /* — Bruitages (WAV/MP3 rendus localement) — */
     if (u.pathname.startsWith('/sounds/')) {
       const f = path.join(__dirname, 'sounds', path.basename(u.pathname));
       fs.readFile(f, (e, b) => {
@@ -1481,317 +1084,6 @@ const server = http.createServer((req, res) => {
     /* — API — */
     if (u.pathname === '/api/state' && req.method === 'GET') return send(200, 'application/json', JSON.stringify(state));
     if (u.pathname === '/healthz') return send(200, 'text/plain', 'ok');
-
-    /* — Sons d'alerte custom — */
-    if (u.pathname === '/api/sounds' && req.method === 'GET') {
-      const soundsDir = path.join(__dirname, 'sounds');
-      try { if (!fs.existsSync(soundsDir)) fs.mkdirSync(soundsDir, { recursive: true }); } catch(e){}
-      fs.readdir(soundsDir, (e, files) => {
-        if (e) return send(200, 'application/json', JSON.stringify({ ok: true, files: [], all: [] }));
-        const known = ['follow','sub','resub','gift','raid','prime','anon','community','default'];
-        const list = [];
-        const all = files.map(f => f);
-        for (const f of files) {
-          const low = f.toLowerCase();
-          // supporte alert-xxx.mp3 et aussi xxx.mp3 direct
-          let type = null;
-          if (low.startsWith('alert-')) {
-            type = low.replace(/^alert-/, '').replace(/\.[^.]+$/, '');
-          } else {
-            // si fichier contient un type connu sans prefix alert-
-            for (const k of known) {
-              if (low.includes(k)) { type = k; break; }
-            }
-          }
-          if (!type) continue;
-          // normalise
-          type = type.replace(/[^a-z]/g,'');
-          if (!known.includes(type)) continue;
-          let extra = {};
-          try { const st = fs.statSync(path.join(soundsDir, f)); extra = { size: st.size, mtime: Math.round(st.mtimeMs) }; } catch (e) {}
-          list.push(Object.assign({ file: f, type, url: '/sounds/' + f }, extra));   // V41 : + taille/date → l'overlay voit un remplacement
-        }
-        // dedup par type (garde premier)
-        const seen = new Set();
-        const dedup = [];
-        for (const it of list) {
-          if (!seen.has(it.type)) { seen.add(it.type); dedup.push(it); }
-        }
-        send(200, 'application/json', JSON.stringify({ ok: true, files: dedup, all }));
-      });
-      return;
-    }
-    if (u.pathname === '/api/sounds' && req.method === 'POST') {
-      // Accepte JSON {type, data: base64, ext} ou raw upload via FormData simplifié (on parse en buffer)
-      const chunks = [];
-      let total = 0, tooBig = false;
-      // V41 : on repond 413 en JSON lisible au lieu de couper la connexion en silence
-      // (le panneau n'affichait AUCUN message sur un fichier un peu lourd).
-      req.on('data', ch => { chunks.push(ch); total += ch.length;
-        if (total > 42 * 1024 * 1024 && !tooBig) { tooBig = true; try { send(413, 'application/json', JSON.stringify({ ok: false, err: 'fichier trop gros (max 30 Mo)' })); } catch (e) {} req.resume(); }
-      });
-      req.on('end', () => {
-        if (tooBig) return;
-        try {
-          const buf = Buffer.concat(chunks);
-          const ctype = (req.headers['content-type'] || '').toLowerCase();
-          if (ctype.includes('application/json')) {
-            const j = JSON.parse(buf.toString('utf8'));
-            const allowed = ['follow','sub','resub','gift','raid','prime','anon','community','default'];
-            let type = String(j.type || '').toLowerCase().replace(/[^a-z]/g, '');
-            if (!allowed.includes(type)) type = 'default';
-            if (!j.data) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'data manquant' }));
-            const raw = Buffer.from(j.data, 'base64');
-            if (raw.length < 100) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'fichier trop petit' }));
-            let ext = String(j.ext || 'mp3').toLowerCase().replace(/[^a-z0-9]/g, '');
-            if (!['mp3','wav','ogg','m4a','aac','flac','opus','mp4','webm'].includes(ext)) ext = 'mp3';   // V41 : flac/aac/opus acceptes
-            const outPath = path.join(__dirname, 'sounds', `alert-${type}.${ext}`);
-            // remove other ext for same type
-            try { fs.readdirSync(path.join(__dirname, 'sounds')).forEach(f => { if (f.startsWith(`alert-${type}.`) && f !== `alert-${type}.${ext}`) fs.unlinkSync(path.join(__dirname, 'sounds', f)); }); } catch(e){}
-            fs.writeFileSync(outPath, raw);
-            console.log(`[sons] custom upload alert-${type}.${ext} (${(raw.length/1024).toFixed(1)} Ko)`);
-            try { for (const res of sse) res.write('data: ' + JSON.stringify({ sound: 1, type }) + '\n\n'); } catch (err) {}   // V41 : l'overlay recharge le son aussitot
-            return send(200, 'application/json', JSON.stringify({ ok: true, file: `alert-${type}.${ext}` }));
-          } else {
-            // multipart minimal: on cherche type en query ?type=
-            const qtype = (u.searchParams.get('type') || 'default').toLowerCase().replace(/[^a-z]/g, '');
-            const allowed = ['follow','sub','resub','gift','raid','prime','anon','community','default'];
-            let type = allowed.includes(qtype) ? qtype : 'default';
-            // try to extract filename extension from content-type
-            let ext = 'mp3';
-            if (ctype.includes('wav')) ext = 'wav';
-            else if (ctype.includes('ogg')) ext = 'ogg';
-            else if (ctype.includes('mpeg') || ctype.includes('mp3')) ext = 'mp3';
-            // if multipart, try to find file bytes (naive: take whole body after double CRLF if present)
-            let raw = buf;
-            const doubleCRLF = buf.indexOf('\r\n\r\n');
-            if (ctype.includes('multipart') && doubleCRLF !== -1) {
-              const start = doubleCRLF + 4;
-              const endMarker = buf.lastIndexOf('\r\n--');
-              raw = endMarker > start ? buf.subarray(start, endMarker) : buf.subarray(start);
-            }
-            if (raw.length < 100) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'fichier trop petit' }));
-            const outPath = path.join(__dirname, 'sounds', `alert-${type}.${ext}`);
-            try { fs.readdirSync(path.join(__dirname, 'sounds')).forEach(f => { if (f.startsWith(`alert-${type}.`) && f !== `alert-${type}.${ext}`) fs.unlinkSync(path.join(__dirname, 'sounds', f)); }); } catch(e){}
-            fs.writeFileSync(outPath, raw);
-            console.log(`[sons] custom upload alert-${type}.${ext} (${(raw.length/1024).toFixed(1)} Ko) raw`);
-            try { for (const res of sse) res.write('data: ' + JSON.stringify({ sound: 1, type }) + '\n\n'); } catch (err) {}   // V41 : l'overlay recharge le son aussitot
-            return send(200, 'application/json', JSON.stringify({ ok: true, file: `alert-${type}.${ext}` }));
-          }
-        } catch (e) {
-          console.warn('[sons] upload error', e.message);
-          return send(400, 'application/json', JSON.stringify({ ok: false, err: e.message }));
-        }
-      });
-      return;
-    }
-    if (u.pathname === '/api/sounds' && req.method === 'DELETE') {
-      const type = (u.searchParams.get('type') || '').toLowerCase().replace(/[^a-z]/g, '');
-      if (!type) return send(400, 'application/json', JSON.stringify({ ok: false }));
-      try {
-        fs.readdirSync(path.join(__dirname, 'sounds')).forEach(f => { if (f.startsWith(`alert-${type}.`)) fs.unlinkSync(path.join(__dirname, 'sounds', f)); });
-      } catch(e){}
-      try { for (const res of sse) res.write('data: ' + JSON.stringify({ sound: 1, type, removed: 1 }) + '\n\n'); } catch (err) {}   // V41 : l'overlay l'oublie aussitot
-      return send(200, 'application/json', JSON.stringify({ ok: true }));
-    }
-
-    /* — Alert background photo (IMG_0607.jpg / alert-photo.jpg) — */
-    if (u.pathname === '/api/alert-bg' && req.method === 'GET') {
-      const assetsDir = path.join(__dirname, 'assets');
-      try {
-        // V40 : on ne liste QUE les photos ajoutées par toi (jamais alert-bg.png, qui est le
-        // fond par défaut du repo → le panneau annonçait à tort « photo custom »), et on
-        // priorité au nom mémorisé dans la config (une photo PNG était invisible après relance).
-        // V40 : on ne liste QUE ce qui est enregistre dans la config (les IMG_0607.jpg /
-        // alert-photo.jpg du depot ne sont pas « ta » photo : ils faisaient croire a une photo
-        // custom alors que personne n'avait rien envoye).
-        const fromCfg = (appConfig.alertImages && appConfig.alertImages.default) ? String(appConfig.alertImages.default) : '';
-        const files = [];
-        if (fromCfg) {
-          try {
-            const st = fs.statSync(path.join(assetsDir, fromCfg));
-            files.push({ file: fromCfg, url: '/assets/' + fromCfg, type: 'default', size: st.size, mtime: st.mtime.toISOString() });
-          } catch (e) { delete appConfig.alertImages.default; }   // fichier supprime a la main → on oublie pas la config
-        }
-        return send(200, 'application/json', JSON.stringify({ ok: true, files }));
-      } catch(e) { return send(200, 'application/json', JSON.stringify({ ok: true, files: [] })); }
-    }
-    if (u.pathname === '/api/alert-bg' && req.method === 'POST') {
-      const chunks = [];
-      let total = 0;
-      req.on('data', c => { chunks.push(c); total += c.length; if (total > 12 * 1024 * 1024) req.destroy(); });
-      req.on('end', () => {
-        try {
-          const buf = Buffer.concat(chunks);
-          const ctype = (req.headers['content-type'] || '').toLowerCase();
-          let raw, ext = 'jpg';
-          if (ctype.includes('application/json')) {
-            const j = JSON.parse(buf.toString('utf8'));
-            if (!j.data) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'data manquant' }));
-            raw = Buffer.from(j.data, 'base64');
-            ext = String(j.ext || 'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
-            if (!['jpg','jpeg','png'].includes(ext)) ext = 'jpg';
-          } else {
-            raw = buf;
-            if (ctype.includes('png')) ext = 'png';
-          }
-          if (raw.length < 500) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'fichier trop petit' }));
-          const out1 = path.join(__dirname, 'assets', `alert-photo.${ext}`);
-          const out2 = path.join(__dirname, 'assets', `IMG_0607.${ext}`);
-          // save both names for compatibility
-          fs.writeFileSync(out1, raw);
-          fs.writeFileSync(out2, raw);
-          // une photo PNG ne s'appelait pas alert-photo.jpg : l'overlay ne la trouvait plus
-          // au redémarrage. On mémorise le VRAI nom dans la config (persistée) + on la diffuse.
-          if (!appConfig.alertImages) appConfig.alertImages = {};
-          appConfig.alertImages.default = `alert-photo.${ext}`;
-          saveConfig();
-          for (const res of sse) res.write('data: ' + JSON.stringify({ cfg: 1, alert: 1, alertImages: appConfig.alertImages }) + '\n\n');
-          console.log(`[alert-bg] photo custom ${raw.length/1024|0} Ko → ${out1} (mémorisée dans la config)`);
-          return send(200, 'application/json', JSON.stringify({ ok: true, file: `alert-photo.${ext}` }));
-        } catch(e) {
-          return send(400, 'application/json', JSON.stringify({ ok: false, err: e.message }));
-        }
-      });
-      return;
-    }
-    if (u.pathname === '/api/alert-bg' && req.method === 'DELETE') {
-      try {
-        const assetsDir = path.join(__dirname, 'assets');
-        fs.readdirSync(assetsDir).forEach(f => { if (/^(IMG_0607|alert-photo)\.(jpg|jpeg|png|webp)$/i.test(f)) fs.unlinkSync(path.join(assetsDir, f)); });
-        if (appConfig.alertImages) { delete appConfig.alertImages.default; saveConfig(); }
-        for (const res of sse) res.write('data: ' + JSON.stringify({ cfg: 1, alert: 1, alertImages: appConfig.alertImages || {} }) + '\n\n');
-      } catch(e){}
-      return send(200, 'application/json', JSON.stringify({ ok: true }));
-    }
-
-    /* — Media custom par type d'alerte (image / gif / video) — Streamlabs-like — */
-    const MEDIA_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'webm', 'mp4'];
-    function listAlertMedia() {
-      const assetsDir = path.join(__dirname, 'assets');
-      const files = [];
-      try {
-        for (const f of fs.readdirSync(assetsDir)) {
-          const m = f.match(/^alert-media-([a-z]+)\.([a-z0-9]+)$/i);
-          if (!m) continue;
-          const type = m[1].toLowerCase();
-          const ext = m[2].toLowerCase();
-          if (!ALERT_TYPE_IDS.includes(type) || !MEDIA_EXTS.includes(ext)) continue;
-          const st = fs.statSync(path.join(assetsDir, f));
-          const kind = (ext === 'webm' || ext === 'mp4') ? 'video' : (ext === 'gif' || ext === 'webp' ? 'gif' : 'image');
-          files.push({ type, file: f, ext, kind, size: st.size, url: '/assets/' + f });
-        }
-      } catch (e) {}
-      return files;
-    }
-    if (u.pathname === '/api/alert-media' && req.method === 'GET') {
-      return send(200, 'application/json', JSON.stringify({ ok: true, files: listAlertMedia() }));
-    }
-    if (u.pathname === '/api/alert-media' && req.method === 'POST') {
-      const chunks = [];
-      let total = 0;
-      req.on('data', c => { chunks.push(c); total += c.length; if (total > 16 * 1024 * 1024) req.destroy(); });
-      req.on('end', () => {
-        try {
-          const buf = Buffer.concat(chunks);
-          const ctype = (req.headers['content-type'] || '').toLowerCase();
-          if (!ctype.includes('application/json')) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'json requis' }));
-          const j = JSON.parse(buf.toString('utf8'));
-          let type = String(j.type || '').toLowerCase().replace(/[^a-z]/g, '');
-          if (!ALERT_TYPE_IDS.includes(type)) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'type invalide' }));
-          if (!j.data) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'data manquant' }));
-          const raw = Buffer.from(j.data, 'base64');
-          if (raw.length < 80) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'fichier trop petit' }));
-          let ext = String(j.ext || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
-          if (!MEDIA_EXTS.includes(ext)) ext = 'png';
-          const assetsDir = path.join(__dirname, 'assets');
-          try { fs.readdirSync(assetsDir).forEach(f => { if (f.toLowerCase().startsWith('alert-media-' + type + '.')) fs.unlinkSync(path.join(assetsDir, f)); }); } catch (e) {}
-          const outName = `alert-media-${type}.${ext}`;
-          fs.writeFileSync(path.join(assetsDir, outName), raw);
-          console.log(`[alert-media] ${outName} (${(raw.length / 1024).toFixed(1)} Ko)`);
-          return send(200, 'application/json', JSON.stringify({ ok: true, file: outName, type, ext }));
-        } catch (e) {
-          return send(400, 'application/json', JSON.stringify({ ok: false, err: e.message }));
-        }
-      });
-      return;
-    }
-    if (u.pathname === '/api/alert-media' && req.method === 'DELETE') {
-      const type = (u.searchParams.get('type') || '').toLowerCase().replace(/[^a-z]/g, '');
-      if (!ALERT_TYPE_IDS.includes(type)) return send(400, 'application/json', JSON.stringify({ ok: false }));
-      try {
-        const assetsDir = path.join(__dirname, 'assets');
-        fs.readdirSync(assetsDir).forEach(f => { if (f.toLowerCase().startsWith('alert-media-' + type + '.')) fs.unlinkSync(path.join(assetsDir, f)); });
-      } catch (e) {}
-      return send(200, 'application/json', JSON.stringify({ ok: true }));
-    }
-
-    /* — Alert images per type (custom image) — */
-    if (u.pathname === '/api/alert-images' && req.method === 'GET') {
-      const assetsDir = path.join(__dirname, 'assets');
-      try {
-        // V40 : on renvoie LE TYPE avec chaque fichier (avant, le panneau ne pouvait pas
-        // retrouver quel fond appartenait à quel type → le fond « disparaissait » au reload)
-        const files = fs.readdirSync(assetsDir).filter(f => /^alert-(follow|sub|resub|gift|anon|community|prime|raid|default)-custom\.(jpg|jpeg|png|gif|webp)$/i.test(f)).map(f => {
-          const m = f.match(/^alert-([a-z]+)-custom\.[a-z0-9]+$/i);
-          let extra = {};
-          try { const st = fs.statSync(path.join(assetsDir, f)); extra = { size: st.size, mtime: st.mtime.toISOString() }; } catch(e){}
-          return Object.assign({ file: f, type: m ? m[1].toLowerCase() : 'default', url: '/assets/' + f }, extra);
-        });
-        return send(200, 'application/json', JSON.stringify({ ok: true, files }));
-      } catch(e) { return send(200, 'application/json', JSON.stringify({ ok: true, files: [] })); }
-    }
-    if (u.pathname === '/api/alert-image' && req.method === 'POST') {
-      const type = (u.searchParams.get('type') || '').toLowerCase().replace(/[^a-z]/g,'');
-      const allowed = ['follow','sub','resub','gift','anon','community','prime','raid','default'];
-      const t = allowed.includes(type) ? type : 'default';
-      const chunks = [];
-      let total = 0;
-      req.on('data', c => { chunks.push(c); total += c.length; if (total > 12 * 1024 * 1024) req.destroy(); });
-      req.on('end', () => {
-        try {
-          const buf = Buffer.concat(chunks);
-          const ctype = (req.headers['content-type'] || '').toLowerCase();
-          let raw, ext = 'png';
-          if (ctype.includes('application/json')) {
-            const j = JSON.parse(buf.toString('utf8'));
-            if (!j.data) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'data manquant' }));
-            raw = Buffer.from(j.data, 'base64');
-            ext = String(j.ext || 'png').toLowerCase().replace(/[^a-z0-9]/g,'');
-            if (!['jpg','jpeg','png','gif','webp'].includes(ext)) ext = 'png';
-          } else {
-            raw = buf;
-            if (ctype.includes('jpeg')||ctype.includes('jpg')) ext='jpg';
-            else if (ctype.includes('png')) ext='png';
-            else if (ctype.includes('gif')) ext='gif';
-            else if (ctype.includes('webp')) ext='webp';
-          }
-          if (raw.length < 200) return send(400, 'application/json', JSON.stringify({ ok: false, err: 'fichier trop petit' }));
-          const out = path.join(__dirname, 'assets', `alert-${t}-custom.${ext}`);
-          try { fs.readdirSync(path.join(__dirname, 'assets')).forEach(f => { if (f.startsWith(`alert-${t}-custom.`) && f !== `alert-${t}-custom.${ext}`) fs.unlinkSync(path.join(__dirname, 'assets', f)); }); } catch(e){}
-          fs.writeFileSync(out, raw);
-          if (!appConfig.alertImages) appConfig.alertImages = {};
-          appConfig.alertImages[t] = `alert-${t}-custom.${ext}`;
-          saveConfig();
-          console.log(`[alert-image] custom ${t} ${raw.length/1024|0} Ko → ${out}`);
-          const payload = 'data: ' + JSON.stringify({ cfg:1, alert:1, alertImages: appConfig.alertImages }) + '\n\n';
-          for (const res of sse) res.write(payload);
-          return send(200, 'application/json', JSON.stringify({ ok: true, file: `alert-${t}-custom.${ext}` }));
-        } catch(e) {
-          return send(400, 'application/json', JSON.stringify({ ok: false, err: e.message }));
-        }
-      });
-      return;
-    }
-    if (u.pathname === '/api/alert-image' && req.method === 'DELETE') {
-      const type = (u.searchParams.get('type') || '').toLowerCase().replace(/[^a-z]/g,'');
-      try {
-        const assetsDir = path.join(__dirname, 'assets');
-        fs.readdirSync(assetsDir).forEach(f => { if (f.startsWith(`alert-${type}-custom.`)) fs.unlinkSync(path.join(assetsDir, f)); });
-        if (appConfig.alertImages) { delete appConfig.alertImages[type]; saveConfig(); }
-      } catch(e){}
-      return send(200, 'application/json', JSON.stringify({ ok: true }));
-    }
 
     if (u.pathname === '/api/vote' && req.method === 'POST') {
       readBody().then(d => {
@@ -1827,55 +1119,6 @@ const server = http.createServer((req, res) => {
     if (u.pathname === '/api/end' && req.method === 'POST' && authOK) {
       finish('api');
       return send(200, 'application/json', JSON.stringify({ ok: true }));
-    }
-
-    /* — Alertes (follow, sub, gift, raid…) — déclenchable par n'importe quelle source
-         (panel, webhook EventSub, test) : POST /api/alert {type, user, …} — */
-    if (u.pathname === '/api/alert' && req.method === 'POST') {
-      readBody().then(d => {
-        try {
-          const a = JSON.parse(d || '{}');
-          const types = { follow: 1, sub: 1, resub: 1, gift: 1, anon: 1, community: 1, prime: 1, raid: 1 };
-          if (!types[a.type]) return send(400, 'application/json', JSON.stringify({ ok: false }));
-          broadcastAlert(a);
-          send(200, 'application/json', JSON.stringify({ ok: true }));
-        } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false })); }
-      });
-      return;
-    }
-
-    /* ── TTS de secours : si le Navigateur OBS ne sait pas parler, le pont fait
-       parler Windows (SAPI, voix du système). Utilisé uniquement quand l'overlay
-       n'a aucune voix dispo — le reste du temps c'est l'overlay qui parle. ── */
-    if (u.pathname === '/api/tts' && req.method === 'POST') {
-      readBody().then(d => {
-        let p = {};
-        try { p = JSON.parse(d || '{}'); } catch (e) {}
-        const txt = String(p.text || '').replace(/[`"'$\\]/g, ' ').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 420);
-        if (!txt) return send(400, 'application/json', JSON.stringify({ ok: false, error: 'vide' }));
-        const now = Date.now();
-        if (now - lastBridgeTts < 1500) return send(429, 'application/json', JSON.stringify({ ok: false, error: 'trop vite' }));
-        lastBridgeTts = now;
-        if (process.platform !== 'win32') return send(501, 'application/json', JSON.stringify({ ok: false, error: 'windows requis' }));
-        try {
-          const rate = Math.max(-10, Math.min(10, Math.round(((+appConfig.ttsRate || 1) - 1) * 10)));
-          const vol = Math.max(0, Math.min(100, Math.round(appConfig.ttsVolume != null ? +appConfig.ttsVolume : 90)));
-          const want = String(appConfig.ttsVoice || '').replace(/[`"'$\\]/g, '').slice(0, 60);
-          const ps = ["$ErrorActionPreference='SilentlyContinue'",
-                      '$sp = New-Object -ComObject SAPI.SpVoice',
-                      '$sp.Volume = ' + vol,
-                      '$sp.Rate = ' + rate];
-          if (want) ps.push("$n = '" + want + "'; foreach ($v in $sp.GetInstalledVoices()) { if ($v.Voice.Description.Name -eq $n) { $sp.Voice = $v.Voice; break } }");
-          ps.push('$sp.Speak("' + txt + '")');
-          const enc = Buffer.from('\ufeff' + ps.join('; '), 'utf16le').toString('base64');
-          const kid = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', enc],
-                            { stdio: 'ignore', windowsHide: true });
-          kid.on('error', () => {});
-          console.log('[tts] lu par le pont (Windows) : ' + txt.slice(0, 46));
-          return send(200, 'application/json', JSON.stringify({ ok: true }));
-        } catch (e) { return send(500, 'application/json', JSON.stringify({ ok: false, error: String((e && e.message) || e) })); }
-      });
-      return;
     }
 
     /* — Chat : injection externe (test, webhook, panel) — */
@@ -2018,33 +1261,6 @@ const server = http.createServer((req, res) => {
             const previewCfg = Object.assign({}, appConfig, {
               chatTitle: p.chatTitle !== undefined ? String(p.chatTitle).slice(0, 40) : appConfig.chatTitle,
               accent: p.accent !== undefined ? String(p.accent).slice(0, 16) : appConfig.accent,
-              alertPosX: p.alertPosX !== undefined ? Math.max(0, Math.min(100, +p.alertPosX)) : appConfig.alertPosX,
-              alertPosY: p.alertPosY !== undefined ? Math.max(0, Math.min(900, Math.round(+p.alertPosY))) : appConfig.alertPosY,
-              alertPosYLive: p.alertPosYLive !== undefined ? Math.max(0, Math.min(900, Math.round(+p.alertPosYLive))) : appConfig.alertPosYLive,
-              alertWidth: p.alertWidth !== undefined ? Math.max(200, Math.min(800, Math.round(+p.alertWidth))) : appConfig.alertWidth,
-              alertPhotoWidth: p.alertPhotoWidth !== undefined ? Math.max(180, Math.min(600, Math.round(+p.alertPhotoWidth))) : appConfig.alertPhotoWidth,
-              alertScale: p.alertScale !== undefined ? Math.max(50, Math.min(150, Math.round(+p.alertScale))) : appConfig.alertScale,
-              alertGapMs: p.alertGapMs !== undefined ? Math.max(0, Math.min(5000, Math.round(+p.alertGapMs))) : appConfig.alertGapMs,
-              alertDuration: p.alertDuration !== undefined ? Math.max(1000, Math.min(15000, Math.round(+p.alertDuration))) : appConfig.alertDuration,
-              alertDurations: p.alertDurations || appConfig.alertDurations,
-              alertTextDelay: p.alertTextDelay !== undefined ? Math.max(0, Math.min(5000, Math.round(+p.alertTextDelay))) : appConfig.alertTextDelay,
-              alertDelay: p.alertDelay !== undefined ? Math.max(0, Math.min(10, +p.alertDelay)) : appConfig.alertDelay,
-              alertImageSize: p.alertImageSize !== undefined ? Math.max(20, Math.min(200, Math.round(+p.alertImageSize))) : appConfig.alertImageSize,
-              alertLayout: p.alertLayout || appConfig.alertLayout,
-              alertAnimationIn: p.alertAnimationIn || appConfig.alertAnimationIn,
-              alertAnimationOut: p.alertAnimationOut || appConfig.alertAnimationOut,
-              alertAnimationDuration: p.alertAnimationDuration !== undefined ? Math.max(100, Math.min(2000, Math.round(+p.alertAnimationDuration))) : appConfig.alertAnimationDuration,
-              alertFontSizeLabel: p.alertFontSizeLabel !== undefined ? Math.max(8, Math.min(80, Math.round(+p.alertFontSizeLabel))) : appConfig.alertFontSizeLabel,
-              alertFontSizeUser: p.alertFontSizeUser !== undefined ? Math.max(12, Math.min(120, Math.round(+p.alertFontSizeUser))) : appConfig.alertFontSizeUser,
-              alertFontSizeSub: p.alertFontSizeSub !== undefined ? Math.max(8, Math.min(60, Math.round(+p.alertFontSizeSub))) : appConfig.alertFontSizeSub,
-              alertColorLabel: p.alertColorLabel || appConfig.alertColorLabel,
-              alertColorUser: p.alertColorUser || appConfig.alertColorUser,
-              alertColorSub: p.alertColorSub || appConfig.alertColorSub,
-              alertStroke: p.alertStroke !== undefined ? Math.max(0, Math.min(10, +p.alertStroke)) : appConfig.alertStroke,
-              alertEnabled: p.alertEnabled || appConfig.alertEnabled,
-              alertMessageTemplates: p.alertMessageTemplates || appConfig.alertMessageTemplates,
-              alertImages: p.alertImages || appConfig.alertImages,
-              alertSoundsVolume: p.alertSoundsVolume || appConfig.alertSoundsVolume,
               velocityEquilibrium: p.equilibriumMPM !== undefined ? Math.max(1, Math.round(+p.equilibriumMPM)) : appConfig.velocityEquilibrium,
               velocityClimb: p.climbSensitivity !== undefined ? +p.climbSensitivity : appConfig.velocityClimb,
               velocityDecay: p.decayRate !== undefined ? +p.decayRate : appConfig.velocityDecay,
@@ -2061,19 +1277,17 @@ const server = http.createServer((req, res) => {
               velocityAntiSpam: p.velocityAntiSpam !== undefined ? !!p.velocityAntiSpam : (p.antiSpam !== undefined ? !!p.antiSpam : appConfig.velocityAntiSpam),
               velocityCooldownSeconds: p.velocityCooldownSeconds !== undefined ? Math.round(+p.velocityCooldownSeconds) : (p.cooldownSeconds !== undefined ? Math.round(+p.cooldownSeconds) : appConfig.velocityCooldownSeconds),
               velocityMaxPerMinute: p.velocityMaxPerMinute !== undefined ? Math.round(+p.velocityMaxPerMinute) : (p.maxPerMinute !== undefined ? Math.round(+p.maxPerMinute) : appConfig.velocityMaxPerMinute),
-              alertsMaster: p.alertsMaster !== undefined ? !(p.alertsMaster === false || p.alertsMaster === 'false') : appConfig.alertsMaster,
               velocityBoostMult: (p.velocityBoostMult !== undefined || p.boostMult !== undefined)
                 ? velBoostQuantize(p.velocityBoostMult !== undefined ? p.velocityBoostMult : p.boostMult) : appConfig.velocityBoostMult,
               velocityExcludedUsers: (p.velocityExcludedUsers !== undefined || p.excludedUsers !== undefined)
                 ? normalizeExcludedUsers(p.velocityExcludedUsers !== undefined ? p.velocityExcludedUsers : p.excludedUsers)
                 : appConfig.velocityExcludedUsers,
-              alertTypes: p.alertTypes ? mergeAlertTypes(Object.assign({}, appConfig.alertTypes, p.alertTypes)) : appConfig.alertTypes
             });
             const payload = 'data: ' + JSON.stringify(Object.assign({
               cfg: 1,
               chatTitle: previewCfg.chatTitle,
               accent: previewCfg.accent
-            }, velocityAlertFields(previewCfg))) + '\n\n';
+            }, velocityConfigFields(previewCfg))) + '\n\n';
             for (const res of sse) res.write(payload);
             return send(200, 'application/json', JSON.stringify({ ok: true, preview: true }));
           }
@@ -2139,45 +1353,6 @@ const server = http.createServer((req, res) => {
           if (p.finMinute !== undefined) appConfig.velocityFinMinute = Math.max(0, Math.min(59, Math.round(+p.finMinute || 30)));
           if (p.velocityFinEnabled !== undefined) appConfig.velocityFinEnabled = !!p.velocityFinEnabled;
           if (p.finEnabled !== undefined) appConfig.velocityFinEnabled = !!p.finEnabled;
-          if (p.alertPosX !== undefined) appConfig.alertPosX = Math.max(0, Math.min(100, +p.alertPosX));
-          if (p.alertPosY !== undefined) appConfig.alertPosY = Math.max(0, Math.min(900, Math.round(+p.alertPosY)));
-          if (p.alertPosYLive !== undefined) appConfig.alertPosYLive = Math.max(0, Math.min(900, Math.round(+p.alertPosYLive)));
-          if (p.alertWidth !== undefined) appConfig.alertWidth = Math.max(200, Math.min(800, Math.round(+p.alertWidth)));
-          if (p.alertPhotoWidth !== undefined) appConfig.alertPhotoWidth = Math.max(180, Math.min(600, Math.round(+p.alertPhotoWidth)));
-          if (p.alertScale !== undefined) appConfig.alertScale = Math.max(50, Math.min(150, Math.round(+p.alertScale)));
-          if (p.alertGapMs !== undefined) appConfig.alertGapMs = Math.max(0, Math.min(5000, Math.round(+p.alertGapMs || 0)));
-          if (p.alertDuration !== undefined) appConfig.alertDuration = Math.max(1000, Math.min(15000, Math.round(+p.alertDuration)));
-          if (p.alertDurations !== undefined && typeof p.alertDurations === 'object') appConfig.alertDurations = Object.assign({}, appConfig.alertDurations, p.alertDurations);
-          if (p.alertTextDelay !== undefined) appConfig.alertTextDelay = Math.max(0, Math.min(5000, Math.round(+p.alertTextDelay)));
-          if (p.alertDelay !== undefined) appConfig.alertDelay = Math.max(0, Math.min(10, +p.alertDelay));
-          if (p.alertImageSize !== undefined) appConfig.alertImageSize = Math.max(20, Math.min(200, Math.round(+p.alertImageSize)));
-          if (p.alertLayout !== undefined) appConfig.alertLayout = String(p.alertLayout).slice(0,20);
-          if (p.alertAnimationIn !== undefined) appConfig.alertAnimationIn = String(p.alertAnimationIn).slice(0,20);
-          if (p.alertAnimationOut !== undefined) appConfig.alertAnimationOut = String(p.alertAnimationOut).slice(0,20);
-          if (p.alertAnimationDuration !== undefined) appConfig.alertAnimationDuration = Math.max(100, Math.min(2000, Math.round(+p.alertAnimationDuration)));
-          if (p.alertFontSizeLabel !== undefined) appConfig.alertFontSizeLabel = Math.max(8, Math.min(80, Math.round(+p.alertFontSizeLabel)));
-          if (p.alertFontSizeUser !== undefined) appConfig.alertFontSizeUser = Math.max(12, Math.min(120, Math.round(+p.alertFontSizeUser)));
-          if (p.alertFontSizeSub !== undefined) appConfig.alertFontSizeSub = Math.max(8, Math.min(60, Math.round(+p.alertFontSizeSub)));
-          if (p.alertColorLabel !== undefined) appConfig.alertColorLabel = String(p.alertColorLabel).slice(0,16);
-          if (p.alertColorUser !== undefined) appConfig.alertColorUser = String(p.alertColorUser).slice(0,16);
-          if (p.alertColorSub !== undefined) appConfig.alertColorSub = String(p.alertColorSub).slice(0,16);
-          if (p.alertStroke !== undefined) appConfig.alertStroke = Math.max(0, Math.min(10, +p.alertStroke));
-          if (p.alertEnabled !== undefined && typeof p.alertEnabled === 'object') appConfig.alertEnabled = Object.assign({}, appConfig.alertEnabled, p.alertEnabled);
-          if (p.alertMessageTemplates !== undefined && typeof p.alertMessageTemplates === 'object') appConfig.alertMessageTemplates = Object.assign({}, appConfig.alertMessageTemplates, p.alertMessageTemplates);
-          if (p.alertImages !== undefined && typeof p.alertImages === 'object') appConfig.alertImages = Object.assign({}, appConfig.alertImages || {}, p.alertImages);
-          if (p.alertSoundsVolume !== undefined && typeof p.alertSoundsVolume === 'object') appConfig.alertSoundsVolume = Object.assign({}, appConfig.alertSoundsVolume, p.alertSoundsVolume);
-          if (p.ttsEnabled !== undefined) appConfig.ttsEnabled = !!p.ttsEnabled;
-          if (p.ttsOutput !== undefined) appConfig.ttsOutput = (['auto','obs','bridge'].indexOf(String(p.ttsOutput)) >= 0) ? String(p.ttsOutput) : 'auto';
-          if (p.ttsVoice !== undefined) appConfig.ttsVoice = String(p.ttsVoice).slice(0, 80);
-          if (p.ttsTemplate !== undefined) appConfig.ttsTemplate = String(p.ttsTemplate).slice(0, 120);
-          if (p.ttsRate !== undefined) appConfig.ttsRate = Math.max(0.6, Math.min(1.5, +p.ttsRate || 1));
-          if (p.ttsVolume !== undefined) appConfig.ttsVolume = Math.max(0, Math.min(100, Math.round(+p.ttsVolume)));
-          if (p.ttsMaxChars !== undefined) appConfig.ttsMaxChars = Math.max(40, Math.min(400, Math.round(+p.ttsMaxChars)));
-          if (p.ttsCooldownUser !== undefined) appConfig.ttsCooldownUser = Math.max(0, Math.min(300, Math.round(+p.ttsCooldownUser || 0)));
-          if (p.ttsCooldownGlobal !== undefined) appConfig.ttsCooldownGlobal = Math.max(0, Math.min(30, Math.round(+p.ttsCooldownGlobal || 0)));
-          if (p.ttsDedupeMinutes !== undefined) appConfig.ttsDedupeMinutes = Math.max(0, Math.min(180, Math.round(+p.ttsDedupeMinutes || 0)));
-          if (p.ttsQueueMax !== undefined) appConfig.ttsQueueMax = Math.max(0, Math.min(5, Math.round(+p.ttsQueueMax || 0)));
-          if (p.alertsMaster !== undefined) appConfig.alertsMaster = !(p.alertsMaster === false || p.alertsMaster === 'false' || p.alertsMaster === 0);
           if (p.velocityBoostMult !== undefined || p.boostMult !== undefined)
             appConfig.velocityBoostMult = velBoostQuantize(p.velocityBoostMult !== undefined ? p.velocityBoostMult : p.boostMult);
           if (p.velocityAntiSpam !== undefined) appConfig.velocityAntiSpam = !!p.velocityAntiSpam;
@@ -2188,13 +1363,6 @@ const server = http.createServer((req, res) => {
           if (p.maxPerMinute !== undefined) appConfig.velocityMaxPerMinute = Math.max(1, Math.min(30, Math.round(+p.maxPerMinute || 2)));
           if (p.velocityExcludedUsers !== undefined) appConfig.velocityExcludedUsers = normalizeExcludedUsers(p.velocityExcludedUsers);
           if (p.excludedUsers !== undefined) appConfig.velocityExcludedUsers = normalizeExcludedUsers(p.excludedUsers);
-          if (p.alertTypes && typeof p.alertTypes === 'object') {
-            const merged = Object.assign({}, appConfig.alertTypes);
-            for (const t of ALERT_TYPE_IDS) {
-              if (p.alertTypes[t]) merged[t] = Object.assign({}, merged[t] || defaultAlertType(t), p.alertTypes[t]);
-            }
-            appConfig.alertTypes = mergeAlertTypes(merged);
-          }
           saveConfig();
 
           // met à jour le sub goal V32 avec queue + gestion auto/manuel
@@ -2224,11 +1392,11 @@ const server = http.createServer((req, res) => {
             try { await syncSubGoal(); } catch(e){}
           }
 
-          // diffuse au widget : sub goal + titre du chat + accent + velocite V5 + alertes V35
+          // diffuse au widget : sub goal + titre du chat + accent + velocite V5
           const payload = 'data: ' + JSON.stringify(Object.assign({
             goal: 1, ...goalState,
             cfg: 1, chatTitle: appConfig.chatTitle, accent: appConfig.accent
-          }, velocityAlertFields(appConfig))) + '\n\n';
+          }, velocityConfigFields(appConfig))) + '\n\n';
           for (const res of sse) res.write(payload);
           send(200, 'application/json', JSON.stringify({ ok: true, config: appConfig, goal: goalState }));
         } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false })); }
@@ -2388,7 +1556,6 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`  Chat →  ${chatOn ? 'actif (' + CHAT_NICK + ' → écoute #' + CHAT_CHANNEL + ')' : 'inactif (CHAT_OAUTH / CHAT_NICK manquants)'}`);
   console.log(`  /poll → ${helixOn ? 'actif (polling Helix 2,5 s)' : (CLIENT_ID && POLL_OAUTH ? 'détection de la chaîne…' : 'inactif (CLIENT_ID / POLL_OAUTH manquants)')}`);
   console.log(`  Sub goal → ${CLIENT_ID && POLL_OAUTH ? 'auto (vrai nombre de subs)' : 'manuel (POST /api/goal)'}`);
-  console.log(`  Follows → ${CLIENT_ID && POLL_OAUTH ? 'EventSub (alertes temps réel)' : 'inactif (token manquant)'}`);
   console.log('  ─────────────────────────────────────────────────');
   checkToken();
 });

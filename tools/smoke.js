@@ -67,8 +67,6 @@ setTimeout(() => {
     !!firstMsg && firstMsg.querySelector('.cn').textContent !== 'spectateur',
     !!firstMsg && firstMsg.querySelector('.ctext').textContent.length > 3,   // texte non vide
     !!goalCount && /\d+\s*\/\s*\d+/.test(goalCount.textContent),            // sub goal peuplé
-    !!doc.querySelector('#alerts .alert .alert__labeltxt')
-      && doc.querySelector('#alerts .alert .alert__labeltxt').textContent === 'NOUVEAU FOLLOW',  // alerte + label texte
     errors.length === 0
   ];
   console.log(checks.every(Boolean) ? 'SMOKE_OK' : 'SMOKE_FAIL');

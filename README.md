@@ -215,41 +215,6 @@ la caméra à travers), bordure 1 px, coins 12 px, pastille violet pulsée.
   la **disparition progressive se fait en HAUT** (fondu 64 px) là où les messages
   sortent — rendu propre, pas d'espace mort.
 - **Typographie** : pseudo en **Outfit 700 19px** (max-width 170, mis en avant, lisible) + texte en **Inter 500 18px** line-height 1.5 (lisibilité maximale). Titre du chat en Bebas 18px. Sub-goal label + compteur en Outfit 800 18px, barre 10px.
-- **ALERTES (haut centre, top 80 px)** — animation d'apparition propre (slide-down +
-  fade 0,9 s, fond en calque qui fade-in 1,2 s, sortie 0,35 s), queue si plusieurs à
-  la fois, fond unique `assets/alert-bg.png`. **Composition CENTRÉE** avec hiérarchie
-  typographique : icône en haut, label en Bebas violet très espacé avec filet de chaque
-  côté (touch TV), pseudo en Bebas bleu clair 52-72 px avec lueur, détail en Inter
-  italique grisé (le nom du receveur ressort en bleu gras). Icônes en PNG transparents
-  nets (`assets/icon-*.png`, script `tools/transparentize.js`) :
-  - **Follow** : pill simple, pseudo en Bebas 26 px — « NOUVEAU SUIVEUR · Bienvenue ».
-  - **Labels = vrai texte** en **Bebas Neue** (la police de l'overlay) : « NOUVEAU
-    FOLLOW », « NOUVEAU SUB », « RAID » — nets à toutes tailles, pas d'image de texte.
-  - **Sub** : **nettement plus imposant** — l'écart se voit. Variantes textuelles
-    automatiques :
-    - **1er mois** → « 1 mois » (juste le total, centré)
-    - **resub** → « **X mois consécutif — Y mois total** » (ex. « 3 mois consécutif —
-      12 mois total » ; si c'est le 1er mois, pas de « consécutif », juste le total)
-    - **sub offert** → « X a offert un abonnement à Y »
-    - **offert anonymement** → « UN ANONYME a offert un abonnement à Y »
-    - **gift communautaire** (mass gift) → « X a offert des abonnements à tout le chat »
-    - **sub Prime** → « X a offert un abonnement Prime »
-    - **Message personnalisé du sub** (celui que l'abonné écrit à son abonnement) :
-      **slot dédié** sous la ligne de détail — filet horizontal au-dessus, texte en
-      italique gris discret entre « », centré, 2 lignes max. Présent sur toutes les
-      variantes (sub, resub, gift, raid…) quand le message existe, absent sinon
-      (l'espacement de la carte reste identique).
-  - **Raid** → « X arrive avec N spectateurs » + son message de raid dans le même slot.
-  - **Sons personnalisables** : dépose tes fichiers dans `sounds/` (`.wav`, `.mp3` ou
-    `.ogg`) — ils sont détectés et joués automatiquement :
-    - `sounds/alert-follow.*` → à chaque NOUVEAU FOLLOW
-    - `sounds/alert-sub.*` → à chaque NOUVEAU SUB (toutes variantes)
-    - `sounds/alert-raid.*` → à chaque RAID
-    Fichier absent = pas de son. Volumes réglables dans `ALERT_SOUNDS` (tête du JS).
-  - Subs, gifts, raids : **détectés automatiquement** par le bot (événements IRC).
-    Les **follows** ne sont pas diffusés en IRC : ils passeront par **EventSub Twitch**
-    (un token d'app, ~10 min de création) — l'endpoint `POST /api/alert` est déjà prêt
-    pour les recevoir depuis n'importe quelle source.
 - **SUB GOAL** (rallonge sous le chat, séparateur propre) : label, nombre actuel /
   objectif et barre de progression, personnalisable **à tout moment** :
   1. `POST /api/goal {"current":48,"target":60,"label":"SUB GOAL"}` (panel, script, Stream Deck…)
@@ -258,8 +223,8 @@ la caméra à travers), bordure 1 px, coins 12 px, pastille violet pulsée.
      suit automatiquement les sub/gagnés et perdus.
 - En-tête du panneau : **« CHAT DE 7GIONNY »**.
 - **Monogramme 7G** : signature discrète (petit carré violet, Bebas) présente sur les
-  3 zones — carte de débat (haut-gauche), chat (haut-droit de l'en-tête), alertes
-  (haut-droit) — l'élément fédérateur de l'identité.
+  3 zones — carte de débat (haut-gauche), chat (haut-droit de l'en-tête)
+  — l'élément fédérateur de l'identité.
 - Test sans bot (badges, highlight, réponse, pin, goal) :
   ```bash
   curl -X POST localhost:8321/api/chat -H "Content-Type: application/json" \
@@ -269,10 +234,6 @@ la caméra à travers), bordure 1 px, coins 12 px, pastille violet pulsée.
   curl -X POST localhost:8321/api/pin -H "Content-Type: application/json" -d '{"clear":true}'
   curl -X POST localhost:8321/api/goal -H "Content-Type: application/json" \
     -d '{"current":48,"target":60,"label":"SUB GOAL"}'
-  curl -X POST localhost:8321/api/alert -H "Content-Type: application/json" \
-    -d '{"type":"sub","user":"amelie","plan":"2000"}'
-  curl -X POST localhost:8321/api/alert -H "Content-Type: application/json" \
-    -d '{"type":"raid","user":"UNAUTRECREATOR","viewers":1240}'
   ```
 - Le chat réel est diffusé via le pont (SSE) → **fonctionne en local** (pas sur Vercel,
   qui ne peut pas maintenir une connexion IRC).

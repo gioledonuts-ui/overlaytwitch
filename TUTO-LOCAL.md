@@ -157,7 +157,7 @@ Pour afficher ton **vrai chat**, il suffit de remplir 2 cases du fichier **`secr
 ## 📊 Activer les sondages + abonnés + follows (LE token principal)
 
 Le champ **`POLL_OAUTH`** sert maintenant à 3 choses à la fois : les sondages `/poll`,
-le compteur de subs (sub goal) et les alertes de follow. Il faut donc générer UN token
+le compteur de subs (sub goal). Il faut donc générer UN token
 avec les 3 droits d'un coup.
 
 1. **`CLIENT_ID`** → déjà pré-rempli (`53shw…`). Tu peux le laisser tel quel.
@@ -170,7 +170,6 @@ avec les 3 droits d'un coup.
 3. Sauvegarde, relance `demarrer-pont.bat`. La fenêtre doit afficher :
    - `/poll → actif`
    - `Sub goal → auto (vrai nombre de subs)`
-   - `Follows → EventSub (alertes temps réel)`
 
 > 💡 Ton ID de chaîne est trouvé **automatiquement** par le programme (à partir du
 > token) : tu n'as rien d'autre à chercher.
