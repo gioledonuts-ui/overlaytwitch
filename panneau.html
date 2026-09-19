@@ -494,7 +494,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
       <div class="brand__txt">
         <div class="brand__name">7GIONNY</div>
         <div class="brand__sub">STUDIO</div>
-        <div id="verPill">V43</div>
+        <div id="verPill">V44</div>
       </div>
     </div>
     <nav class="nav">
@@ -871,7 +871,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
             <div class="field" style="margin-top:0">
               <label>Équilibre MPM (50%)</label>
               <input id="velocityEquilibrium" type="number" min="1" max="120" step="1" placeholder="20">
-              <div class="note" style="margin-top:4px">20 MPM = 50%, 40 = 92% ambre.</div>
+              <div class="note" style="margin-top:4px"><b>Comment lire ce chiffre :</b> la barre suit un lissage égal à ~<b>0,7 × le nombre de messages comptés par minute</b>. Donc eq=10 ↔ 50 % vers <b>14 messages comptés/min</b>, et barre pleine vers <b>23</b>. Règle simple : <b>équilibre ≈ le tiers de tes messages comptés par minute</b>. Et « comptés » ≠ total du chat : max 2/min par viewer + cooldown 15 s, commandes ! et pseudos exclus en moins.</div>
             </div>
           </div>
           <div class="card" style="margin-top:14px;background:#10101a;border-color:rgba(110,235,170,.28)">
@@ -953,10 +953,10 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
             </div>
             <div class="field" style="margin-top:10px">
               <label>Pseudos exclus (bots) – jamais comptés</label>
-              <input id="velocityExcludedUsers" type="text" placeholder="wisebots">
-              <div class="note" style="margin-top:4px">Séparés par virgule. <b>wisebots</b> est toujours exclu. Streamer et mods <b>comptent</b> comme tout le monde.</div>
+              <input id="velocityExcludedUsers" type="text" placeholder="celui qui spampe les commandes, un autre…">
+              <div class="note" style="margin-top:4px">Séparés par virgule, sans le @. Ces pseudos-là <b>n\'affichent jamais la barre</b> (ils restent visibles dans le chat). Rien n\'est imposé : c\'est ta liste. Streamer et mods <b>comptent</b> comme tout le monde.</div>
             </div>
-            <div class="note" style="margin-top:8px;line-height:1.5">Combo viable par défaut : cooldown 15s <b>et</b> max 2 / minute. Exemple : t=0 compte, t=5 ignoré (cooldown), t=16 compte (2e), t=32 ignoré (plafond), t=61 recompte. Les commandes <span class="tok">!</span> et <span class="tok">wisebots</span> sont toujours exclus.</div>
+            <div class="note" style="margin-top:8px;line-height:1.5">Combo viable par défaut : cooldown 15s <b>et</b> max 2 / minute. Exemple : t=0 compte, t=5 ignoré (cooldown), t=16 compte (2e), t=32 ignoré (plafond), t=61 recompte. Les commandes <span class="tok">!</span> ne comptent jamais ; les pseudos de la liste non plus.</div>
           </div>
           <div class="row" style="margin-top:14px">
             <button class="btn primary" id="btnSauverVelocity">ENREGISTRER</button>
@@ -966,6 +966,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
             <button class="btn ghost small" id="btnVelocityValidate">VALIDER MANUELLEMENT OBJECTIF</button>
           </div>
           <div class="note" style="margin-top:10px;line-height:1.6">
+            Logique V44 : le pont ne perd plus les messages en rafale (avant, tout ce qui arrivait a moins de 50 ms du precedent etait jete → MPM comptes bien en dessous de la stat Twitch, et la barre montait « toute seule » dans le faux sens). Tout le chat est relaye, le filtre anti-spam seul decide de ce qui compte.<br>
             Logique V5 : leaky bucket exp(-dt/42) sans rebond minute. % = 0→eq 0-50%, eq→2.4eq 50-100% pow 0.66 → rouge 95-100%.<br>
             Quand % ≥ seuil pendant durée verrou (ex 2 min à 90%), chrono décompte visible, puis +durée (ex +15) s'additionne à FIN PRÉVUE (21h30 → 21h45), reset % nouveau tour, MPM conservé.<br>
             Overlay : 180×700, barre 30px, % 52px lisible, goal 13px, fin 14px blanc ombré. Pas de croix, pas de FAITES GRIMPER, pas de hint, pas d'éclair quand éteint.<br>
@@ -1388,7 +1389,7 @@ const velocityDef={
   equilibriumMPM:20,climbSensitivity:0.65,decayRate:0.14,holdDurationSeconds:120,boostMult:1,
   barWidth:30,barHeight:700,showMetrics:true,velocityEnabled:true,
   goalThreshold:90,goalDurationMinutes:15,finHour:21,finMinute:30,finEnabled:true,
-  antiSpam:true,cooldownSeconds:15,maxPerMinute:2,excludedUsers:'wisebots'
+  antiSpam:true,cooldownSeconds:15,maxPerMinute:2,excludedUsers:''
 };
 let velocitySaved={...velocityDef};
 let _velPrevT=null;
@@ -1427,7 +1428,7 @@ function getVelocityForm(){
     antiSpam: $('velocityAntiSpam') ? !!$('velocityAntiSpam').checked : true,
     cooldownSeconds: Math.max(0, Math.min(120, Math.round($('velocityCooldown') ? +$('velocityCooldown').value : velocityDef.cooldownSeconds) || 0)),
     maxPerMinute: Math.max(1, Math.min(30, Math.round($('velocityMaxPerMin') ? +$('velocityMaxPerMin').value : velocityDef.maxPerMinute) || 2)),
-    excludedUsers: $('velocityExcludedUsers') ? $('velocityExcludedUsers').value : 'wisebots'
+    excludedUsers: $('velocityExcludedUsers') ? $('velocityExcludedUsers').value : ''
   };
 }
 function setVelocityForm(c){
@@ -1465,7 +1466,7 @@ function setVelocityForm(c){
   const cd=s.velocityCooldownSeconds!=null?s.velocityCooldownSeconds:(s.cooldownSeconds!=null?s.cooldownSeconds:velocityDef.cooldownSeconds);
   const mx=s.velocityMaxPerMinute!=null?s.velocityMaxPerMinute:(s.maxPerMinute!=null?s.maxPerMinute:velocityDef.maxPerMinute);
   const excl=s.velocityExcludedUsers!=null?s.velocityExcludedUsers:(s.excludedUsers!=null?s.excludedUsers:velocityDef.excludedUsers);
-  const exclStr=Array.isArray(excl)?excl.join(', '):String(excl||'wisebots');
+  const exclStr=Array.isArray(excl)?excl.join(', '):String(excl||'');
   if($('velocityAntiSpam'))$('velocityAntiSpam').checked=!!spam;
   if($('velocityCooldown'))$('velocityCooldown').value=cd;
   if($('velocityMaxPerMin'))$('velocityMaxPerMin').value=mx;

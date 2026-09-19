@@ -155,7 +155,7 @@ const DEFAULT_CONFIG = {
   velocityAntiSpam: true,
   velocityCooldownSeconds: 15,
   velocityMaxPerMinute: 2,
-  velocityExcludedUsers: ['wisebots'],
+  velocityExcludedUsers: [],   // V44 : plus aucun pseudo impose d'office — c'est TOI qui decides (champ « Pseudos exclus » du panneau)
   // alertes V35 : perso type Streamlabs (duree, layout, anim, volume, template, media)
   alertGapMs: 400,
   alertTypes: {}
@@ -320,7 +320,6 @@ function migrateLegacyAlertTypes(saved) {
 function normalizeExcludedUsers(v) {
   const raw = Array.isArray(v) ? v.join(',') : String(v == null ? '' : v);
   const list = raw.split(/[,;\s]+/).map(s => String(s).toLowerCase().trim().slice(0, 32)).filter(Boolean);
-  if (!list.includes('wisebots')) list.unshift('wisebots');
   const seen = new Set();
   const out = [];
   for (const n of list) { if (!seen.has(n)) { seen.add(n); out.push(n); } }
@@ -346,7 +345,7 @@ if (!appConfig.alertTypes || typeof appConfig.alertTypes !== 'object') {
 } else {
   appConfig.alertTypes = mergeAlertTypes(appConfig.alertTypes);
 }
-/* Velocite : regles figees - streamer et mods comptent dans le %, seul wisebots est exclu d'office.
+/* Velocite : regles figees - streamer et mods comptent dans le % ; la liste des exclus vient uniquement du panneau (V44 : plus aucun pseudo force d'office).
    V43 : « exempter les mods » n'existe plus (cle supprimee du code, du panneau et de la config).
    La duree du verrou se regle par UNE seule cle (velocityHold) : le doublon
    velocityHoldDurationSeconds est retire des fichiers de config existants. */
@@ -720,10 +719,8 @@ function rawEmotes(emotesObj) {
   return parts.join('/');
 }
 
-function broadcastChat(m) {
-  const now = Date.now();
-  if (now - lastChatBcast < 50) return;              // ~20 msg/s max
-  lastChatBcast = now;
+let chatPending = null, chatFlushT = null;
+function chatFrame(m) {
   const badges = (m.badges && typeof m.badges === 'object')
     ? Object.fromEntries(Object.entries(m.badges).slice(0, 6)
         .map(([id, v]) => [String(id).slice(0, 32), String(v || '1').slice(0, 8)]))
@@ -739,7 +736,30 @@ function broadcastChat(m) {
     replyTo: m.replyTo ? String(m.replyTo).slice(0, 64) : undefined,
     color: m.color ? String(m.color).slice(0, 32) : undefined
   }) + '\n\n';
-  for (const res of sse) res.write(payload);
+  return payload;
+}
+/* V44 — ne JAMAIS perdre un message.
+   L'ancien garde-fou (« if (now - lastChatBcast < 50) return ») supprimait silencieusement
+   tout message arrivé moins de 50 ms apres le precedent. Or Twitch livraille les messages
+   par paquets : pendant un burst (pile ce qui fait monter la vélocité), seule la 1re ligne
+   passait → le MPM vu par l'overlay etait bien plus bas que le MPM reel de Twitch, et le
+   chat n' affichait pas « tous les messages » comme prevu. Maintenant on met en file et on
+   écrit par paquets : memes economies d'ecritures, zero message perdu. */
+function flushChat() {
+  chatFlushT = null;
+  if (!chatPending || !chatPending.length) return;
+  const frames = chatPending.map(chatFrame).join('');
+  chatPending = null;
+  lastChatBcast = Date.now();
+  for (const res of sse) { try { res.write(frames); } catch (e) {} }
+}
+function broadcastChat(m) {
+  if (!chatPending) chatPending = [];
+  chatPending.push(m);
+  if (chatPending.length > 400) chatPending.shift();          // garde-fou memoire
+  if (chatFlushT) return;
+  const since = Date.now() - lastChatBcast;
+  chatFlushT = setTimeout(flushChat, since >= 50 ? 0 : (50 - since));   // groupés, jamais plus de 50 ms de latence
 }
 setInterval(() => { if (dirty) broadcast(true); }, 200);   // flush différé
 

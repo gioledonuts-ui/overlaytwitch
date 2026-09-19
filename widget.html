@@ -2360,7 +2360,7 @@ function setGoal(g) {
     antiSpam: true,
     cooldownSeconds: 15,
     maxPerMinute: 2,
-    excludedUsers: ['wisebots']
+    excludedUsers: []
   };
   const userHits = new Map(); // user -> { last, times[] }
 
@@ -2417,7 +2417,6 @@ function setGoal(g) {
   function parseExcluded(v) {
     const raw = Array.isArray(v) ? v.join(',') : String(v == null ? '' : v);
     const list = raw.split(/[,;\s]+/).map(s => s.toLowerCase().trim()).filter(Boolean);
-    if (!list.includes('wisebots')) list.push('wisebots');
     return list;
   }
   function excludedList() {
