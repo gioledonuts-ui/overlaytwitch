@@ -1900,9 +1900,10 @@ let scLayouts = [];          // toutes les dispositions
 let scScene = null;          // scène en cours d'édition
 let scBlocs = {};            // libellés des blocs, fournis par le pont
 
-/* Position par défaut de chaque bloc, pour afficher un bloc non personnalisé
-   au bon endroit. Doit rester cohérent avec le CSS de l'overlay. */
-const SC_DEFAUT = {
+/* Géométrie réelle des blocs : le pont nous l'envoie, calculée depuis tes
+   réglages du moment (hauteur de la barre de vélocité, largeur du bandeau
+   mission…). On garde ces valeurs en secours si le pont est trop ancien. */
+let SC_DEFAUT = {
   poll:     { x:(SC_W-880)/2, y:96,           w:880,  h:260 },
   chat:     { x:SC_W-48-460,  y:SC_H-160-640, w:460,  h:640 },
   velocity: { x:28,           y:SC_H-160-700, w:180,  h:700 },
@@ -1928,6 +1929,8 @@ async function loadObs(){
     return;
   }
   scBlocs = obsInfo.blocs||{};
+  // l'aperçu doit refléter la VRAIE taille des blocs, pas des valeurs figées
+  if(obsInfo.geometrie) SC_DEFAUT = obsInfo.geometrie;
   scLayouts = Array.isArray(obsInfo.layouts)? JSON.parse(JSON.stringify(obsInfo.layouts)) : [];
   if($('obsUrl') && !$('obsUrl').value) $('obsUrl').value = obsInfo.url||'';
 

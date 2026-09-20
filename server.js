@@ -177,6 +177,26 @@ function normalizeSceneLayouts(v) {
   return out;
 }
 
+/* Position et taille par defaut de chaque bloc, telles qu'elles sortent
+   reellement du CSS, en tenant compte des reglages en cours.
+   A garder synchronise avec le CSS de widget.html. */
+function blocsGeometrie() {
+  const velH = clampNum(appConfig.velocityBarHeight, 280, 900, 700);
+  const misW = clampNum(appConfig.missionWidth, 600, 1600, 1100);
+  const misB = clampNum(appConfig.missionBottom, 0, 400, 64);
+  const misH = 130;   // hauteur du bandeau, imposee par son contenu
+  return {
+    // #card : centre en haut, 880 de large
+    poll:     { x: Math.round((1920 - 880) / 2), y: 96, w: 880, h: 260 },
+    // .chat : ancre a 48 px du bord droit et 160 px du bas
+    chat:     { x: 1920 - 48 - 460, y: 1080 - 160 - 640, w: 460, h: 640 },
+    // #velocityWrap : ancre a 28 px a gauche et 160 px du bas, hauteur = ton reglage
+    velocity: { x: 28, y: 1080 - 160 - velH, w: 180, h: velH },
+    // #mission : centre entre la velocite et le chat, ancre en bas
+    mission:  { x: Math.round((1920 - misW) / 2), y: 1080 - misB - misH, w: misW, h: misH }
+  };
+}
+
 /* Envoie a l'overlay la scene active et la disposition qui lui correspond. */
 function broadcastScene() {
   const scene = obsState.scene || '';
@@ -1499,6 +1519,18 @@ function connectOBS() {
       return;
     }
 
+    /* Reponse a la question posee au debut de la transition : on connait la
+       scene cible avant meme que la transition soit finie. */
+    if (msg.op === 7 && d.requestType === 'GetCurrentProgramScene' && d.responseData) {
+      const nom = d.responseData.sceneName || d.responseData.currentProgramSceneName;
+      if (nom && nom !== obsState.scene) {
+        obsState.scene = nom;
+        console.log('[obs] scene : ' + nom + ' (des le debut de la transition)');
+        broadcastScene();
+      }
+      return;
+    }
+
     if (msg.op === 7 && d.requestType === 'GetSceneList' && d.responseData) {
       const r = d.responseData;
       obsState.scenes = (r.scenes || []).map(x => x.sceneName).filter(Boolean).reverse();
@@ -1509,6 +1541,16 @@ function connectOBS() {
     }
 
     if (msg.op === 5) {
+      /* SceneTransitionStarted part DES LE DEBUT de la transition, alors que
+         CurrentProgramSceneChanged n'arrive qu'a la fin. En basculant l'overlay
+         des le debut, le reagencement se fait PENDANT le fondu d'OBS au lieu
+         d'arriver en retard, une fois la nouvelle scene deja affichee.
+         En mode direct (transition instantanee), les deux se suivent de si pres
+         que ca ne change rien. */
+      if (d.eventType === 'SceneTransitionStarted') {
+        obsRequest('GetCurrentProgramScene');   // vers quelle scene va-t-on ?
+        return;
+      }
       if (d.eventType === 'CurrentProgramSceneChanged') {
         const nom = d.eventData && d.eventData.sceneName;
         if (nom && nom !== obsState.scene) {
@@ -2004,6 +2046,11 @@ const server = http.createServer((req, res) => {
         version: obsState.version,
         lastError: obsState.lastError,
         blocs: Object.fromEntries(Object.entries(BLOCS).map(([k, v]) => [k, v.nom])),
+        /* Geometrie REELLE de chaque bloc, calculee depuis tes reglages du
+           moment. L'editeur s'en sert pour dessiner un apercu fidele : sans ca
+           il affichait une velocite de 700 px alors que la tienne en fait 350,
+           et on ne pouvait pas la descendre assez bas. */
+        geometrie: blocsGeometrie(),
         layouts: appConfig.sceneLayouts || []
       }));
       return;

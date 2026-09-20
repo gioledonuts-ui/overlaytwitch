@@ -473,6 +473,17 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 #card.is-live .foot{transition-delay:.3s}
 #card.is-live .head,#card.is-live #question,#card.is-live .opts,#card.is-live .foot{opacity:1;transform:none}
 
+/* V47.3 — fondu au changement de scene OBS.
+   On n'anime QUE l'opacite : aucune taille, aucune position n'est touchee,
+   donc rien ne peut deformer un bloc. Les transitions propres a chaque bloc
+   (apparition du sondage, du bandeau mission...) restent intactes. */
+#chat.scene-fading,
+#velocityWrap.scene-fading,
+#mission.scene-fading,
+#card.scene-fading{
+  opacity:0 !important;
+  transition:opacity .18s ease-out !important;
+}
 /* ═══ V46 — MISSIONS (bas de l'ecran) ═════════════════════════════
    Bandeau qui previent le chat qu'un viewer vient d'echanger des points.
    Zone libre : le sondage est en haut, la velocite a gauche (180 px de large,
@@ -1293,7 +1304,27 @@ const BLOCS_SEL = {
   poll:     '#card'
 };
 
+/* Fondu au changement de scene : les blocs s'effacent, se replacent pendant
+   qu'ils sont invisibles, puis reapparaissent. Evite de voir un bloc glisser
+   d'un bout a l'autre de l'ecran. */
+let sceneFadeT = null;
 function applySceneLayout(layout) {
+  const blocs = Object.values(BLOCS_SEL)
+    .map(sel => document.querySelector(sel)).filter(Boolean);
+
+  clearTimeout(sceneFadeT);
+  blocs.forEach(el => el.classList.add('scene-fading'));
+
+  // on replace pendant que c'est invisible, puis on refait apparaitre
+  sceneFadeT = setTimeout(() => {
+    placerBlocs(layout);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => blocs.forEach(el => el.classList.remove('scene-fading')));
+    });
+  }, 180);
+}
+
+function placerBlocs(layout) {
   for (const [cle, sel] of Object.entries(BLOCS_SEL)) {
     const el = document.querySelector(sel);
     if (!el) continue;
