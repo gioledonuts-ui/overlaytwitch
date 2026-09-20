@@ -1702,6 +1702,9 @@ if(btnMissionDiag) btnMissionDiag.addEventListener('click', async()=>{
         + 'Dans ton antivirus, désactive l\'<b>analyse HTTPS/SSL</b> ou ajoute <b>node.exe</b> en exception, puis relance le pont.';
     else if(/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(err))
       fix='Le nom <b>eventsub.wss.twitch.tv</b> n\'a pas pu être résolu : problème de DNS ou de connexion Internet. Vérifie ta connexion, puis relance le pont.';
+    else if(/40[13]|Unexpected server response/i.test(err))
+      fix='Twitch a <b>refus\u00e9 la connexion</b> (r\u00e9ponse '+escTxt(err)+'). Ce n\'est pas ton pare-feu : la connexion arrive bien jusqu\'\u00e0 Twitch. '
+        + 'Ce cas vient d\'une version du pont ant\u00e9rieure \u00e0 la v46.1 \u2014 <b>mets \u00e0 jour</b> (bouton du panneau ou mettre-a-jour.bat), puis relance le pont.';
     else if(/ETIMEDOUT|ECONNREFUSED|ECONNRESET|disconnected before/i.test(err))
       fix='La connexion sortante est <b>bloquée</b> (pare-feu Windows, antivirus, ou VPN). Autorise <b>node.exe</b> dans ton pare-feu, coupe temporairement le VPN, puis relance le pont. '
         + 'Le pont bascule tout seul sur une seconde méthode de connexion après 2 échecs : laisse-le tourner une minute avant de conclure.';

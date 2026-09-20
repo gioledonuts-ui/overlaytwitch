@@ -1110,6 +1110,7 @@ async function syncSubGoal() {
    • Les recompenses automatiques de Twitch (« Mettre en avant mon message »…)
      sont un autre evenement : on ne s'y abonne pas, donc pas de bandeau parasite. */
 let pointsWs = null, pointsRetry = 0, pointsOk = false, pointsForceModule = false;
+let migrationVoulue = false;   // vrai pendant une reconnexion demandee par Twitch
 /* Journal de bord de la connexion aux points : permet de voir dans le panneau
    exactement ou ca coince, au lieu de deviner. */
 const pointsDiag = {
@@ -1130,7 +1131,10 @@ const pointsDiag = {
 };
 /* URLs surchargeables par variable d'environnement : utilise uniquement par les
    tests automatiques pour simuler Twitch. En usage normal, ce sont les vraies. */
-const EVENTSUB_WS = process.env.EVENTSUB_WS_URL || 'wss://eventsub.wss.twitch.tv:443';
+/* L'adresse EXACTE de Twitch est wss://eventsub.wss.twitch.tv/ws — le chemin "/ws"
+   est obligatoire. Sans lui, Twitch repond 403 et la connexion n'est jamais etablie
+   (c'etait le bug : on se connectait a la racine du domaine). */
+const EVENTSUB_WS = process.env.EVENTSUB_WS_URL || 'wss://eventsub.wss.twitch.tv/ws';
 const EVENTSUB_API = process.env.EVENTSUB_API_URL || 'https://api.twitch.tv/helix/eventsub/subscriptions';
 function connectChannelPoints() {
   if (!CLIENT_ID || !POLL_OAUTH || !resolvedBroadcasterId) return;
@@ -1261,9 +1265,14 @@ function connectChannelPoints() {
           input: evt.user_input || (evt.message && evt.message.text) || ''
         });
       } else if (t === 'session_reconnect') {
-        const u = msg.payload.session && msg.payload.session.reconnect_url;
-        try { pointsWs.close(); } catch (e) {}
-        ouvrir(u);
+        /* Twitch nous demande de migrer vers une nouvelle adresse. On marque la
+           fermeture comme voulue, sinon onclose relancerait AUSSI une connexion
+           et on se retrouverait avec deux sockets en parallele. */
+        const u = (msg.payload.session && msg.payload.session.reconnect_url) || null;
+        const ancien = pointsWs;
+        migrationVoulue = true;
+        try { ancien.close(); } catch (e) {}
+        ouvrir(u);   // si u est null, on repart sur l'adresse normale
       }
     };
     pointsWs.onmessage = (ev) => surMessage(typeof ev.data === 'string' ? ev.data : String(ev.data));
@@ -1274,7 +1283,11 @@ function connectChannelPoints() {
     };
     pointsWs.onclose = (e) => {
       if (!pointsWs) return;
-      pointsDiag.opened = false; pointsDiag.closes++;
+      pointsDiag.opened = false;
+      /* fermeture voulue (migration demandee par Twitch) : la nouvelle connexion
+         est deja lancee, on ne doit surtout pas en ouvrir une seconde. */
+      if (migrationVoulue) { migrationVoulue = false; return; }
+      pointsDiag.closes++;
       /* Si la connexion n'a JAMAIS abouti avec le WebSocket integre, on repasse
          sur le module "ws" : c'est le cas typique d'un antivirus qui bloque
          undici mais laisse passer le reste. */
