@@ -903,6 +903,39 @@ async function checkToken() {
   }
 }
 
+/* V46 : la liste de TES recompenses de points de chaine, pour pouvoir les cocher
+   dans le panneau au lieu de recopier les titres a la main.
+   On n'envoie PAS only_manageable_rewards : sans ce filtre Twitch renvoie toutes
+   les recompenses de la chaine, y compris celles creees a la main dans ton
+   tableau de bord (avec le filtre, on ne verrait que celles creees par l'appli). */
+async function helixRewards() {
+  if (!CLIENT_ID || !POLL_OAUTH) return { ok: false, reason: 'no-token' };
+  if (!resolvedBroadcasterId) { await resolveBroadcaster(); }
+  if (!resolvedBroadcasterId) return { ok: false, reason: 'no-broadcaster' };
+  try {
+    const r = await fetch('https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id='
+      + encodeURIComponent(resolvedBroadcasterId), {
+      headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + POLL_OAUTH }
+    });
+    if (r.status === 401) return { ok: false, reason: 'scope' };
+    if (r.status === 403) return { ok: false, reason: 'affiliate' };
+    if (!r.ok) return { ok: false, reason: 'http-' + r.status };
+    const d = await r.json();
+    const list = (d.data || []).map(x => ({
+      id: x.id,
+      title: x.title,
+      cost: x.cost,
+      enabled: x.is_enabled !== false,
+      paused: !!x.is_paused,
+      needsInput: !!x.is_user_input_required,
+      color: x.background_color || ''
+    })).sort((a, b) => a.cost - b.cost);
+    return { ok: true, rewards: list };
+  } catch (e) {
+    return { ok: false, reason: 'network' };
+  }
+}
+
 async function helixPolls() {
   const r = await fetch('https://api.twitch.tv/helix/polls?broadcaster_id=' + resolvedBroadcasterId, {
     headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + POLL_OAUTH }
@@ -1580,6 +1613,12 @@ const server = http.createServer((req, res) => {
           send(200, 'application/json', JSON.stringify({ ok: true, config: appConfig, goal: goalState }));
         } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false })); }
       });
+      return;
+    }
+
+    /* — MISSION : la liste de tes recompenses de points de chaine — */
+    if (u.pathname === '/api/mission/rewards' && req.method === 'GET') {
+      helixRewards().then(out => send(200, 'application/json', JSON.stringify(out)));
       return;
     }
 

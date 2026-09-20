@@ -447,6 +447,28 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
   .content{overflow:visible;padding:12px}
   .row.grow{grid-template-columns:1fr}
 }
+
+/* V46 : liste des recompenses de points de chaine */
+.rewardBox{
+  border:1px solid rgba(255,255,255,.10);border-radius:10px;background:#0e0e16;
+  max-height:280px;overflow-y:auto;padding:6px;
+}
+.rewardBox__msg{padding:14px 10px;color:#8b8fa3;font-size:12px;text-align:center;line-height:1.6}
+.rewardBox__msg b{color:#c9a7ff}
+.rewardRow{
+  display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;
+}
+.rewardRow:hover{background:rgba(255,255,255,.04)}
+.rewardRow + .rewardRow{border-top:1px solid rgba(255,255,255,.05)}
+.rewardRow input{flex:none;width:16px;height:16px;accent-color:#7c5cff;cursor:pointer}
+.rewardRow__t{flex:1;min-width:0;font-size:13px;color:#e8e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rewardRow__c{
+  flex:none;font-size:11px;font-weight:700;color:#c9a7ff;
+  background:rgba(124,92,255,.14);border:1px solid rgba(124,92,255,.30);
+  border-radius:20px;padding:2px 9px;
+}
+.rewardRow__off{flex:none;font-size:10px;color:#8b8fa3;text-transform:uppercase;letter-spacing:.08em}
+.rewardRow.is-off .rewardRow__t{color:#8b8fa3;text-decoration:line-through}
 </style>
 </head>
 <body>
@@ -860,14 +882,18 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
             <div class="note" style="margin-top:4px">0 = toutes les récompenses. Mets par exemple 500 pour ignorer les petites récompenses sans conséquence.</div>
           </div>
           <div class="field">
-            <label>N'afficher QUE ces récompenses</label>
-            <input id="missionRewards" type="text" placeholder="laisse vide pour toutes les afficher">
-            <div class="note" style="margin-top:4px">Titres séparés par des virgules, exactement comme sur Twitch (les accents et les majuscules n'ont pas d'importance). Vide = toutes.</div>
-          </div>
-          <div class="field">
-            <label>Ne jamais afficher ces récompenses</label>
-            <input id="missionIgnored" type="text" placeholder="ex : Mettre en avant mon message">
-            <div class="note" style="margin-top:4px">Pratique pour les récompenses qui ne te demandent rien à faire.</div>
+            <label>Tes récompenses de points de chaîne — coche celles qui affichent une mission</label>
+            <div id="missionRewardsBox" class="rewardBox">
+              <div class="rewardBox__msg">Chargement de tes récompenses…</div>
+            </div>
+            <div class="row" style="margin-top:8px;gap:8px">
+              <button class="btn ghost small" id="btnMissionReload">RECHARGER LA LISTE</button>
+              <button class="btn ghost small" id="btnMissionAll">TOUT COCHER</button>
+              <button class="btn ghost small" id="btnMissionNone">TOUT DÉCOCHER</button>
+            </div>
+            <div class="note" style="margin-top:6px">La liste vient directement de Twitch : tu y retrouves les récompenses créées dans ton tableau de bord. Décoche par exemple « Mettre en avant mon message ». Si tu coches tout, toutes les récompenses — même celles créées plus tard — afficheront une mission.</div>
+            <input id="missionRewards" type="hidden">
+            <input id="missionIgnored" type="hidden">
           </div>
           <div class="card" style="margin-top:14px;background:#10101a;border-color:rgba(124,92,255,.28)">
             <h2 style="font-size:11px">▶ TESTER — sans attendre un vrai échange</h2>
@@ -1507,8 +1533,77 @@ function setMissionForm(c){
   if($('missionWidth'))$('missionWidth').value = val('missionWidth');
   if($('missionScale'))$('missionScale').value = val('missionScale');
   if($('missionMinCost'))$('missionMinCost').value = val('missionMinCost');
-  if($('missionRewards'))$('missionRewards').value = list('missionRewards');
-  if($('missionIgnored'))$('missionIgnored').value = list('missionIgnored');
+  missionIgnoredList = Array.isArray(s.missionIgnored) ? s.missionIgnored.slice()
+                     : (s.missionIgnored ? String(s.missionIgnored).split(',').map(x=>x.trim()).filter(Boolean) : []);
+  paintRewards();
+}
+
+/* — Liste des récompenses de points de chaîne —
+   On coche ce qui doit afficher une mission. Ce qui est décoché part dans
+   missionIgnored : ainsi une récompense créée plus tard sur Twitch marche
+   d'office, sans avoir à revenir ici. */
+let missionRewardsCache = null;     // null = pas encore chargé
+let missionIgnoredList = [];
+const mkey = t => String(t==null?'':t).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+                    .toLowerCase().replace(/\s+/g,' ').trim();
+
+function paintRewards(){
+  const box = $('missionRewardsBox');
+  if(!box) return;
+  if(missionRewardsCache === null){
+    box.innerHTML = '<div class="rewardBox__msg">Chargement de tes récompenses…</div>';
+    return;
+  }
+  if(missionRewardsCache.error){
+    box.innerHTML = '<div class="rewardBox__msg">'+missionRewardsCache.error+'</div>';
+    return;
+  }
+  if(!missionRewardsCache.length){
+    box.innerHTML = '<div class="rewardBox__msg">Aucune récompense de points de chaîne sur ta chaîne.<br>'
+      + 'Crée-les sur Twitch (Créateur → Points de chaîne), puis clique sur <b>RECHARGER LA LISTE</b>.</div>';
+    return;
+  }
+  const ign = missionIgnoredList.map(mkey);
+  box.innerHTML = '';
+  missionRewardsCache.forEach(r=>{
+    const row = document.createElement('label');
+    row.className = 'rewardRow' + (r.enabled ? '' : ' is-off');
+    const cb = document.createElement('input');
+    cb.type='checkbox'; cb.checked = ign.indexOf(mkey(r.title)) === -1;
+    cb.addEventListener('change', ()=>{
+      const k = mkey(r.title);
+      missionIgnoredList = missionIgnoredList.filter(t=>mkey(t)!==k);
+      if(!cb.checked) missionIgnoredList.push(r.title);
+      saveMissions();
+    });
+    const t = document.createElement('span');
+    t.className='rewardRow__t'; t.textContent = r.title;
+    const c = document.createElement('span');
+    c.className='rewardRow__c'; c.textContent = (r.cost||0).toLocaleString('fr-FR');
+    row.appendChild(cb); row.appendChild(t); row.appendChild(c);
+    if(!r.enabled){ const o=document.createElement('span'); o.className='rewardRow__off'; o.textContent='désactivée'; row.appendChild(o); }
+    box.appendChild(row);
+  });
+}
+
+async function loadRewards(){
+  const box=$('missionRewardsBox');
+  if(box) box.innerHTML='<div class="rewardBox__msg">Chargement de tes récompenses…</div>';
+  let d=null;
+  try{ const r=await fetch(API+'/api/mission/rewards'); d=await r.json(); }
+  catch(e){ missionRewardsCache={error:'Pont injoignable. Lance <b>demarrer-pont.bat</b>, puis recharge.'}; return paintRewards(); }
+  if(d && d.ok){ missionRewardsCache = d.rewards || []; }
+  else {
+    const why = {
+      'no-token'      : 'Aucun jeton enregistré. Va dans l\'onglet <b>RÉGLAGES</b> et colle ton jeton.',
+      'scope'         : 'Ton jeton n\'a pas le droit <b>points de chaîne</b>.<br>Onglet <b>RÉGLAGES</b> → regénère-le avec le lien fourni, puis <b>relance le pont</b>.',
+      'affiliate'     : 'Twitch répond que les points de chaîne ne sont pas disponibles : il faut être <b>affilié ou partenaire</b>.',
+      'no-broadcaster': 'Impossible d\'identifier ta chaîne. Vérifie ton jeton dans l\'onglet RÉGLAGES.',
+      'network'       : 'Twitch est injoignable. Réessaie dans un instant.'
+    }[d && d.reason] || 'Liste indisponible (' + ((d&&d.reason)||'erreur') + ').';
+    missionRewardsCache = { error: why };
+  }
+  paintRewards();
 }
 
 function missionPayload(){
@@ -1522,15 +1617,18 @@ function missionPayload(){
     missionWidth: num('missionWidth',1100),
     missionScale: num('missionScale',100),
     missionMinCost: num('missionMinCost',0),
-    missionRewards: $('missionRewards')?$('missionRewards').value:'',
-    missionIgnored: $('missionIgnored')?$('missionIgnored').value:''
+    missionRewards: [],                 // on ne filtre plus par liste blanche : tout ce
+                                        // qui n'est pas decoche affiche une mission
+    missionIgnored: missionIgnoredList
   };
 }
 
 async function saveMissions(){
   try{
     const r = await post(API+'/api/config', missionPayload());
-    if(r && r.config) setMissionForm(r.config);
+    if(r && r.config){
+      missionIgnoredList = Array.isArray(r.config.missionIgnored) ? r.config.missionIgnored.slice() : missionIgnoredList;
+    }
     toast('Missions enregistrées');
   }catch(e){ toast('Erreur enregistrement missions'); }
 }
@@ -1545,6 +1643,16 @@ if(missionTab){
     if(e.target && /^mission/.test(e.target.id) && !/^missionTest/.test(e.target.id)) scheduleMissionSave();
   });
 }
+const btnMissionReload=$('btnMissionReload');
+if(btnMissionReload) btnMissionReload.addEventListener('click',()=>{ missionRewardsCache=null; loadRewards(); });
+const btnMissionAll=$('btnMissionAll');
+if(btnMissionAll) btnMissionAll.addEventListener('click',()=>{ missionIgnoredList=[]; paintRewards(); saveMissions(); });
+const btnMissionNone=$('btnMissionNone');
+if(btnMissionNone) btnMissionNone.addEventListener('click',()=>{
+  if(Array.isArray(missionRewardsCache)) missionIgnoredList = missionRewardsCache.map(r=>r.title);
+  paintRewards(); saveMissions();
+});
+
 const btnMissionTest=$('btnMissionTest');
 if(btnMissionTest) btnMissionTest.addEventListener('click', async()=>{
   const title=($('missionTestTitle')&&$('missionTestTitle').value.trim())||'FAIS 10 POMPES';
@@ -1780,6 +1888,7 @@ async function init(){
       updateGoalAutoUI();
       setVelocityForm(s.config);
       setMissionForm(s.config);
+      loadRewards();
       const et=$('velocityEtat');
       if(et) et.innerHTML='<span class=\"note\">Config chargée – équilibre '+esc(velocitySaved.equilibriumMPM+' MPM')+'</span>';
     }
