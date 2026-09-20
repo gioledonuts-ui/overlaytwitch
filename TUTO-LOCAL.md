@@ -220,6 +220,25 @@ Une fois rempli + `demarrer-pont.bat` relancé, la fenêtre affiche :
 
 ---
 
+### 🔧 Les missions (points de chaîne) ne s'affichent pas
+
+Onglet **MISSIONS** → bouton **VÉRIFIER LA CONNEXION**. Il te dit à quelle étape ça bloque.
+La ligne la plus utile est « Connecté à Twitch en temps réel » :
+
+| Ce que tu vois | Ce que ça veut dire |
+|---|---|
+| ✖ **Non connecté à Twitch** | Le pont n'arrive pas à ouvrir la connexion temps réel. C'est presque toujours un **pare-feu, un antivirus ou un VPN** qui bloque `node.exe`. Autorise `node.exe`, coupe le VPN, et **laisse le pont tourner une minute** : après 2 échecs il bascule tout seul sur une autre méthode de connexion, qui passe souvent là où la première échoue. |
+| ✖ **Abonnement refusé (401/403)** | Le droit « points de chaîne » manque sur ton jeton, ou le jeton n'est pas celui du compte de la chaîne. Regénère-le (onglet RÉGLAGES) puis relance le pont. |
+| ✔ connecté et abonné, mais **0 échange reçu** | La chaîne marche, mais Twitch n'a rien envoyé. Échange une récompense **pendant que le pont tourne**. |
+| ✔ échanges reçus mais **rien à l'écran** | Regarde « Dernier échange écarté » : la récompense est probablement décochée dans la liste, ou son coût est sous le minimum. |
+| ✖ **Aucune source OBS connectée** | Même reçues, les missions n'iraient nulle part : dans OBS, clic droit sur la source → **Actualiser**. |
+
+> ℹ️ Les **Power-ups** et les récompenses intégrées de Twitch (mettre en avant un message,
+> emote géante, célébration…) sont gérés depuis la v46 : ils affichent une mission avec leur
+> nom traduit en français. Si tu n'en veux pas, décoche-les dans la liste.
+
+---
+
 ### 🔧 « Error opening file: (null) » au lancement d'OBS
 
 Ce message vient **d'OBS lui-même**, pas de l'overlay : il veut dire qu'OBS a gardé en

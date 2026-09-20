@@ -1109,7 +1109,7 @@ async function syncSubGoal() {
      routes de gestion, pas cet evenement).
    • Les recompenses automatiques de Twitch (« Mettre en avant mon message »…)
      sont un autre evenement : on ne s'y abonne pas, donc pas de bandeau parasite. */
-let pointsWs = null, pointsRetry = 0, pointsOk = false;
+let pointsWs = null, pointsRetry = 0, pointsOk = false, pointsForceModule = false;
 /* Journal de bord de la connexion aux points : permet de voir dans le panneau
    exactement ou ca coince, au lieu de deviner. */
 const pointsDiag = {
@@ -1120,6 +1120,8 @@ const pointsDiag = {
   autoSubscribed: null,// abonnement aux recompenses integrees / Power-ups
   subError: null,      // message d'erreur d'abonnement
   lastMessage: null,   // date du dernier message recu de Twitch
+  lastError: null,     // derniere erreur reseau, en clair
+  echecsNatif: 0,      // echecs consecutifs du WebSocket integre
   events: 0,           // nombre d'echanges de points recus
   lastEvent: null,     // dernier echange recu (titre + pseudo)
   lastShown: null,     // dernier bandeau reellement envoye a l'overlay
@@ -1182,22 +1184,39 @@ function connectChannelPoints() {
       }
     } catch (e) { pointsDiag.subError = e.message; console.warn('[points] erreur abonnement :', e.message); }
   }
-  function ouvrir(url) {
-    /* Node 18 et 20 n'ont PAS de WebSocket integre (il n'arrive qu'en Node 22).
-       On retombe alors sur le module "ws", deja installe avec tmi.js pour le chat.
-       Sans ce filet, la connexion echouait en silence chez tout le monde. */
-    let WS = (typeof WebSocket !== 'undefined') ? WebSocket : null;
-    pointsDiag.supported = !!WS ? 'natif' : null;
-    if (!WS) {
-      try { WS = require('ws'); pointsDiag.supported = 'module ws'; }
-      catch (e) {
-        console.warn('[points] ⚠️ pas de WebSocket disponible sur cette version de Node (' + process.version + ').');
-        console.warn('         Installe Node 22 ou lance "npm install ws" dans le dossier de l\'overlay.');
-        return;
-      }
+  /* Choix de l'implementation WebSocket.
+     forcerModule = true -> on ignore le WebSocket integre de Node.
+     Le WebSocket integre (Node 22+) passe par undici et se fait refuser par
+     certains antivirus / proxys d'entreprise la ou le module "ws" passe. On
+     bascule donc automatiquement sur "ws" si le natif n'arrive pas a s'ouvrir. */
+  function choisirWS(forcerModule) {
+    if (!forcerModule && typeof WebSocket !== 'undefined') {
+      pointsDiag.supported = 'natif';
+      return WebSocket;
     }
+    try {
+      const W = require('ws');
+      pointsDiag.supported = 'module ws';
+      return W;
+    } catch (e) {
+      if (!forcerModule && typeof WebSocket !== 'undefined') { pointsDiag.supported = 'natif'; return WebSocket; }
+      pointsDiag.supported = null;
+      console.warn('[points] ⚠️ pas de WebSocket disponible sur cette version de Node (' + process.version + ').');
+      console.warn('         Installe Node 22 ou lance "npm install ws" dans le dossier de l\'overlay.');
+      return null;
+    }
+  }
+
+  function ouvrir(url) {
+    const WS = choisirWS(pointsForceModule);
+    if (!WS) return;
+    let ouverte = false;   // a-t-on reussi a etablir cette connexion ?
     try { pointsWs = new WS(url || EVENTSUB_WS); }
-    catch (e) { console.warn('[points] connexion impossible :', e.message); return; }
+    catch (e) {
+      pointsDiag.lastError = e.message;
+      console.warn('[points] connexion impossible :', e.message);
+      return;
+    }
     /* Le WebSocket integre utilise onmessage/onclose, le module "ws" utilise .on().
        Les deux acceptent onmessage, mais on passe par une fonction commune pour
        que le comportement soit rigoureusement identique dans les deux cas. */
@@ -1248,14 +1267,38 @@ function connectChannelPoints() {
       }
     };
     pointsWs.onmessage = (ev) => surMessage(typeof ev.data === 'string' ? ev.data : String(ev.data));
-    pointsWs.onopen = () => { pointsDiag.opened = true; console.log('[points] connecte a Twitch, attente de la session…'); };
-    pointsWs.onclose = () => {
+    pointsWs.onopen = () => {
+      ouverte = true; pointsDiag.opened = true; pointsDiag.lastError = null;
+      pointsDiag.echecsNatif = 0;
+      console.log('[points] connecte a Twitch (' + pointsDiag.supported + '), attente de la session…');
+    };
+    pointsWs.onclose = (e) => {
       if (!pointsWs) return;
       pointsDiag.opened = false; pointsDiag.closes++;
+      /* Si la connexion n'a JAMAIS abouti avec le WebSocket integre, on repasse
+         sur le module "ws" : c'est le cas typique d'un antivirus qui bloque
+         undici mais laisse passer le reste. */
+      if (!ouverte && !pointsForceModule && pointsDiag.supported === 'natif') {
+        pointsDiag.echecsNatif = (pointsDiag.echecsNatif || 0) + 1;
+        if (pointsDiag.echecsNatif >= 2) {
+          pointsForceModule = true;
+          console.warn('[points] le WebSocket integre de Node n\'arrive pas a joindre Twitch — bascule sur le module "ws".');
+          return setTimeout(() => ouvrir(), 1500);
+        }
+      }
       const wait = Math.min(60000, 5000 * Math.pow(2, Math.min(pointsRetry++, 3)));
+      console.warn('[points] connexion fermee' + (pointsDiag.lastError ? ' (' + pointsDiag.lastError + ')' : '')
+        + ' — nouvelle tentative dans ' + Math.round(wait / 1000) + ' s');
       setTimeout(() => ouvrir(), wait);   // reconnexion avec attente croissante
     };
-    pointsWs.onerror = () => { try { pointsWs.close(); } catch (e) {} };
+    pointsWs.onerror = (e) => {
+      /* On GARDE le message : sans lui, impossible de savoir si c'est un
+         pare-feu, un proxy, un DNS ou Twitch qui refuse. */
+      const m = (e && (e.message || (e.error && e.error.message))) || (e && e.type) || 'erreur reseau';
+      pointsDiag.lastError = String(m).slice(0, 200);
+      console.warn('[points] erreur reseau :', pointsDiag.lastError);
+      try { pointsWs.close(); } catch (err) {}
+    };
   }
   ouvrir();
 }

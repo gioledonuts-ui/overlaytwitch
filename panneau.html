@@ -1668,6 +1668,7 @@ if(missionTab){
 }
 /* Diagnostic : on interroge le pont et on traduit son etat en langage clair.
    Chaque ligne est une etape de la chaine ; la premiere en rouge est la cause. */
+function escTxt(t){ const d=document.createElement('span'); d.textContent=String(t); return d.innerHTML; }
 const btnMissionDiag=$('btnMissionDiag');
 if(btnMissionDiag) btnMissionDiag.addEventListener('click', async()=>{
   const out=$('missionDiagOut');
@@ -1690,8 +1691,23 @@ if(btnMissionDiag) btnMissionDiag.addEventListener('click', async()=>{
 
   add(d.broadcasterId?'ok':'ko', d.broadcasterId?'Chaîne identifiée (<b>'+d.broadcasterId+'</b>)':'Chaîne non identifiée');
 
-  add(p.opened?'ok':'ko', p.opened?'Connecté à Twitch en temps réel':'Non connecté à Twitch'+(p.closes?' (coupures : '+p.closes+')':''));
-  if(!fix && d.tokenPresent && !p.opened && !p.subError) fix='La connexion temps réel n\'est pas établie. <b>Relance le pont</b> ; si ça persiste, un pare-feu ou un antivirus bloque peut-être les connexions WebSocket sortantes.';
+  add(p.opened?'ok':'ko', p.opened
+    ? 'Connecté à Twitch en temps réel (<b>'+(p.supported||'?')+'</b>)'
+    : 'Non connecté à Twitch'+(p.closes?' (coupures : '+p.closes+')':'')
+      +(p.lastError?'<br><span style="color:#ffb3b3">'+escTxt(p.lastError)+'</span>':''));
+  if(!fix && d.tokenPresent && !p.opened && !p.subError){
+    const err = String(p.lastError||'');
+    if(/certificate|self.signed|unable to (verify|get)/i.test(err))
+      fix='Un logiciel s\'interpose dans la connexion (antivirus avec analyse HTTPS, ou réseau d\'entreprise). '
+        + 'Dans ton antivirus, désactive l\'<b>analyse HTTPS/SSL</b> ou ajoute <b>node.exe</b> en exception, puis relance le pont.';
+    else if(/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(err))
+      fix='Le nom <b>eventsub.wss.twitch.tv</b> n\'a pas pu être résolu : problème de DNS ou de connexion Internet. Vérifie ta connexion, puis relance le pont.';
+    else if(/ETIMEDOUT|ECONNREFUSED|ECONNRESET|disconnected before/i.test(err))
+      fix='La connexion sortante est <b>bloquée</b> (pare-feu Windows, antivirus, ou VPN). Autorise <b>node.exe</b> dans ton pare-feu, coupe temporairement le VPN, puis relance le pont. '
+        + 'Le pont bascule tout seul sur une seconde méthode de connexion après 2 échecs : laisse-le tourner une minute avant de conclure.';
+    else
+      fix='La connexion temps réel n\'est pas établie. <b>Laisse le pont tourner une minute</b> : il réessaie tout seul et bascule sur une autre méthode après 2 échecs. Si ça persiste, autorise <b>node.exe</b> dans ton pare-feu / antivirus.';
+  }
 
   add(p.subscribed?'ok':(p.subError?'ko':'wait'),
     p.subscribed?'Abonné aux échanges de points'
