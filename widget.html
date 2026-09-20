@@ -549,6 +549,33 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   letter-spacing:.14em;color:var(--violet-light);margin-top:3px;
 }
 .mission__cost.is-hidden{display:none}
+/* chrono : compte a rebours bien lisible, a droite du bandeau */
+.mission__chrono{
+  flex:none;display:none;flex-direction:column;align-items:center;justify-content:center;
+  min-width:104px;padding:8px 14px;margin-left:2px;border-radius:12px;
+  border:1px solid rgba(var(--violet-rgb),.42);
+  background:rgba(var(--violet-rgb),.13);
+}
+#mission.has-chrono .mission__chrono{display:flex}
+.mission__chrono b{
+  font-family:'Bebas Neue',sans-serif;font-size:40px;line-height:1;color:var(--blanc);
+  font-variant-numeric:tabular-nums;letter-spacing:.02em;
+}
+.mission__chrono i{
+  font-style:normal;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;
+  letter-spacing:.14em;color:var(--violet-light);margin-top:3px;
+}
+/* derniers instants : on passe en rouge et on pulse doucement */
+.mission__chrono.is-final{
+  border-color:rgba(255,77,77,.55);background:rgba(255,77,77,.14);
+  animation:missionChronoPulse 1s ease-in-out infinite;
+}
+.mission__chrono.is-final b{color:#FF6B6B}
+.mission__chrono.is-final i{color:#FFB3B3}
+@keyframes missionChronoPulse{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.06)}
+}
 /* barre de temps : montre combien de temps le bandeau reste encore */
 .mission__time{
   position:absolute;left:0;bottom:0;height:3px;width:100%;
@@ -654,6 +681,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
       <span class="mission__sub" id="missionSub"></span>
     </div>
     <div class="mission__cost" id="missionCost"><b id="missionCostVal">0</b><i>POINTS</i></div>
+    <div class="mission__chrono" id="missionChrono"><b id="missionChronoVal">60</b><i>SECONDES</i></div>
     <div class="mission__time"><i id="missionTimeFill"></i></div>
   </div>
 </div>
@@ -1259,7 +1287,7 @@ function buildMsgRow(m, withPinIcon) {
    l'un apres l'autre, jamais superposes. Tout est pilote par le pont. */
 const missionEl = $('mission');
 const missionQueue = [];
-let missionBusy = false, missionHideT = null, missionNextT = null;
+let missionBusy = false, missionHideT = null, missionNextT = null, missionChronoT = null;
 const MISSION_GAP = 420;        // ms de respiration entre deux bandeaux
 let missionCfg = { enabled: true, duration: 8, showUser: true, showInput: true };
 
@@ -1275,7 +1303,7 @@ function missionApplyConfig(c) {
   // coupe net si on desactive pendant qu'un bandeau est a l'ecran
   if (!missionCfg.enabled) {
     missionQueue.length = 0;
-    clearTimeout(missionHideT); clearTimeout(missionNextT);
+    clearTimeout(missionHideT); clearTimeout(missionNextT); clearInterval(missionChronoT);
     if (missionEl) missionEl.classList.remove('is-on');
     missionBusy = false;
   }
@@ -1315,7 +1343,34 @@ function showNextMission() {
   costEl.classList.toggle('is-hidden', cost <= 0);
   if (cost > 0) $('missionCostVal').textContent = cost.toLocaleString('fr-FR');
 
-  const dur = Math.max(3, Math.min(30, +missionCfg.duration || 8));
+  /* Duree : celle de la recompense si elle est personnalisee, sinon la duree
+     generale du panneau. Une recompense personnalisee peut monter a 10 minutes
+     (ex. « fais 10 pompes » avec un chrono d'une minute). */
+  const dur = (m.duration != null)
+    ? Math.max(3, Math.min(600, +m.duration || 8))
+    : Math.max(3, Math.min(30, +missionCfg.duration || 8));
+
+  /* Chrono : compte a rebours visible, uniquement si la recompense l'a active. */
+  clearInterval(missionChronoT);
+  const chronoEl = $('missionChrono'), chronoVal = $('missionChronoVal');
+  missionEl.classList.toggle('has-chrono', !!m.chrono);
+  if (m.chrono && chronoEl) {
+    chronoEl.classList.remove('is-final');
+    let reste = Math.ceil(dur);
+    const peindre = () => {
+      // au dessus d'une minute on affiche m:ss, sinon juste les secondes
+      chronoVal.textContent = reste >= 60
+        ? Math.floor(reste / 60) + ':' + String(reste % 60).padStart(2, '0')
+        : String(reste);
+      chronoEl.classList.toggle('is-final', reste <= 5);
+    };
+    peindre();
+    missionChronoT = setInterval(() => {
+      reste--;
+      if (reste <= 0) { clearInterval(missionChronoT); reste = 0; }
+      peindre();
+    }, 1000);
+  }
   missionEl.style.setProperty('--mission-dur', dur + 's');
   // relance l'animation de la barre de temps a chaque bandeau
   const tf = $('missionTimeFill');
@@ -1325,6 +1380,7 @@ function showNextMission() {
   clearTimeout(missionHideT);
   missionHideT = setTimeout(() => {
     missionEl.classList.remove('is-on');
+    clearInterval(missionChronoT);
     clearTimeout(missionNextT);
     missionNextT = setTimeout(showNextMission, MISSION_GAP);
   }, dur * 1000);

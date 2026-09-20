@@ -118,7 +118,13 @@ const DEFAULT_CONFIG = {
   missionRewards: [],          // titres de recompenses a afficher ([] = toutes)
   missionIgnored: [],          // titres a ne jamais afficher (ex. Highlight My Message)
   missionShowUser: true,       // afficher « demande par X »
-  missionShowInput: true       // afficher le texte ecrit par le viewer, s'il y en a un
+  missionShowInput: true,      // afficher le texte ecrit par le viewer, s'il y en a un
+  /* Reglages PAR recompense. Une entree = une recompense personnalisee :
+       { key: 'fais 10 pompes', title: 'FAIS 10 POMPES', duration: 60, chrono: true }
+     Tout ce qui n'a pas d'entree ici garde les reglages generaux ci-dessus.
+     On garde le titre d'origine pour l'afficher dans le panneau, et "key" (le
+     titre normalise) pour la comparaison. */
+  missionCustom: []
 };
 function clampNum(n, min, max, d) {
   const v = +n;
@@ -142,6 +148,38 @@ function normalizeRewardList(v) {
     if (!seen.has(k)) { seen.add(k); out.push(t); }
   }
   return out.slice(0, 40);
+}
+
+/* Nettoie la liste des personnalisations par recompense. On refuse les entrees
+   sans titre, on borne la duree, et on evite les doublons. */
+function normalizeMissionCustom(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [], seen = new Set();
+  for (const it of v) {
+    if (!it || typeof it !== 'object') continue;
+    const title = String(it.title == null ? '' : it.title).trim().slice(0, 90);
+    if (!title) continue;
+    const key = missionKey(title);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      key,
+      title,
+      duration: Math.max(3, Math.min(600, Math.round(+it.duration || 8))),
+      chrono: !!it.chrono
+    });
+    if (out.length >= 60) break;
+  }
+  return out;
+}
+
+/* Renvoie la personnalisation d'une recompense, ou null si elle suit les
+   reglages generaux. */
+function missionCustomFor(title) {
+  const k = missionKey(title);
+  const list = appConfig.missionCustom || [];
+  for (const c of list) if (c.key === k) return c;
+  return null;
 }
 
 function normalizeExcludedUsers(v) {
@@ -259,12 +297,18 @@ function broadcastMission(m) {
     console.log('[mission] ecartee : ' + title + ' — ' + refus);
     return false;
   }
+  /* Personnalisation eventuelle de CETTE recompense : duree propre et chrono.
+     Si elle n'est pas personnalisee, on n'envoie rien et l'overlay applique
+     la duree generale. */
+  const perso = missionCustomFor(title);
   const payload = 'data: ' + JSON.stringify({
     mission: 1,
     title,
     user: String(m.user || '').slice(0, 40),
     cost,
     input: String(m.input || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 160),
+    duration: perso ? perso.duration : undefined,
+    chrono: perso && perso.chrono ? 1 : undefined,
     test: m.test ? 1 : undefined
   }) + '\n\n';
   for (const res of sse) res.write(payload);
@@ -1719,6 +1763,7 @@ const server = http.createServer((req, res) => {
           if (p.missionMinCost !== undefined) appConfig.missionMinCost = Math.max(0, Math.min(1000000, Math.round(+p.missionMinCost || 0)));
           if (p.missionRewards !== undefined) appConfig.missionRewards = normalizeRewardList(p.missionRewards);
           if (p.missionIgnored !== undefined) appConfig.missionIgnored = normalizeRewardList(p.missionIgnored);
+          if (p.missionCustom !== undefined) appConfig.missionCustom = normalizeMissionCustom(p.missionCustom);
           if (p.missionShowUser !== undefined) appConfig.missionShowUser = !!p.missionShowUser;
           if (p.missionShowInput !== undefined) appConfig.missionShowInput = !!p.missionShowInput;
           if (p.velocityExcludedUsers !== undefined) appConfig.velocityExcludedUsers = normalizeExcludedUsers(p.velocityExcludedUsers);

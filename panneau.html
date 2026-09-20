@@ -485,6 +485,35 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
 .diagFix{margin:6px 12px 10px;padding:9px 11px;border-radius:8px;background:rgba(255,107,107,.10);
   border:1px solid rgba(255,107,107,.30);font-size:12px;line-height:1.55;color:#ffd9d9}
 .diagFix b{color:#fff}
+
+/* V46.2 : reglages par recompense */
+.rewardRow{flex-wrap:wrap}
+.rewardRow__gear{
+  flex:none;background:none;border:1px solid rgba(255,255,255,.14);color:#c9a7ff;
+  border-radius:7px;padding:3px 9px;font-size:11px;cursor:pointer;font-family:inherit;
+}
+.rewardRow__gear:hover{background:rgba(124,92,255,.14);border-color:rgba(124,92,255,.40)}
+.rewardRow__gear.is-on{background:rgba(124,92,255,.22);border-color:rgba(124,92,255,.55);color:#fff}
+.rewardPerso{
+  flex-basis:100%;margin:8px 0 2px;padding:11px 12px;border-radius:9px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
+}
+.rewardPerso[hidden]{display:none}
+.rewardPerso__row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rewardPerso__row + .rewardPerso__row{margin-top:9px}
+.rewardPerso label{font-size:12px;color:#d7d9e3;display:flex;align-items:center;gap:7px;margin:0}
+.rewardPerso input[type=number]{
+  width:92px;padding:5px 8px;font-size:12px;border-radius:7px;
+  background:#0b0b12;border:1px solid rgba(255,255,255,.14);color:#fff;
+}
+.rewardPerso input[type=checkbox]{width:15px;height:15px;accent-color:#7c5cff;cursor:pointer}
+.rewardPerso .hint{font-size:11px;color:#8b8fa3;line-height:1.5;margin-top:7px}
+.rewardPerso .hint b{color:#c9a7ff}
+.rewardRow__tag{
+  flex:none;font-size:10px;font-weight:700;letter-spacing:.06em;
+  color:#6eebaa;background:rgba(110,235,170,.12);
+  border:1px solid rgba(110,235,170,.32);border-radius:20px;padding:2px 8px;
+}
 </style>
 </head>
 <body>
@@ -1558,6 +1587,7 @@ function setMissionForm(c){
   if($('missionMinCost'))$('missionMinCost').value = val('missionMinCost');
   missionIgnoredList = Array.isArray(s.missionIgnored) ? s.missionIgnored.slice()
                      : (s.missionIgnored ? String(s.missionIgnored).split(',').map(x=>x.trim()).filter(Boolean) : []);
+  missionCustomList = Array.isArray(s.missionCustom) ? s.missionCustom.slice() : [];
   paintRewards();
 }
 
@@ -1567,8 +1597,20 @@ function setMissionForm(c){
    d'office, sans avoir à revenir ici. */
 let missionRewardsCache = null;     // null = pas encore chargé
 let missionIgnoredList = [];
+let missionCustomList = [];         // personnalisations par récompense
 const mkey = t => String(t==null?'':t).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
                     .toLowerCase().replace(/\s+/g,' ').trim();
+
+function missionCustomFind(title){
+  const k = mkey(title);
+  return missionCustomList.find(c=>mkey(c.title)===k) || null;
+}
+/* perso = null -> la récompense revient aux réglages généraux */
+function missionCustomSet(title, perso){
+  const k = mkey(title);
+  missionCustomList = missionCustomList.filter(c=>mkey(c.title)!==k);
+  if(perso) missionCustomList.push({ title, duration:perso.duration, chrono:perso.chrono });
+}
 
 function paintRewards(){
   const box = $('missionRewardsBox');
@@ -1605,6 +1647,62 @@ function paintRewards(){
     c.className='rewardRow__c'; c.textContent = (r.cost||0).toLocaleString('fr-FR');
     row.appendChild(cb); row.appendChild(t); row.appendChild(c);
     if(!r.enabled){ const o=document.createElement('span'); o.className='rewardRow__off'; o.textContent='désactivée'; row.appendChild(o); }
+
+    /* — Réglages propres à CETTE récompense —
+       Tant que la personnalisation n'est pas cochée, la récompense suit la
+       durée générale réglée plus haut. */
+    const perso = missionCustomFind(r.title);
+    const tag = document.createElement('span');
+    tag.className = 'rewardRow__tag';
+    tag.hidden = !perso;
+    if(perso) tag.textContent = perso.duration + ' s' + (perso.chrono ? ' · chrono' : '');
+    row.appendChild(tag);
+
+    const gear = document.createElement('button');
+    gear.type='button'; gear.className='rewardRow__gear'+(perso?' is-on':''); gear.textContent='⚙ Réglages';
+    row.appendChild(gear);
+
+    const box2 = document.createElement('div');
+    box2.className='rewardPerso'; box2.hidden = true;
+    const dureeDef = ($('missionDuration') && $('missionDuration').value) || 8;
+    box2.innerHTML =
+      '<div class="rewardPerso__row">'
+      + '<label><input type="checkbox" class="pOn"' + (perso?' checked':'') + '> '
+      + 'Personnaliser cette récompense</label></div>'
+      + '<div class="rewardPerso__row pBody">'
+      + '<label>Durée à l\'écran <input type="number" class="pDur" min="3" max="600" step="1" value="'
+      + (perso?perso.duration:dureeDef) + '"> secondes</label>'
+      + '<label><input type="checkbox" class="pChrono"' + (perso&&perso.chrono?' checked':'') + '> '
+      + 'Afficher un compte à rebours</label></div>'
+      + '<div class="hint">Si tu ne personnalises pas, cette récompense utilise la <b>durée à l\'écran</b> '
+      + 'réglée en haut de la page. Ici tu peux monter jusqu\'à <b>600 s</b> (10 min) : pratique pour un défi '
+      + 'où le chrono tourne pendant que tu le fais.</div>';
+    row.appendChild(box2);
+
+    // clic sur l'engrenage : on ouvre/ferme, sans cocher/decocher la case
+    gear.addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); box2.hidden = !box2.hidden; });
+    box2.addEventListener('click', e=>e.stopPropagation());
+
+    const pOn=box2.querySelector('.pOn'), pDur=box2.querySelector('.pDur'),
+          pChrono=box2.querySelector('.pChrono'), pBody=box2.querySelector('.pBody');
+    const majBody=()=>{ pBody.style.opacity = pOn.checked ? '1':'.45';
+                        pDur.disabled = !pOn.checked; pChrono.disabled = !pOn.checked; };
+    majBody();
+    const appliquer=()=>{
+      majBody();
+      missionCustomSet(r.title, pOn.checked ? {
+        duration: Math.max(3, Math.min(600, parseInt(pDur.value,10)||8)),
+        chrono: pChrono.checked
+      } : null);
+      gear.classList.toggle('is-on', pOn.checked);
+      tag.hidden = !pOn.checked;
+      if(pOn.checked) tag.textContent = (parseInt(pDur.value,10)||8) + ' s' + (pChrono.checked?' · chrono':'');
+      saveMissions();
+    };
+    pOn.addEventListener('change', appliquer);
+    pChrono.addEventListener('change', appliquer);
+    pDur.addEventListener('change', appliquer);
+
     box.appendChild(row);
   });
 }
@@ -1642,7 +1740,8 @@ function missionPayload(){
     missionMinCost: num('missionMinCost',0),
     missionRewards: [],                 // on ne filtre plus par liste blanche : tout ce
                                         // qui n'est pas decoche affiche une mission
-    missionIgnored: missionIgnoredList
+    missionIgnored: missionIgnoredList,
+    missionCustom: missionCustomList
   };
 }
 
@@ -1651,6 +1750,7 @@ async function saveMissions(){
     const r = await post(API+'/api/config', missionPayload());
     if(r && r.config){
       missionIgnoredList = Array.isArray(r.config.missionIgnored) ? r.config.missionIgnored.slice() : missionIgnoredList;
+      if(Array.isArray(r.config.missionCustom)) missionCustomList = r.config.missionCustom.slice();
     }
     toast('Missions enregistrées');
   }catch(e){ toast('Erreur enregistrement missions'); }
