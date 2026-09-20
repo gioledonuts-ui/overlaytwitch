@@ -191,7 +191,7 @@ function blocsGeometrie() {
     // .chat : ancre a 48 px du bord droit et 160 px du bas
     chat:     { x: 1920 - 48 - 460, y: 1080 - 160 - 640, w: 460, h: 640 },
     // #velocityWrap : ancre a 28 px a gauche et 160 px du bas, hauteur = ton reglage
-    velocity: { x: 28, y: 1080 - 160 - velH, w: 180, h: velH },
+    velocity: { x: 28, y: 1080 - 160 - velH, w: 200, h: velH },
     // #mission : centre entre la velocite et le chat, ancre en bas
     mission:  { x: Math.round((1920 - misW) / 2), y: 1080 - misB - misH, w: misW, h: misH }
   };

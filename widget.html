@@ -88,7 +88,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .head .mark7g{justify-self:start;width:36px;height:36px;border-radius:6px}
 .head #timer{justify-self:end}
 .chip{display:inline-flex;align-items:center;gap:9px;padding:6px 14px;border-radius:3px;
-  border:1px solid rgba(145,70,255,.42);font-family:'Bebas Neue',sans-serif;font-weight:400;
+  border:1px solid rgba(145,70,255,.42);font-family:'Bebas Neue',sans-serif;font-weight:700;
   font-size:14px;letter-spacing:.18em;color:#E7E9EE;
   transition:border-color .3s,color .3s}
 .chip .dot{width:6px;height:6px;border-radius:50%;background:var(--violet);
@@ -97,7 +97,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .chip.is-result .dot{animation:none;box-shadow:0 0 12px rgba(145,70,255,1)}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.78)}}
 
-#timer{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.08em;color:var(--gris);
+#timer{font-family:'Bebas Neue',sans-serif;font-weight:700;font-size:28px;letter-spacing:.08em;color:var(--gris);
   font-variant-numeric:tabular-nums;transition:color .3s,text-shadow .3s}
 /* les deux-points pulsent : on sent le temps passer */
 #timer #tColon{animation:colon 1s steps(1) infinite}
@@ -106,7 +106,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 #timer.is-off{visibility:hidden}
 
 /* — Question (plus lisible, 3 lignes max, 36px pour éviter la coupe) — */
-#question{margin-top:10px;padding:0 0 6px;font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:36px;line-height:1.2;
+#question{margin-top:10px;padding:0 0 6px;font-family:'Bebas Neue',sans-serif;font-weight:700;font-size:36px;line-height:1.2;
   letter-spacing:.02em;color:var(--blanc);text-align:center;
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
   text-shadow:0 2px 12px rgba(0,0,0,.5);min-height:44px}
@@ -155,7 +155,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .opt.is-up .fill--a{box-shadow:0 0 22px rgba(145,70,255,.85)}
 .opt.is-up .fill--b{box-shadow:0 0 22px rgba(255,255,255,.8)}
 .opt.is-down .fill{filter:brightness(.5) saturate(.55)}
-.pct{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.06em;color:var(--gris-fonce);
+.pct{font-family:'Bebas Neue',sans-serif;font-weight:700;font-size:30px;letter-spacing:.06em;color:var(--gris-fonce);
   text-align:right;font-variant-numeric:tabular-nums;
   transition:color .35s,text-shadow .35s,transform .3s var(--ease-out);opacity:1}
 .pct.is-lead{color:var(--blanc)}
@@ -200,7 +200,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 }
 .chat.is-on{opacity:1;visibility:visible;transform:none}
 .chat__head{display:flex;align-items:center;gap:9px;padding:14px 20px 12px;
-  font-family:'Bebas Neue',sans-serif;font-size:22px;font-weight:400;letter-spacing:.22em;color:#E7E9EE;
+  font-family:'Bebas Neue',sans-serif;font-size:22px;font-weight:700;letter-spacing:.08em;color:#E7E9EE;
   border-bottom:1px solid rgba(255,255,255,.06)}
 .chat__head .dot{width:6px;height:6px;border-radius:50%;background:var(--violet);
   box-shadow:0 0 8px rgba(145,70,255,.9);animation:pulse 1.6s ease-in-out infinite}
@@ -319,7 +319,9 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 #velocityWrap{
   --vel-w:30px; --vel-h:700px;
   position:absolute;left:28px;bottom:160px;
-  width:180px;height:var(--vel-h);
+  /* 200px au lieu de 180 : juste ce qu'il faut pour que « FIN PRÉVUE : 21H30 »
+     tienne sur une ligne maintenant que les textes sont plus gros. */
+  width:200px;height:var(--vel-h);
   display:flex;flex-direction:column;align-items:center;gap:14px;
   padding:16px 16px 14px;
   background:var(--fond-bloc);
@@ -396,20 +398,20 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   border-radius:6px;
 }
 .velocity__pct{
-  font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:.02em;line-height:.85;
+  font-family:'Bebas Neue',sans-serif;font-weight:700;font-size:52px;letter-spacing:.02em;line-height:.85;
   color:var(--blanc);text-shadow:0 2px 22px rgba(0,0,0,.95);
   font-variant-numeric:tabular-nums;
   transition:transform .25s var(--ease-out),color .25s;
 }
 .velocity__pct.is-pop{transform:scale(1.15)}
 .velocity__goal{
-  font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;letter-spacing:.08em;line-height:1.25;
-  color:rgba(255,255,255,.80);text-align:center;
+  font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;letter-spacing:.02em;line-height:1.3;
+  color:rgba(255,255,255,.96);text-align:center;
   background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
   border-radius:6px;padding:7px 10px;width:100%;
 }
 .velocity__chrono{
-  font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;letter-spacing:.10em;line-height:1;
+  font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;letter-spacing:.04em;line-height:1;
   color:#000;text-align:center;
   background:linear-gradient(90deg,#FF8A2E,#FFB547);
   border:1px solid rgba(255,180,71,.9);border-radius:6px;
@@ -420,7 +422,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .velocity__chrono.is-on{display:block;animation:chronoPulse .9s ease-in-out infinite}
 @keyframes chronoPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
 .velocity__boost{
-  font-family:'Outfit',sans-serif;font-size:13px;font-weight:900;letter-spacing:.08em;line-height:1;
+  font-family:'Outfit',sans-serif;font-size:15px;font-weight:900;letter-spacing:.04em;line-height:1;
   color:#08101C;text-align:center;
   background:linear-gradient(90deg,#6BE585,#4EE3C4);
   border:1px solid rgba(122,255,190,.95);border-radius:6px;
@@ -434,8 +436,8 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 @keyframes boostPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.22)}}
 .velocity__fin{
   width:100%;text-align:center;
-  font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;letter-spacing:.06em;line-height:1.2;
-  color:#FFFFFF;
+  font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;letter-spacing:0;line-height:1.25;
+  color:#FFFFFF;white-space:nowrap;
   text-shadow:0 1px 10px rgba(0,0,0,.98),0 0 20px rgba(0,0,0,.75);
   background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.12);
   border-radius:6px;padding:8px 10px;
@@ -543,7 +545,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 }
 .bloc-titre{
   font-family:'Outfit',sans-serif;font-size:9px;font-weight:800;
-  letter-spacing:.22em;text-transform:uppercase;
+  letter-spacing:.12em;text-transform:uppercase;
   color:var(--violet-light);opacity:.92;
   display:flex;align-items:center;gap:8px;white-space:nowrap;
 }
@@ -561,7 +563,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .mission__body{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
 .mission__kicker{
   font-family:'Outfit',sans-serif;font-size:11px;font-weight:800;
-  letter-spacing:.20em;text-transform:uppercase;color:var(--violet-light);
+  letter-spacing:.11em;text-transform:uppercase;color:var(--violet-light);
   display:flex;align-items:center;gap:9px;
 }
 .mission__kicker::after{
@@ -569,7 +571,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   background:linear-gradient(90deg,rgba(var(--violet-rgb),.55),transparent);
 }
 .mission__title{
-  font-family:'Bebas Neue',sans-serif;font-size:54px;line-height:1.02;
+  font-family:'Bebas Neue',sans-serif;font-weight:700;font-size:54px;line-height:1.02;
   letter-spacing:.02em;color:var(--blanc);
   text-shadow:0 0 26px rgba(var(--violet-rgb),.42);
   overflow-wrap:anywhere;
@@ -590,7 +592,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   background:rgba(var(--violet-rgb),.13);
 }
 .mission__cost b{
-  font-family:'Bebas Neue',sans-serif;font-size:32px;line-height:1;color:var(--blanc);
+  font-family:'Bebas Neue',sans-serif;font-weight:700;font-size:32px;line-height:1;color:var(--blanc);
 }
 .mission__cost i{
   font-style:normal;font-family:'Outfit',sans-serif;font-size:9px;font-weight:700;
@@ -606,7 +608,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 }
 #mission.has-chrono .mission__chrono{display:flex}
 .mission__chrono b{
-  font-family:'Bebas Neue',sans-serif;font-size:40px;line-height:1;color:var(--blanc);
+  font-family:'Bebas Neue',sans-serif;font-weight:700;font-size:40px;line-height:1;color:var(--blanc);
   font-variant-numeric:tabular-nums;letter-spacing:.02em;
 }
 .mission__chrono i{
@@ -707,7 +709,6 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   <!-- ═══ VÉLOCITÉ CHAT V5 — % gros lisible + fin prévue + chrono auto ═══ -->
   <div id="velocityWrap" class="is-on" aria-hidden="true">
     <span class="bloc-filet"></span>
-    <span class="bloc-titre">VÉLOCITÉ</span>
     <div class="velocity__trackWrap">
       <div class="velocity__track" id="velocityTrack">
         <div class="velocity__fill" id="velocityFill"></div>
