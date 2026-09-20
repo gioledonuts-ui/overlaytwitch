@@ -21,6 +21,15 @@ const dom = new JSDOM(html, {
   url: 'http://localhost/',
   pretendToBeVisual: true,
   beforeParse(window) {
+    /* jsdom n'a ni fetch ni EventSource (OBS, lui, les a). Sans ces bouchons le
+       script du widget s'arrete des la 1re ligne et le smoke test echoue a tort. */
+    window.fetch = () => Promise.resolve({
+      ok: true, status: 200, json: () => Promise.resolve({}), text: () => Promise.resolve('')
+    });
+    window.EventSource = class {
+      constructor() { this.readyState = 0; this.onmessage = null; this.onerror = null; this.onopen = null; }
+      close() { this.readyState = 2; }
+    };
     // stub média : pas de vrai audio en jsdom
     window.Audio = class {
       constructor() { this.loop = false; this.muted = false; this.currentTime = 0; this.volume = 1; this._l = {}; }

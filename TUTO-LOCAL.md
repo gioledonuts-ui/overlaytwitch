@@ -156,20 +156,26 @@ Pour afficher ton **vrai chat**, il suffit de remplir 2 cases du fichier **`secr
 
 ## 📊 Activer les sondages + abonnés + follows (LE token principal)
 
-Le champ **`POLL_OAUTH`** sert maintenant à 3 choses à la fois : les sondages `/poll`,
-le compteur de subs (sub goal). Il faut donc générer UN token
-avec les 3 droits d'un coup.
+Le champ **`POLL_OAUTH`** sert à 3 choses à la fois : les sondages `/poll`,
+le compteur de subs (sub goal) et les **missions** (points de chaîne).
+Il faut donc générer UN token avec les 3 droits d'un coup.
+
+> ⚠️ Ce token doit être celui **du compte de ta chaîne**. Twitch refuse qu'un compte
+> modérateur ou un compte-bot lise les échanges de points de chaîne.
 
 1. **`CLIENT_ID`** → déjà pré-rempli (`53shw…`). Tu peux le laisser tel quel.
 2. **`POLL_OAUTH`** → génère un token en cliquant sur CE lien (il contient les 3 droits) :
+   *(si tu avais déjà un token d'une version précédente, il faut le refaire avec ce lien‑ci :
+   le droit « points de chaîne » est nouveau en v46)*
    ```
-   https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=channel:read:polls+channel:read:subscriptions+moderator:read:followers
+   https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=channel:read:polls+channel:read:subscriptions+channel:read:redemptions
    ```
    → **Autoriser** → copie ce qui suit `access_token=` dans la barre d'adresse
    → colle-le dans `POLL_OAUTH` (**sans** le préfixe `oauth:`).
 3. Sauvegarde, relance `demarrer-pont.bat`. La fenêtre doit afficher :
    - `/poll → actif`
    - `Sub goal → auto (vrai nombre de subs)`
+   - `Missions → points de chaîne (EventSub)` puis `[points] abonnement OK`
 
 > 💡 Ton ID de chaîne est trouvé **automatiquement** par le programme (à partir du
 > token) : tu n'as rien d'autre à chercher.

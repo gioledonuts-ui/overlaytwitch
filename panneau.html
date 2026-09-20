@@ -465,6 +465,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
       <button class="navbtn" data-tab="objectif"><span class="ico">02</span>OBJECTIF</button>
       <button class="navbtn" data-tab="ambiance"><span class="ico">03</span>AMBIANCE</button>
       <button class="navbtn" data-tab="velocite"><span class="ico">04</span>VÉLOCITÉ</button>
+      <button class="navbtn" data-tab="missions"><span class="ico">05</span>MISSIONS</button>
     </nav>
     <div class="sideFoot">
       <span id="dotPont" class="off"></span>
@@ -803,6 +804,105 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
           <div id="velocityEtat" class="note" style="margin-top:10px"></div>
         </div>
       </section>
+      <section class="tab" id="tab-missions">
+        <div class="card">
+          <h2>MISSIONS — QUAND UN VIEWER ÉCHANGE SES POINTS DE CHAÎNE</h2>
+          <p class="sub">Un viewer dépense ses <b>points de chaîne Twitch</b> → un bandeau s'affiche <b>en bas de l'écran</b> quelques secondes pour prévenir tout le monde de ce que tu dois faire. Le <b>titre de la récompense</b> (celui que tu as écrit dans ton tableau de bord Twitch) est le texte affiché en gros.</p>
+          <div class="field">
+            <label>Activation</label>
+            <div class="switchRow">
+              <label class="switch">
+                <input type="checkbox" id="missionsEnabled">
+                <span class="switch__track"><span class="switch__thumb"></span></span>
+              </label>
+              <span class="switch__label">Afficher les missions dans l'overlay</span>
+            </div>
+            <div class="switchRow" style="margin-top:8px">
+              <label class="switch">
+                <input type="checkbox" id="missionShowUser">
+                <span class="switch__track"><span class="switch__thumb"></span></span>
+              </label>
+              <span class="switch__label">Afficher « demandée par (pseudo) »</span>
+            </div>
+            <div class="switchRow" style="margin-top:8px">
+              <label class="switch">
+                <input type="checkbox" id="missionShowInput">
+                <span class="switch__track"><span class="switch__thumb"></span></span>
+              </label>
+              <span class="switch__label">Afficher le texte écrit par le viewer (si la récompense en demande un)</span>
+            </div>
+          </div>
+          <div class="row grow" style="margin-top:12px">
+            <div class="field" style="margin-top:0">
+              <label>Durée à l'écran (secondes)</label>
+              <input id="missionDuration" type="number" min="3" max="30" step="1" placeholder="8">
+              <div class="note" style="margin-top:4px">Une petite barre violette sous le bandeau montre le temps qui reste.</div>
+            </div>
+            <div class="field" style="margin-top:0">
+              <label>Hauteur depuis le bas (px)</label>
+              <input id="missionBottom" type="number" min="0" max="400" step="4" placeholder="64">
+              <div class="note" style="margin-top:4px">64 = juste au-dessus du bord bas. Monte la valeur si ta caméra est en bas.</div>
+            </div>
+          </div>
+          <div class="row grow">
+            <div class="field" style="margin-top:0">
+              <label>Largeur du bandeau (px)</label>
+              <input id="missionWidth" type="number" min="600" max="1600" step="20" placeholder="1100">
+            </div>
+            <div class="field" style="margin-top:0">
+              <label>Taille globale (%)</label>
+              <input id="missionScale" type="number" min="60" max="140" step="5" placeholder="100">
+            </div>
+          </div>
+          <div class="field">
+            <label>Coût minimum (points)</label>
+            <input id="missionMinCost" type="number" min="0" max="1000000" step="50" placeholder="0">
+            <div class="note" style="margin-top:4px">0 = toutes les récompenses. Mets par exemple 500 pour ignorer les petites récompenses sans conséquence.</div>
+          </div>
+          <div class="field">
+            <label>N'afficher QUE ces récompenses</label>
+            <input id="missionRewards" type="text" placeholder="laisse vide pour toutes les afficher">
+            <div class="note" style="margin-top:4px">Titres séparés par des virgules, exactement comme sur Twitch (les accents et les majuscules n'ont pas d'importance). Vide = toutes.</div>
+          </div>
+          <div class="field">
+            <label>Ne jamais afficher ces récompenses</label>
+            <input id="missionIgnored" type="text" placeholder="ex : Mettre en avant mon message">
+            <div class="note" style="margin-top:4px">Pratique pour les récompenses qui ne te demandent rien à faire.</div>
+          </div>
+          <div class="card" style="margin-top:14px;background:#10101a;border-color:rgba(124,92,255,.28)">
+            <h2 style="font-size:11px">▶ TESTER — sans attendre un vrai échange</h2>
+            <p class="sub">Le test s'affiche dans OBS même s'il ne passe pas les filtres ci-dessus, et sert aussi à déclencher une mission à la main.</p>
+            <div class="field">
+              <label>Texte de la mission</label>
+              <input id="missionTestTitle" type="text" placeholder="FAIS 10 POMPES" maxlength="90">
+            </div>
+            <div class="row grow">
+              <div class="field" style="margin-top:0">
+                <label>Pseudo (facultatif)</label>
+                <input id="missionTestUser" type="text" placeholder="kevin" maxlength="40">
+              </div>
+              <div class="field" style="margin-top:0">
+                <label>Coût affiché (facultatif)</label>
+                <input id="missionTestCost" type="number" min="0" max="1000000" step="50" placeholder="1000">
+              </div>
+            </div>
+            <button class="btn" id="btnMissionTest" style="margin-top:10px">AFFICHER CETTE MISSION</button>
+          </div>
+          <details class="note" style="margin-top:14px">
+            <summary style="cursor:pointer">ℹ️ Ça ne s'affiche pas ? — à lire</summary>
+            <div style="margin-top:8px;line-height:1.6">
+              Les points de chaîne passent par Twitch, il faut donc <b>une autorisation en plus</b> sur ton jeton :
+              va dans l'onglet <b>RÉGLAGES</b>, regénère le jeton avec le lien fourni (il contient désormais le droit
+              « points de chaîne »), colle-le, puis <b>relance le pont</b>. Dans la fenêtre noire tu dois lire
+              <b>« [points] abonnement OK »</b>.<br><br>
+              À savoir : Twitch n'autorise que <b>le compte de la chaîne</b> à lire les échanges de points — un jeton
+              créé depuis un compte de modérateur ou un compte-bot sera refusé. Le bouton de test ci-dessus, lui,
+              marche <b>sans</b> jeton.
+            </div>
+          </details>
+        </div>
+      </section>
+
       <section class="tab" id="tab-reglages">
         <div class="card">
           <h2>TITRE CHAT</h2>
@@ -856,7 +956,7 @@ const $=id=>document.getElementById(id);
 const API=location.origin;
 if($('urlObs')) $('urlObs').textContent=API+'/widget.html';
 if($('urlDemo')) $('urlDemo').textContent=API+'/';
-const TOKEN_LINK='https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=channel:read:polls+channel:read:subscriptions+moderator:read:followers';
+const TOKEN_LINK='https://id.twitch.tv/oauth2/authorize?client_id=53shwqq9p92zl8gpqk03sewwdcb0xg&redirect_uri=http://localhost&response_type=token&scope=channel:read:polls+channel:read:subscriptions+channel:read:redemptions';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){if(c==='&')return'&amp;';if(c==='<')return'&lt;';if(c==='>')return'&gt;';if(c==='"')return'&quot;';return'&#39;';});}
 function fmtDate(iso){if(!iso)return'-';try{return new Date(iso).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return'-';}}
 function hexA(hex,a){try{const h=String(hex).replace('#','');const r=parseInt(h.slice(0,2),16);const g=parseInt(h.slice(2,4),16);const b=parseInt(h.slice(4,6),16);if(isNaN(r)||isNaN(g)||isNaN(b))return'rgba(145,70,255,'+a+')';return'rgba('+r+','+g+','+b+','+a+')';}catch(e){return'rgba(145,70,255,'+a+')';}}
@@ -1387,6 +1487,78 @@ if(btnResetVelocity) btnResetVelocity.addEventListener('click',async()=>{
 
 
 
+/* ═══ V46 — MISSIONS (points de chaîne) ═════════════════════════
+   Même principe que la vélocité : chaque changement part vers le pont, qui
+   enregistre dans config-perso.json et pousse aussitot vers OBS. */
+const missionDef = { missionsEnabled:true, missionDuration:8, missionBottom:64, missionWidth:1100,
+                     missionScale:100, missionMinCost:0, missionRewards:'', missionIgnored:'',
+                     missionShowUser:true, missionShowInput:true };
+let _missionSaveT = null;
+
+function setMissionForm(c){
+  const s=c||{};
+  const val=(k)=> s[k]!=null ? s[k] : missionDef[k];
+  const list=(k)=> Array.isArray(s[k]) ? s[k].join(', ') : (s[k]!=null ? String(s[k]) : '');
+  if($('missionsEnabled'))$('missionsEnabled').checked = val('missionsEnabled')!==false;
+  if($('missionShowUser'))$('missionShowUser').checked = val('missionShowUser')!==false;
+  if($('missionShowInput'))$('missionShowInput').checked = val('missionShowInput')!==false;
+  if($('missionDuration'))$('missionDuration').value = val('missionDuration');
+  if($('missionBottom'))$('missionBottom').value = val('missionBottom');
+  if($('missionWidth'))$('missionWidth').value = val('missionWidth');
+  if($('missionScale'))$('missionScale').value = val('missionScale');
+  if($('missionMinCost'))$('missionMinCost').value = val('missionMinCost');
+  if($('missionRewards'))$('missionRewards').value = list('missionRewards');
+  if($('missionIgnored'))$('missionIgnored').value = list('missionIgnored');
+}
+
+function missionPayload(){
+  const num=(id,d)=>{ const v=$(id)?parseInt($(id).value,10):NaN; return isFinite(v)?v:d; };
+  return {
+    missionsEnabled: $('missionsEnabled')?$('missionsEnabled').checked:true,
+    missionShowUser: $('missionShowUser')?$('missionShowUser').checked:true,
+    missionShowInput: $('missionShowInput')?$('missionShowInput').checked:true,
+    missionDuration: num('missionDuration',8),
+    missionBottom: num('missionBottom',64),
+    missionWidth: num('missionWidth',1100),
+    missionScale: num('missionScale',100),
+    missionMinCost: num('missionMinCost',0),
+    missionRewards: $('missionRewards')?$('missionRewards').value:'',
+    missionIgnored: $('missionIgnored')?$('missionIgnored').value:''
+  };
+}
+
+async function saveMissions(){
+  try{
+    const r = await post(API+'/api/config', missionPayload());
+    if(r && r.config) setMissionForm(r.config);
+    toast('Missions enregistrées');
+  }catch(e){ toast('Erreur enregistrement missions'); }
+}
+function scheduleMissionSave(){ clearTimeout(_missionSaveT); _missionSaveT=setTimeout(saveMissions,400); }
+
+const missionTab=$('tab-missions');
+if(missionTab){
+  missionTab.addEventListener('input', e=>{
+    if(e.target && /^mission/.test(e.target.id) && !/^missionTest/.test(e.target.id)) scheduleMissionSave();
+  });
+  missionTab.addEventListener('change', e=>{
+    if(e.target && /^mission/.test(e.target.id) && !/^missionTest/.test(e.target.id)) scheduleMissionSave();
+  });
+}
+const btnMissionTest=$('btnMissionTest');
+if(btnMissionTest) btnMissionTest.addEventListener('click', async()=>{
+  const title=($('missionTestTitle')&&$('missionTestTitle').value.trim())||'FAIS 10 POMPES';
+  const user=($('missionTestUser')&&$('missionTestUser').value.trim())||'';
+  const costRaw=$('missionTestCost')?parseInt($('missionTestCost').value,10):NaN;
+  if($('missionsEnabled') && !$('missionsEnabled').checked){
+    toast('⚠ Missions désactivées — coche « Afficher les missions » en haut'); return;
+  }
+  try{
+    const r = await post(API+'/api/mission', { title, user, cost: isFinite(costRaw)?costRaw:0, test:true, force:true });
+    toast(r && r.ok ? 'Mission envoyée → regarde OBS' : 'Rien envoyé (texte vide ?)');
+  }catch(e){ toast('Pont injoignable'); }
+});
+
 const btnVelocityValidate=$('btnVelocityValidate');
 if(btnVelocityValidate) btnVelocityValidate.addEventListener('click',async()=>{
   try{
@@ -1607,6 +1779,7 @@ async function init(){
       document.querySelectorAll('.swatch').forEach(sw=>sw.classList.toggle('active',sw.dataset.color.toLowerCase()===acc.toLowerCase()));
       updateGoalAutoUI();
       setVelocityForm(s.config);
+      setMissionForm(s.config);
       const et=$('velocityEtat');
       if(et) et.innerHTML='<span class=\"note\">Config chargée – équilibre '+esc(velocitySaved.equilibriumMPM+' MPM')+'</span>';
     }

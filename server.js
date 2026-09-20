@@ -104,11 +104,44 @@ const DEFAULT_CONFIG = {
   velocityCooldownSeconds: 15,
   velocityMaxPerMinute: 2,
   velocityExcludedUsers: [],   // V44 : plus aucun pseudo impose d'office — c'est TOI qui decides (champ « Pseudos exclus » du panneau)
+
+  /* ═══ V46 — MISSIONS (points de chaine Twitch) ═══
+     Quand un viewer echange des points contre une recompense, un bandeau s'affiche
+     en bas de l'ecran pour prevenir tout le monde de ce que tu dois faire.
+     Le TITRE de la recompense Twitch EST la mission affichee. */
+  missionsEnabled: true,
+  missionDuration: 8,          // s a l'ecran (3 a 30)
+  missionBottom: 64,           // px depuis le bas (0 a 400)
+  missionWidth: 1100,          // px de large (600 a 1600)
+  missionScale: 100,           // % taille globale (60 a 140)
+  missionMinCost: 0,           // ignore les recompenses en dessous de ce cout (0 = toutes)
+  missionRewards: [],          // titres de recompenses a afficher ([] = toutes)
+  missionIgnored: [],          // titres a ne jamais afficher (ex. Highlight My Message)
+  missionShowUser: true,       // afficher « demande par X »
+  missionShowInput: true       // afficher le texte ecrit par le viewer, s'il y en a un
 };
 function clampNum(n, min, max, d) {
   const v = +n;
   if (!isFinite(v)) return d;
   return Math.max(min, Math.min(max, v));
+}
+
+/* Liste de titres de recompenses : accepte "a, b" ou ["a","b"], comparaison en minuscules
+   sans accent (le streamer n'a pas a recopier au caractere pres). */
+function missionKey(s) {
+  return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/\s+/g, ' ').trim();
+}
+function normalizeRewardList(v) {
+  const raw = Array.isArray(v) ? v.join(',') : String(v == null ? '' : v);
+  const out = [], seen = new Set();
+  for (const part of raw.split(/[,;\n]+/)) {
+    const t = String(part).trim().slice(0, 80);
+    if (!t) continue;
+    const k = missionKey(t);
+    if (!seen.has(k)) { seen.add(k); out.push(t); }
+  }
+  return out.slice(0, 40);
 }
 
 function normalizeExcludedUsers(v) {
@@ -189,8 +222,52 @@ function velocityConfigFields(src) {
     antiSpam: s.velocityAntiSpam,
     cooldownSeconds: s.velocityCooldownSeconds,
     maxPerMinute: s.velocityMaxPerMinute,
-    excludedUsers: s.velocityExcludedUsers
+    excludedUsers: s.velocityExcludedUsers,
+    // V46 : missions (points de chaine)
+    missionsEnabled: s.missionsEnabled !== false,
+    missionDuration: s.missionDuration,
+    missionBottom: s.missionBottom,
+    missionWidth: s.missionWidth,
+    missionScale: s.missionScale,
+    missionShowUser: s.missionShowUser !== false,
+    missionShowInput: s.missionShowInput !== false
   };
+}
+
+/* ═══ V46 — MISSIONS : diffusion au widget ═══════════════════════════
+   Une « mission » = un echange de points de chaine. Le titre de la recompense est
+   le texte affiche en gros ; le pseudo et le message eventuel viennent en dessous. */
+function missionAllowed(title, cost) {
+  if (appConfig.missionsEnabled === false) return false;
+  const k = missionKey(title);
+  const ignored = (appConfig.missionIgnored || []).map(missionKey);
+  if (ignored.includes(k)) return false;
+  const only = (appConfig.missionRewards || []).map(missionKey).filter(Boolean);
+  if (only.length && !only.includes(k)) return false;
+  const min = Math.max(0, +appConfig.missionMinCost || 0);
+  if (min > 0 && (+cost || 0) < min) return false;
+  return true;
+}
+
+function broadcastMission(m) {
+  const title = String(m.title || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 90);
+  if (!title) return false;
+  const cost = Math.max(0, Math.round(+m.cost || 0));
+  if (!m.force && !missionAllowed(title, cost)) {
+    console.log('[mission] ignoree (filtre) : ' + title);
+    return false;
+  }
+  const payload = 'data: ' + JSON.stringify({
+    mission: 1,
+    title,
+    user: String(m.user || '').slice(0, 40),
+    cost,
+    input: String(m.input || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 160),
+    test: m.test ? 1 : undefined
+  }) + '\n\n';
+  for (const res of sse) res.write(payload);
+  console.log('[mission] ' + title + (m.user ? ' — ' + m.user : '') + (cost ? ' (' + cost + ' pts)' : ''));
+  return true;
 }
 
 /* ═══ VERSIONING & HISTORIQUE DES MISES À JOUR ══════════════════
@@ -715,6 +792,16 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
     const isStaff = (badges.broadcaster || badges.moderator)
       || ALLOWED.includes(username.toLowerCase());
 
+    /* V46 : declencher une mission a la main, sans passer par les points */
+    if (c === '!mission') {
+      if (!isStaff) { chat.say(channel, '[Mission] Reserve au streamer et aux mods.'); return; }
+      const txt = rest.join(' ').trim();
+      if (!txt) { chat.say(channel, '[Mission] Usage : !mission FAIS 10 POMPES'); return; }
+      if (broadcastMission({ title: txt, user: username, force: true }))
+        chat.say(channel, '[Mission] Affichee : ' + txt.slice(0, 60));
+      return;
+    }
+
     if (c === '!debate') {
       if (!isStaff) { chat.say(channel, '[Débat] Réservé au streamer et aux mods.'); return; }
       const parts = rest.join(' ').split('|').map(s => s.trim().replace(/^["']|["']$/g, ''));
@@ -803,13 +890,13 @@ async function checkToken() {
     const missing = [];
     if (!scopes.includes('channel:read:polls')) missing.push('sondages');
     if (!scopes.includes('channel:read:subscriptions')) missing.push('abonnés');
-    if (!scopes.includes('moderator:read:followers')) missing.push('follows');
+    if (!scopes.includes('channel:read:redemptions')) missing.push('points de chaine');
     tokenInfo.missing = missing;
     console.log('[auth] token VALIDE — compte : ' + (v.login || '?') + ' — droits : ' + (scopes.join(', ') || '(aucun)'));
     if (!scopes.includes('channel:read:subscriptions'))
       console.warn('[auth] ⚠️ il MANQUE le droit "channel:read:subscriptions" → le sub goal ne marchera pas');
-    if (!scopes.includes('moderator:read:followers'))
-      console.warn('[auth] ⚠️ il MANQUE le droit "moderator:read:followers" → les follows ne marcheront pas');
+    if (!scopes.includes('channel:read:redemptions'))
+      console.warn('[auth] ⚠️ il MANQUE le droit "channel:read:redemptions" → les missions (points de chaine) ne s\'afficheront pas');
   } catch (e) {
     tokenInfo = { valid: false, reason: 'réseau' };
     console.warn('[auth] erreur réseau sur la validation :', e.message || e);
@@ -974,12 +1061,87 @@ async function syncSubGoal() {
   }
 }
 
-/* — Lancement des connexions "données" (sub goal) — */
+/* ═══ V46 — POINTS DE CHAINE (EventSub WebSocket) ════════════════════
+   Twitch previent en temps reel quand un viewer echange des points contre une de
+   TES recompenses : channel.channel_points_custom_reward_redemption.add.
+   • Il faut le droit channel:read:redemptions sur TON token de streamer
+     (un token de moderateur ne suffit pas, Twitch le refuse).
+   • Toutes tes recompenses remontent, y compris celles creees a la main dans
+     le tableau de bord Twitch (le filtre par application ne concerne que les
+     routes de gestion, pas cet evenement).
+   • Les recompenses automatiques de Twitch (« Mettre en avant mon message »…)
+     sont un autre evenement : on ne s'y abonne pas, donc pas de bandeau parasite. */
+let pointsWs = null, pointsRetry = 0, pointsOk = false;
+function connectChannelPoints() {
+  if (!CLIENT_ID || !POLL_OAUTH || !resolvedBroadcasterId) return;
+  async function subscribe(sessionId) {
+    try {
+      const r = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
+        method: 'POST',
+        headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + POLL_OAUTH, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'channel.channel_points_custom_reward_redemption.add',
+          version: '1',
+          condition: { broadcaster_user_id: resolvedBroadcasterId },
+          transport: { method: 'websocket', session_id: sessionId }
+        })
+      });
+      if (r.ok) {
+        pointsOk = true;
+        console.log('[points] abonnement OK — les echanges de points affichent une mission');
+      } else {
+        const txt = await r.text().catch(() => '');
+        pointsOk = false;
+        if (r.status === 401 || r.status === 403) {
+          console.warn('[points] ⚠️ refuse (HTTP ' + r.status + ') — il manque le droit "channel:read:redemptions" sur ton token,');
+          console.warn('         ou le token n\'est pas celui du compte de la chaine. Regenere-le depuis le panneau (onglet Reglages).');
+        } else {
+          console.warn('[points] abonnement impossible (HTTP ' + r.status + ') ' + txt.slice(0, 140));
+        }
+      }
+    } catch (e) { console.warn('[points] erreur abonnement :', e.message); }
+  }
+  function ouvrir(url) {
+    try { pointsWs = new WebSocket(url || 'wss://eventsub.wss.twitch.tv:443'); }
+    catch (e) { console.warn('[points] WebSocket indisponible :', e.message); return; }
+    pointsWs.onmessage = async (ev) => {
+      let msg; try { msg = JSON.parse(ev.data); } catch (e) { return; }
+      const t = msg.metadata && msg.metadata.message_type;
+      if (t === 'session_welcome') {
+        pointsRetry = 0;
+        await subscribe(msg.payload.session.id);
+      } else if (t === 'notification') {
+        const evt = msg.payload && msg.payload.event;
+        if (!evt || !evt.reward) return;
+        broadcastMission({
+          title: evt.reward.title,
+          cost: evt.reward.cost,
+          user: evt.user_name || evt.user_login || '',
+          input: evt.user_input || ''
+        });
+      } else if (t === 'session_reconnect') {
+        const u = msg.payload.session && msg.payload.session.reconnect_url;
+        try { pointsWs.close(); } catch (e) {}
+        ouvrir(u);
+      }
+    };
+    pointsWs.onclose = () => {
+      if (!pointsWs) return;
+      const wait = Math.min(60000, 5000 * Math.pow(2, Math.min(pointsRetry++, 3)));
+      setTimeout(() => ouvrir(), wait);   // reconnexion avec attente croissante
+    };
+    pointsWs.onerror = () => { try { pointsWs.close(); } catch (e) {} };
+  }
+  ouvrir();
+}
+
+/* — Lancement des connexions "données" (sub goal + points de chaine) — */
 if (CLIENT_ID && POLL_OAUTH) {
   (async () => {
     if (await resolveBroadcaster()) {
       syncSubGoal();
       setInterval(syncSubGoal, 60 * 1000);   // sub goal toutes les minutes
+      connectChannelPoints();
     }
   })();
 }
@@ -1279,6 +1441,13 @@ const server = http.createServer((req, res) => {
               velocityMaxPerMinute: p.velocityMaxPerMinute !== undefined ? Math.round(+p.velocityMaxPerMinute) : (p.maxPerMinute !== undefined ? Math.round(+p.maxPerMinute) : appConfig.velocityMaxPerMinute),
               velocityBoostMult: (p.velocityBoostMult !== undefined || p.boostMult !== undefined)
                 ? velBoostQuantize(p.velocityBoostMult !== undefined ? p.velocityBoostMult : p.boostMult) : appConfig.velocityBoostMult,
+              missionsEnabled: p.missionsEnabled !== undefined ? !!p.missionsEnabled : appConfig.missionsEnabled,
+              missionDuration: p.missionDuration !== undefined ? Math.max(3, Math.min(30, Math.round(+p.missionDuration || 8))) : appConfig.missionDuration,
+              missionBottom: p.missionBottom !== undefined ? Math.max(0, Math.min(400, Math.round(+p.missionBottom))) : appConfig.missionBottom,
+              missionWidth: p.missionWidth !== undefined ? Math.max(600, Math.min(1600, Math.round(+p.missionWidth))) : appConfig.missionWidth,
+              missionScale: p.missionScale !== undefined ? Math.max(60, Math.min(140, Math.round(+p.missionScale))) : appConfig.missionScale,
+              missionShowUser: p.missionShowUser !== undefined ? !!p.missionShowUser : appConfig.missionShowUser,
+              missionShowInput: p.missionShowInput !== undefined ? !!p.missionShowInput : appConfig.missionShowInput,
               velocityExcludedUsers: (p.velocityExcludedUsers !== undefined || p.excludedUsers !== undefined)
                 ? normalizeExcludedUsers(p.velocityExcludedUsers !== undefined ? p.velocityExcludedUsers : p.excludedUsers)
                 : appConfig.velocityExcludedUsers,
@@ -1361,6 +1530,16 @@ const server = http.createServer((req, res) => {
           if (p.cooldownSeconds !== undefined) appConfig.velocityCooldownSeconds = Math.max(0, Math.min(120, Math.round(+p.cooldownSeconds || 0)));
           if (p.velocityMaxPerMinute !== undefined) appConfig.velocityMaxPerMinute = Math.max(1, Math.min(30, Math.round(+p.velocityMaxPerMinute || 2)));
           if (p.maxPerMinute !== undefined) appConfig.velocityMaxPerMinute = Math.max(1, Math.min(30, Math.round(+p.maxPerMinute || 2)));
+          if (p.missionsEnabled !== undefined) appConfig.missionsEnabled = !!p.missionsEnabled;
+          if (p.missionDuration !== undefined) appConfig.missionDuration = Math.max(3, Math.min(30, Math.round(+p.missionDuration || 8)));
+          if (p.missionBottom !== undefined) appConfig.missionBottom = Math.max(0, Math.min(400, Math.round(+p.missionBottom)));
+          if (p.missionWidth !== undefined) appConfig.missionWidth = Math.max(600, Math.min(1600, Math.round(+p.missionWidth)));
+          if (p.missionScale !== undefined) appConfig.missionScale = Math.max(60, Math.min(140, Math.round(+p.missionScale)));
+          if (p.missionMinCost !== undefined) appConfig.missionMinCost = Math.max(0, Math.min(1000000, Math.round(+p.missionMinCost || 0)));
+          if (p.missionRewards !== undefined) appConfig.missionRewards = normalizeRewardList(p.missionRewards);
+          if (p.missionIgnored !== undefined) appConfig.missionIgnored = normalizeRewardList(p.missionIgnored);
+          if (p.missionShowUser !== undefined) appConfig.missionShowUser = !!p.missionShowUser;
+          if (p.missionShowInput !== undefined) appConfig.missionShowInput = !!p.missionShowInput;
           if (p.velocityExcludedUsers !== undefined) appConfig.velocityExcludedUsers = normalizeExcludedUsers(p.velocityExcludedUsers);
           if (p.excludedUsers !== undefined) appConfig.velocityExcludedUsers = normalizeExcludedUsers(p.excludedUsers);
           saveConfig();
@@ -1399,6 +1578,22 @@ const server = http.createServer((req, res) => {
           }, velocityConfigFields(appConfig))) + '\n\n';
           for (const res of sse) res.write(payload);
           send(200, 'application/json', JSON.stringify({ ok: true, config: appConfig, goal: goalState }));
+        } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false })); }
+      });
+      return;
+    }
+
+    /* — MISSION : declenchement manuel / test depuis le panneau —
+         POST /api/mission {title, user, cost, input, test} — */
+    if (u.pathname === '/api/mission' && req.method === 'POST') {
+      readBody().then(d => {
+        try {
+          const p = JSON.parse(d || '{}');
+          const ok = broadcastMission({
+            title: p.title, user: p.user, cost: p.cost, input: p.input,
+            test: p.test, force: p.force !== false   // un test passe outre les filtres
+          });
+          send(200, 'application/json', JSON.stringify({ ok }));
         } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false })); }
       });
       return;
@@ -1556,6 +1751,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`  Chat →  ${chatOn ? 'actif (' + CHAT_NICK + ' → écoute #' + CHAT_CHANNEL + ')' : 'inactif (CHAT_OAUTH / CHAT_NICK manquants)'}`);
   console.log(`  /poll → ${helixOn ? 'actif (polling Helix 2,5 s)' : (CLIENT_ID && POLL_OAUTH ? 'détection de la chaîne…' : 'inactif (CLIENT_ID / POLL_OAUTH manquants)')}`);
   console.log(`  Sub goal → ${CLIENT_ID && POLL_OAUTH ? 'auto (vrai nombre de subs)' : 'manuel (POST /api/goal)'}`);
+  console.log(`  Missions → ${CLIENT_ID && POLL_OAUTH ? 'points de chaine (EventSub)' : 'manuel (bouton du panneau)'}`);
   console.log('  ─────────────────────────────────────────────────');
   checkToken();
 });
