@@ -518,9 +518,12 @@ function broadcastGoal() {
     goalState.nextLabel = goalState.upcoming[0].label;
     goalState.nextTarget = goalState.upcoming[0].target;
   } else {
-    // fallback ancien champ
-    goalState.nextLabel = goalState.nextLabel || '';
-    goalState.nextTarget = goalState.nextTarget || 0;
+    /* Plus aucun objectif a venir : on EFFACE les anciens champs.
+       Avant, on ecrivait « goalState.nextTarget || 0 », ce qui conservait la
+       valeur precedente : l'overlay reaffichait alors le dernier objectif en
+       double, a 0 et marque « A VENIR ». C'est le sub goal fantome. */
+    goalState.nextLabel = '';
+    goalState.nextTarget = 0;
   }
   const payload = 'data: ' + JSON.stringify(Object.assign({ goal: 1 }, goalState)) + '\n\n';
   for (const res of sse) res.write(payload);
