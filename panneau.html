@@ -469,6 +469,22 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
 }
 .rewardRow__off{flex:none;font-size:10px;color:#8b8fa3;text-transform:uppercase;letter-spacing:.08em}
 .rewardRow.is-off .rewardRow__t{color:#8b8fa3;text-decoration:line-through}
+
+/* V46 : encart de diagnostic des missions */
+.diagBox{margin-top:10px;border:1px solid rgba(255,255,255,.10);border-radius:10px;background:#0b0b12;padding:4px 0}
+.diagLine{display:flex;align-items:flex-start;gap:9px;padding:7px 12px;font-size:12px;line-height:1.45}
+.diagLine + .diagLine{border-top:1px solid rgba(255,255,255,.05)}
+.diagLine .ico{flex:none;width:15px;text-align:center}
+.diagLine .txt{flex:1;color:#d7d9e3}
+.diagLine .txt b{color:#fff}
+.diagLine.ok .ico{color:#6eebaa}
+.diagLine.ko .ico{color:#ff6b6b}
+.diagLine.ko .txt{color:#ffc9c9}
+.diagLine.wait .ico{color:#8b8fa3}
+.diagLine.wait .txt{color:#8b8fa3}
+.diagFix{margin:6px 12px 10px;padding:9px 11px;border-radius:8px;background:rgba(255,107,107,.10);
+  border:1px solid rgba(255,107,107,.30);font-size:12px;line-height:1.55;color:#ffd9d9}
+.diagFix b{color:#fff}
 </style>
 </head>
 <body>
@@ -914,6 +930,13 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
             </div>
             <button class="btn" id="btnMissionTest" style="margin-top:10px">AFFICHER CETTE MISSION</button>
           </div>
+          <div class="card" style="margin-top:14px;background:#10101a;border-color:rgba(110,235,170,.28)">
+            <h2 style="font-size:11px">🔍 DIAGNOSTIC — pourquoi ça ne s'affiche pas ?</h2>
+            <p class="sub">Clique, puis <b>échange des points sur ta chaîne</b> : tu verras exactement à quelle étape ça bloque.</p>
+            <button class="btn ghost small" id="btnMissionDiag">VÉRIFIER LA CONNEXION</button>
+            <div id="missionDiagOut" class="diagBox" style="display:none"></div>
+          </div>
+
           <details class="note" style="margin-top:14px">
             <summary style="cursor:pointer">ℹ️ Ça ne s'affiche pas ? — à lire</summary>
             <div style="margin-top:8px;line-height:1.6">
@@ -1643,6 +1666,59 @@ if(missionTab){
     if(e.target && /^mission/.test(e.target.id) && !/^missionTest/.test(e.target.id)) scheduleMissionSave();
   });
 }
+/* Diagnostic : on interroge le pont et on traduit son etat en langage clair.
+   Chaque ligne est une etape de la chaine ; la premiere en rouge est la cause. */
+const btnMissionDiag=$('btnMissionDiag');
+if(btnMissionDiag) btnMissionDiag.addEventListener('click', async()=>{
+  const out=$('missionDiagOut');
+  out.style.display='';
+  out.innerHTML='<div class="diagLine wait"><span class="ico">…</span><span class="txt">Vérification…</span></div>';
+  let d=null;
+  try{ const r=await fetch(API+'/api/mission/diag'); d=await r.json(); }
+  catch(e){ out.innerHTML='<div class="diagLine ko"><span class="ico">✖</span><span class="txt">Pont injoignable. Lance <b>demarrer-pont.bat</b>.</span></div>'; return; }
+  const p=d.points||{};
+  const L=[]; let fix=null;
+  const add=(st,txt)=>L.push('<div class="diagLine '+st+'"><span class="ico">'+(st==='ok'?'✔':st==='ko'?'✖':'…')+'</span><span class="txt">'+txt+'</span></div>');
+
+  add(p.supported?'ok':'ko', p.supported
+    ? 'WebSocket disponible (<b>'+p.supported+'</b>, Node '+d.node+')'
+    : 'Pas de WebSocket sur Node '+d.node);
+  if(!p.supported) fix='Ta version de Node est trop ancienne. Installe <b>Node 22</b> depuis nodejs.org, ou lance <b>npm install ws</b> dans le dossier de l\'overlay, puis relance le pont.';
+
+  add(d.tokenPresent?'ok':'ko', d.tokenPresent?'Jeton enregistré':'Aucun jeton');
+  if(!fix && !d.tokenPresent) fix='Colle ton jeton dans l\'onglet <b>RÉGLAGES</b>.';
+
+  add(d.broadcasterId?'ok':'ko', d.broadcasterId?'Chaîne identifiée (<b>'+d.broadcasterId+'</b>)':'Chaîne non identifiée');
+
+  add(p.opened?'ok':'ko', p.opened?'Connecté à Twitch en temps réel':'Non connecté à Twitch'+(p.closes?' (coupures : '+p.closes+')':''));
+  if(!fix && d.tokenPresent && !p.opened && !p.subError) fix='La connexion temps réel n\'est pas établie. <b>Relance le pont</b> ; si ça persiste, un pare-feu ou un antivirus bloque peut-être les connexions WebSocket sortantes.';
+
+  add(p.subscribed?'ok':(p.subError?'ko':'wait'),
+    p.subscribed?'Abonné aux échanges de points'
+    :(p.subError?'Abonnement refusé par Twitch : <b>'+String(p.subError).slice(0,120)+'</b>':'Abonnement en attente'));
+  if(!fix && p.subError) fix = /401|403/.test(String(p.subError))
+    ? 'Twitch refuse : il manque le droit <b>channel:read:redemptions</b>, ou le jeton n\'est pas celui du compte de la chaîne. Onglet <b>RÉGLAGES</b> → regénère le jeton avec le lien fourni, puis <b>relance le pont</b>.'
+    : 'Twitch a refusé l\'abonnement. Régénère ton jeton puis relance le pont.';
+
+  add(p.events?'ok':'wait', p.events
+    ? '<b>'+p.events+'</b> échange(s) reçu(s) — dernier : <b>'+p.lastEvent+'</b>'
+    : 'Aucun échange reçu pour l\'instant');
+
+  add(d.overlaysConnected?'ok':'ko', d.overlaysConnected
+    ? d.overlaysConnected+' source(s) OBS connectée(s)'
+    : 'Aucune source navigateur connectée');
+  if(!fix && !d.overlaysConnected) fix='Ton overlay n\'est pas connecté : même reçues, les missions n\'iraient nulle part. Dans OBS, clic droit sur la source → <b>Actualiser</b>.';
+
+  if(p.lastBlocked) add('ko','Dernier échange écarté : <b>'+p.lastBlocked+'</b>');
+  if(!fix && p.lastBlocked) fix='Un échange est bien arrivé mais a été écarté par un filtre (voir ci-dessus) : recoche la récompense dans la liste, ou baisse le coût minimum.';
+  if(p.lastShown) add('ok','Dernier bandeau envoyé : <b>'+p.lastShown+'</b>');
+
+  if(p.subscribed && !p.events)
+    fix = fix || 'Tout est branché côté Twitch, mais aucun échange n\'est arrivé. Attention : les récompenses <b>intégrées de Twitch</b> (mettre en avant un message, modifier la couleur du pseudo…) ne déclenchent <b>jamais</b> cet événement. Utilise une récompense <b>que tu as créée toi-même</b>, et échange-la pendant que le pont tourne.';
+
+  out.innerHTML = L.join('') + (fix?'<div class="diagFix">➤ '+fix+'</div>':'');
+});
+
 const btnMissionReload=$('btnMissionReload');
 if(btnMissionReload) btnMissionReload.addEventListener('click',()=>{ missionRewardsCache=null; loadRewards(); });
 const btnMissionAll=$('btnMissionAll');

@@ -238,23 +238,25 @@ function velocityConfigFields(src) {
    Une « mission » = un echange de points de chaine. Le titre de la recompense est
    le texte affiche en gros ; le pseudo et le message eventuel viennent en dessous. */
 function missionAllowed(title, cost) {
-  if (appConfig.missionsEnabled === false) return false;
+  if (appConfig.missionsEnabled === false) return 'missions desactivees dans le panneau';
   const k = missionKey(title);
   const ignored = (appConfig.missionIgnored || []).map(missionKey);
-  if (ignored.includes(k)) return false;
+  if (ignored.includes(k)) return 'recompense decochee dans le panneau';
   const only = (appConfig.missionRewards || []).map(missionKey).filter(Boolean);
-  if (only.length && !only.includes(k)) return false;
+  if (only.length && !only.includes(k)) return 'absente de la liste autorisee';
   const min = Math.max(0, +appConfig.missionMinCost || 0);
-  if (min > 0 && (+cost || 0) < min) return false;
-  return true;
+  if (min > 0 && (+cost || 0) < min) return 'cout ' + cost + ' inferieur au minimum ' + min;
+  return null;   // null = rien ne s'y oppose
 }
 
 function broadcastMission(m) {
   const title = String(m.title || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 90);
   if (!title) return false;
   const cost = Math.max(0, Math.round(+m.cost || 0));
-  if (!m.force && !missionAllowed(title, cost)) {
-    console.log('[mission] ignoree (filtre) : ' + title);
+  const refus = m.force ? null : missionAllowed(title, cost);
+  if (refus) {
+    pointsDiag.lastBlocked = title + ' → ' + refus;
+    console.log('[mission] ecartee : ' + title + ' — ' + refus);
     return false;
   }
   const payload = 'data: ' + JSON.stringify({
@@ -266,6 +268,8 @@ function broadcastMission(m) {
     test: m.test ? 1 : undefined
   }) + '\n\n';
   for (const res of sse) res.write(payload);
+  pointsDiag.lastShown = title + (sse.size ? '' : ' (AUCUN OVERLAY CONNECTE !)');
+  if (!sse.size) console.warn('[mission] ⚠️ aucune source navigateur connectee — la mission n\'ira nulle part. Recharge la source dans OBS.');
   console.log('[mission] ' + title + (m.user ? ' — ' + m.user : '') + (cost ? ' (' + cost + ' pts)' : ''));
   return true;
 }
@@ -1106,30 +1110,69 @@ async function syncSubGoal() {
    • Les recompenses automatiques de Twitch (« Mettre en avant mon message »…)
      sont un autre evenement : on ne s'y abonne pas, donc pas de bandeau parasite. */
 let pointsWs = null, pointsRetry = 0, pointsOk = false;
+/* Journal de bord de la connexion aux points : permet de voir dans le panneau
+   exactement ou ca coince, au lieu de deviner. */
+const pointsDiag = {
+  supported: null,     // une implementation WebSocket est-elle disponible ?
+  opened: false,       // socket ouverte ?
+  welcomed: false,     // Twitch a-t-il ouvert la session ?
+  subscribed: false,   // abonnement accepte ? (tes recompenses)
+  autoSubscribed: null,// abonnement aux recompenses integrees / Power-ups
+  subError: null,      // message d'erreur d'abonnement
+  lastMessage: null,   // date du dernier message recu de Twitch
+  events: 0,           // nombre d'echanges de points recus
+  lastEvent: null,     // dernier echange recu (titre + pseudo)
+  lastShown: null,     // dernier bandeau reellement envoye a l'overlay
+  lastBlocked: null,   // dernier echange ecarte par les filtres, avec la raison
+  closes: 0
+};
 /* URLs surchargeables par variable d'environnement : utilise uniquement par les
    tests automatiques pour simuler Twitch. En usage normal, ce sont les vraies. */
 const EVENTSUB_WS = process.env.EVENTSUB_WS_URL || 'wss://eventsub.wss.twitch.tv:443';
 const EVENTSUB_API = process.env.EVENTSUB_API_URL || 'https://api.twitch.tv/helix/eventsub/subscriptions';
 function connectChannelPoints() {
   if (!CLIENT_ID || !POLL_OAUTH || !resolvedBroadcasterId) return;
+  async function abonnerUn(sessionId, type, version) {
+    const r = await fetch(EVENTSUB_API, {
+      method: 'POST',
+      headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + POLL_OAUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type, version,
+        condition: { broadcaster_user_id: resolvedBroadcasterId },
+        transport: { method: 'websocket', session_id: sessionId }
+      })
+    });
+    return r;
+  }
+
   async function subscribe(sessionId) {
     try {
-      const r = await fetch(EVENTSUB_API, {
-        method: 'POST',
-        headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + POLL_OAUTH, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'channel.channel_points_custom_reward_redemption.add',
-          version: '1',
-          condition: { broadcaster_user_id: resolvedBroadcasterId },
-          transport: { method: 'websocket', session_id: sessionId }
-        })
-      });
+      /* Deux familles de recompenses existent chez Twitch, et elles n'envoient
+         PAS le meme evenement :
+           1. tes recompenses a toi (celles que tu as creees)  -> custom_reward
+           2. les recompenses integrees de Twitch et les Power-ups
+              (mettre en avant un message, gigantifier un emote, celebration...)
+              -> automatic_reward, un type completement different.
+         On s'abonne aux deux, sinon la moitie des echanges passe a la trappe. */
+      const r = await abonnerUn(sessionId, 'channel.channel_points_custom_reward_redemption.add', '1');
+
+      // les recompenses integrees / Power-ups : en plus, et sans bloquer si ca echoue
+      try {
+        const r2 = await abonnerUn(sessionId, 'channel.channel_points_automatic_reward_redemption.add', '1');
+        pointsDiag.autoSubscribed = r2.ok;
+        if (r2.ok) console.log('[points] abonnement OK aussi pour les recompenses integrees / Power-ups');
+        else console.log('[points] recompenses integrees non disponibles (HTTP ' + r2.status + ') — sans gravite');
+      } catch (e) { pointsDiag.autoSubscribed = false; }
+
       if (r.ok) {
         pointsOk = true;
+        pointsDiag.subscribed = true; pointsDiag.subError = null;
         console.log('[points] abonnement OK — les echanges de points affichent une mission');
       } else {
         const txt = await r.text().catch(() => '');
         pointsOk = false;
+        pointsDiag.subscribed = false;
+        pointsDiag.subError = 'HTTP ' + r.status + ' ' + txt.slice(0, 200);
         if (r.status === 401 || r.status === 403) {
           console.warn('[points] ⚠️ refuse (HTTP ' + r.status + ') — il manque le droit "channel:read:redemptions" sur ton token,');
           console.warn('         ou le token n\'est pas celui du compte de la chaine. Regenere-le depuis le panneau (onglet Reglages).');
@@ -1137,15 +1180,16 @@ function connectChannelPoints() {
           console.warn('[points] abonnement impossible (HTTP ' + r.status + ') ' + txt.slice(0, 140));
         }
       }
-    } catch (e) { console.warn('[points] erreur abonnement :', e.message); }
+    } catch (e) { pointsDiag.subError = e.message; console.warn('[points] erreur abonnement :', e.message); }
   }
   function ouvrir(url) {
     /* Node 18 et 20 n'ont PAS de WebSocket integre (il n'arrive qu'en Node 22).
        On retombe alors sur le module "ws", deja installe avec tmi.js pour le chat.
        Sans ce filet, la connexion echouait en silence chez tout le monde. */
     let WS = (typeof WebSocket !== 'undefined') ? WebSocket : null;
+    pointsDiag.supported = !!WS ? 'natif' : null;
     if (!WS) {
-      try { WS = require('ws'); }
+      try { WS = require('ws'); pointsDiag.supported = 'module ws'; }
       catch (e) {
         console.warn('[points] ⚠️ pas de WebSocket disponible sur cette version de Node (' + process.version + ').');
         console.warn('         Installe Node 22 ou lance "npm install ws" dans le dossier de l\'overlay.');
@@ -1160,17 +1204,42 @@ function connectChannelPoints() {
     const surMessage = async (data) => {
       let msg; try { msg = JSON.parse(data); } catch (e) { return; }
       const t = msg.metadata && msg.metadata.message_type;
+      pointsDiag.lastMessage = new Date().toISOString();
       if (t === 'session_welcome') {
         pointsRetry = 0;
+        pointsDiag.welcomed = true;
         await subscribe(msg.payload.session.id);
       } else if (t === 'notification') {
         const evt = msg.payload && msg.payload.event;
         if (!evt || !evt.reward) return;
+        const type = (msg.payload.subscription && msg.payload.subscription.type) || '';
+        const auto = type.indexOf('automatic') !== -1;
+        /* Une recompense integree n'a pas de titre : elle a un "type" technique
+           (send_highlighted_message...). On le traduit en francais lisible. */
+        const NOMS_AUTO = {
+          single_message_bypass_sub_mode: 'Message malgre le mode abonnes',
+          send_highlighted_message: 'Message mis en avant',
+          random_sub_emote_unlock: 'Emote aleatoire debloquee',
+          chosen_sub_emote_unlock: 'Emote choisie debloquee',
+          chosen_modified_sub_emote_unlock: 'Emote modifiee debloquee',
+          message_effect: 'Effet de message (Power-up)',
+          gigantify_an_emote: 'Emote geante (Power-up)',
+          celebration: 'Celebration a l\'ecran (Power-up)'
+        };
+        const titre = auto
+          ? (NOMS_AUTO[evt.reward.type] || evt.reward.type || 'Recompense Twitch')
+          : evt.reward.title;
+        const cout = auto
+          ? (evt.reward.channel_points != null ? evt.reward.channel_points : evt.reward.cost)
+          : evt.reward.cost;
+        pointsDiag.events++;
+        pointsDiag.lastEvent = titre + ' — ' + (evt.user_name || '?') + (auto ? ' (integree)' : '');
+        console.log('[points] echange recu : ' + pointsDiag.lastEvent);
         broadcastMission({
-          title: evt.reward.title,
-          cost: evt.reward.cost,
+          title: titre,
+          cost: cout,
           user: evt.user_name || evt.user_login || '',
-          input: evt.user_input || ''
+          input: evt.user_input || (evt.message && evt.message.text) || ''
         });
       } else if (t === 'session_reconnect') {
         const u = msg.payload.session && msg.payload.session.reconnect_url;
@@ -1179,9 +1248,10 @@ function connectChannelPoints() {
       }
     };
     pointsWs.onmessage = (ev) => surMessage(typeof ev.data === 'string' ? ev.data : String(ev.data));
-    pointsWs.onopen = () => console.log('[points] connecte a Twitch, attente de la session…');
+    pointsWs.onopen = () => { pointsDiag.opened = true; console.log('[points] connecte a Twitch, attente de la session…'); };
     pointsWs.onclose = () => {
       if (!pointsWs) return;
+      pointsDiag.opened = false; pointsDiag.closes++;
       const wait = Math.min(60000, 5000 * Math.pow(2, Math.min(pointsRetry++, 3)));
       setTimeout(() => ouvrir(), wait);   // reconnexion avec attente croissante
     };
@@ -1635,6 +1705,22 @@ const server = http.createServer((req, res) => {
           send(200, 'application/json', JSON.stringify({ ok: true, config: appConfig, goal: goalState }));
         } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false })); }
       });
+      return;
+    }
+
+    /* — MISSION : diagnostic de la connexion aux points de chaine — */
+    if (u.pathname === '/api/mission/diag' && req.method === 'GET') {
+      send(200, 'application/json', JSON.stringify({
+        node: process.version,
+        tokenPresent: !!POLL_OAUTH,
+        broadcasterId: resolvedBroadcasterId || null,
+        overlaysConnected: sse.size,
+        scopes: (tokenInfo && tokenInfo.scopes) || null,
+        missionsEnabled: appConfig.missionsEnabled !== false,
+        ignoredCount: (appConfig.missionIgnored || []).length,
+        minCost: appConfig.missionMinCost || 0,
+        points: pointsDiag
+      }));
       return;
     }
 
