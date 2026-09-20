@@ -306,17 +306,8 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
    - Logique : seuil % + durée ajout + chrono verrou (ex 2min au dessus seuil → +15 à fin prévue) */
 #velocityWrap{
   --vel-w:30px; --vel-h:700px;
-  /* Taille du CADRE. Par defaut elle suit les reglages de l'onglet VELOCITE ;
-     l'agencement par scene (V47) surcharge ces deux variables, ce qui evite
-     d'ecraser la barre interne. */
-  --vel-box-w:180px;
-  --vel-box-h:var(--vel-h);
   position:absolute;left:28px;bottom:160px;
-  width:var(--vel-box-w);height:var(--vel-box-h);
-  /* le contenu ne doit jamais elargir le bloc : sinon en le retrecissant dans
-     l'editeur de scenes, les textes (« FIN PREVUE : 21H30 »...) le repoussaient
-     et la barre paraissait ecrasee */
-  min-width:0;overflow:hidden;
+  width:180px;height:var(--vel-h);
   display:flex;flex-direction:column;align-items:center;gap:14px;
   padding:16px 16px 14px;
   background:rgba(10,10,12,.94);
@@ -335,9 +326,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   width:100%;min-height:120px;
 }
 .velocity__track{
-  /* la barre ne peut pas etre plus large que la place disponible : sinon elle
-     deborde et parait ecrasee quand on retrecit le bloc */
-  position:relative;width:min(var(--vel-w),100%);height:100%;
+  position:relative;width:var(--vel-w);height:100%;
   border-radius:999px;
   background:rgba(255,255,255,.11);
   border:1px solid rgba(255,255,255,.20);
@@ -388,8 +377,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   pointer-events:none;z-index:3;
 }
 .velocity__metrics{
-  width:100%;min-width:0;flex:none;
-  display:flex;flex-direction:column;align-items:center;gap:8px;
+  width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;
   padding:14px 12px 12px;
   background:rgba(255,255,255,.07);
   border:1px solid rgba(255,255,255,.11);
@@ -473,16 +461,6 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 }
 #velocityWrap.is-boost .velocity__chrono{animation-duration:.5s}
 #velocityWrap.no-metrics .velocity__metrics{display:none}
-/* Les libelles s'ajustent a la largeur du bloc : on autorise la coupure et on
-   fait fondre la taille du texte avec la largeur disponible (cqw = 1 % de la
-   largeur du bloc). En taille normale, rien ne change visuellement. */
-#velocityWrap{container-type:inline-size}
-.velocity__metrics > *{max-width:100%;min-width:0;overflow-wrap:anywhere}
-.velocity__pct{font-size:min(52px,30cqw)}
-.velocity__goal{font-size:min(13px,7.6cqw)}
-.velocity__chrono{font-size:min(12px,7cqw)}
-.velocity__boost{font-size:min(13px,7.6cqw)}
-.velocity__fin{font-size:min(14px,8.2cqw)}
 .velocity__mpm{display:none}
 
 
@@ -1326,13 +1304,8 @@ function applySceneLayout(layout) {
          pour que le CSS d'origine reprenne la main */
       el.style.removeProperty('left');   el.style.removeProperty('top');
       el.style.removeProperty('right');  el.style.removeProperty('bottom');
-      el.style.removeProperty('width');  el.style.removeProperty('height');
       el.style.removeProperty('display');
       if (cle === 'mission') el.style.removeProperty('margin');
-      if (cle === 'velocity') {
-        el.style.removeProperty('--vel-box-w');
-        el.style.removeProperty('--vel-box-h');
-      }
       continue;
     }
 
@@ -1346,19 +1319,8 @@ function applySceneLayout(layout) {
     el.style.top = b.y + 'px';
     el.style.right = 'auto';
     el.style.bottom = 'auto';
-    if (cle === 'velocity') {
-      /* La velocite a sa propre taille interne (--vel-w / --vel-h) reglee dans
-         l'onglet VELOCITE. Si on ecrivait width/height directement, la barre
-         garderait son ancienne taille et paraitrait ecrasee. On pilote donc la
-         taille du CADRE, et la barre s'y adapte. */
-      el.style.setProperty('--vel-box-w', b.w + 'px');
-      el.style.setProperty('--vel-box-h', b.h + 'px');
-      el.style.removeProperty('width');
-      el.style.removeProperty('height');
-    } else {
-      el.style.width = b.w + 'px';
-      el.style.height = b.h + 'px';
-    }
+    /* On ne touche JAMAIS a la taille : chaque bloc garde exactement celle
+       definie par ses propres reglages. L'agencement ne fait que DEPLACER. */
     if (cle === 'mission') el.style.margin = '0';   // annule le centrage automatique
   }
 }

@@ -238,7 +238,8 @@ Une pastille verte « Connecté à OBS » confirme que c'est bon.
 **Ensuite, pour chaque scène :**
 
 - Choisis la scène dans la liste déroulante (celle qui est à l'antenne est signalée)
-- **Glisse** les blocs où tu veux ; la poignée en bas à droite les redimensionne
+- **Glisse** les blocs où tu veux. Seule la **position** change : chaque bloc garde la taille
+  définie par ses propres réglages (onglet VÉLOCITÉ, largeur du chat…)
 - Un bloc en **pointillés** garde sa position par défaut ; dès que tu le bouges il
   devient propre à cette scène (trait plein violet)
 - Le bouton **Masquer** cache complètement un bloc sur cette scène

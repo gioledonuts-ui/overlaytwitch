@@ -139,17 +139,19 @@ const DEFAULT_CONFIG = {
   sceneLayouts: []
 };
 
-/* Les 4 blocs deplaçables de l'overlay, avec leurs bornes raisonnables.
-   C'est la seule liste a completer si on ajoute un bloc plus tard. */
+/* Les 4 blocs deplaçables de l'overlay.
+   On ne stocke QUE la position : la taille de chaque bloc reste celle definie
+   par ses propres reglages (onglet VELOCITE, largeur du chat, etc.). C'est la
+   seule liste a completer si on ajoute un bloc plus tard. */
 const BLOCS = {
-  chat:     { nom: 'Chat',     wMin: 240, wMax: 900,  hMin: 200, hMax: 1040 },
-  velocity: { nom: 'Velocite', wMin: 90,  wMax: 400,  hMin: 200, hMax: 1040 },
-  mission:  { nom: 'Mission',  wMin: 400, wMax: 1800, hMin: 70,  hMax: 400  },
-  poll:     { nom: 'Sondage',  wMin: 400, wMax: 1600, hMin: 120, hMax: 900  }
+  chat:     { nom: 'Chat' },
+  velocity: { nom: 'Velocite' },
+  mission:  { nom: 'Mission' },
+  poll:     { nom: 'Sondage' }
 };
 
-/* Nettoie les dispositions : on borne tout pour qu'un bloc ne puisse jamais
-   sortir de l'ecran ni devenir invisible. */
+/* Nettoie les dispositions. On ne garde que x/y (et le masquage) : aucune
+   taille n'est enregistree, donc rien ne peut redimensionner un bloc. */
 function normalizeSceneLayouts(v) {
   if (!Array.isArray(v)) return [];
   const out = [], vues = new Set();
@@ -160,17 +162,13 @@ function normalizeSceneLayouts(v) {
     vues.add(scene);
     const blocs = {};
     const src = it.blocs && typeof it.blocs === 'object' ? it.blocs : {};
-    for (const [cle, def] of Object.entries(BLOCS)) {
+    for (const cle of Object.keys(BLOCS)) {
       const b = src[cle];
       if (!b || typeof b !== 'object') continue;
       if (b.hidden === true) { blocs[cle] = { hidden: true }; continue; }
-      const w = clampNum(b.w, def.wMin, def.wMax, def.wMin);
-      const h = clampNum(b.h, def.hMin, def.hMax, def.hMin);
       blocs[cle] = {
         x: Math.round(clampNum(b.x, 0, 1920 - 40, 0)),
-        y: Math.round(clampNum(b.y, 0, 1080 - 40, 0)),
-        w: Math.round(w),
-        h: Math.round(h)
+        y: Math.round(clampNum(b.y, 0, 1080 - 40, 0))
       };
     }
     out.push({ scene, blocs });
