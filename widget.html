@@ -88,13 +88,13 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .head .mark7g{justify-self:start;width:36px;height:36px;border-radius:6px}
 .head #timer{justify-self:end}
 .chip{display:inline-flex;align-items:center;gap:9px;padding:6px 14px;border-radius:3px;
-  border:1px solid rgba(145,70,255,.42);font-family:'Bebas Neue',sans-serif;font-weight:700;
+  border:1px solid rgba(var(--violet-rgb),.42);font-family:'Bebas Neue',sans-serif;font-weight:700;
   font-size:14px;letter-spacing:.18em;color:#E7E9EE;
   transition:border-color .3s,color .3s}
 .chip .dot{width:6px;height:6px;border-radius:50%;background:var(--violet);
-  box-shadow:0 0 8px rgba(145,70,255,.9);animation:pulse 1.6s ease-in-out infinite}
+  box-shadow:0 0 8px rgba(var(--violet-rgb),.9);animation:pulse 1.6s ease-in-out infinite}
 .chip.is-result{border-color:var(--violet);color:#fff}
-.chip.is-result .dot{animation:none;box-shadow:0 0 12px rgba(145,70,255,1)}
+.chip.is-result .dot{animation:none;box-shadow:0 0 12px rgba(var(--violet-rgb),1)}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.78)}}
 
 #timer{font-family:'Bebas Neue',sans-serif;font-weight:700;font-size:28px;letter-spacing:.08em;color:var(--gris);
@@ -102,7 +102,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 /* les deux-points pulsent : on sent le temps passer */
 #timer #tColon{animation:colon 1s steps(1) infinite}
 @keyframes colon{0%,54%{opacity:1}55%,100%{opacity:.18}}
-#timer.is-low{color:var(--violet);text-shadow:0 0 14px rgba(145,70,255,.55)}
+#timer.is-low{color:var(--violet);text-shadow:0 0 14px rgba(var(--violet-rgb),.55)}
 #timer.is-off{visibility:hidden}
 
 /* — Question (plus lisible, 3 lignes max, 36px pour éviter la coupe) — */
@@ -118,7 +118,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 /* badge A/B/C/D : ancre de lecture */
 .lbl{display:flex;align-items:center;gap:8px;min-width:0;font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;line-height:1.15;color:var(--blanc);text-align:left;transition:opacity .45s}
 .ab{flex:none;width:20px;height:20px;border-radius:3px;display:flex;align-items:center;justify-content:center;
-  font-size:10px;font-weight:800;border:1px solid rgba(145,70,255,.55);color:var(--violet)}
+  font-size:10px;font-weight:800;border:1px solid rgba(var(--violet-rgb),.55);color:var(--violet)}
 .ab--b{border-color:rgba(255,255,255,.45);color:#fff}
 .ab--c{border-color:rgba(124,199,255,.55);color:#7CC7FF}
 .ab--d{border-color:rgba(255,209,102,.55);color:#FFD166}
@@ -128,7 +128,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .tag{flex:none;font-family:'Outfit',sans-serif;font-size:10px;font-weight:800;letter-spacing:.18em;color:#fff;
   background:var(--violet);border:1px solid var(--violet);border-radius:3px;padding:3px 8px;
   opacity:0;transform:scale(.9);transition:opacity .3s var(--ease-out),transform .3s var(--ease-out);
-  box-shadow:0 0 10px rgba(145,70,255,.5)}
+  box-shadow:0 0 10px rgba(var(--violet-rgb),.5)}
 .opt.is-winner .tag{opacity:1;transform:scale(1)}
 #optB.is-winner .tag{background:#fff;color:#000;border-color:#fff;box-shadow:0 0 12px rgba(255,255,255,.6)}
 #optC.is-winner .tag{background:#7CC7FF;color:#000;border-color:#7CC7FF}
@@ -138,7 +138,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .fill{position:absolute;top:0;bottom:0;left:0;width:0%;border-radius:3px;
   transition:width .7s var(--ease-out),filter .25s var(--ease-out),box-shadow .25s var(--ease-out)}
 .fill--a{background:linear-gradient(90deg,var(--violet-deep),var(--violet));
-  box-shadow:0 0 10px rgba(145,70,255,.30)}
+  box-shadow:0 0 10px rgba(var(--violet-rgb),.30)}
 /* liseré lumineux à la tête de la barre A (détail de mouvement) */
 .fill--a::after{content:"";position:absolute;right:0;top:0;bottom:0;width:2px;
   background:rgba(255,255,255,.85);opacity:.55}
@@ -152,7 +152,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 /* — CONTRASTE AVANCE / RECU : à chaque vote, la barre qui gagne s'illumine,
       celle qui perd s'éteint. Le sens du match se lit d'un coup d'œil. — */
 .opt.is-up .fill{filter:brightness(1.65) saturate(1.35)}
-.opt.is-up .fill--a{box-shadow:0 0 22px rgba(145,70,255,.85)}
+.opt.is-up .fill--a{box-shadow:0 0 22px rgba(var(--violet-rgb),.85)}
 .opt.is-up .fill--b{box-shadow:0 0 22px rgba(255,255,255,.8)}
 .opt.is-down .fill{filter:brightness(.5) saturate(.55)}
 .pct{font-family:'Bebas Neue',sans-serif;font-weight:700;font-size:30px;letter-spacing:.06em;color:var(--gris-fonce);
@@ -175,8 +175,8 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .timebar__fill{height:100%;width:100%;
   background:linear-gradient(90deg,var(--violet-deep),var(--violet));
   transition:width .3s linear,background .3s,box-shadow .3s}
-#card.is-low .timebar__fill{background:linear-gradient(90deg,var(--violet),#C79BFF);
-  box-shadow:0 0 12px rgba(145,70,255,.85)}
+#card.is-low .timebar__fill{background:linear-gradient(90deg,var(--violet),var(--violet-light));
+  box-shadow:0 0 12px rgba(var(--violet-rgb),.85)}
 /* 5 dernières secondes : le décompte pulse (le tic-tac s'accélère en audio) */
 #card.is-critical .timebar__fill{animation:tbPulse .55s ease-in-out infinite}
 @keyframes tbPulse{0%,100%{opacity:1}50%{opacity:.4}}
@@ -203,12 +203,12 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   font-family:'Bebas Neue',sans-serif;font-size:22px;font-weight:700;letter-spacing:.08em;color:#E7E9EE;
   border-bottom:1px solid rgba(255,255,255,.06)}
 .chat__head .dot{width:6px;height:6px;border-radius:50%;background:var(--violet);
-  box-shadow:0 0 8px rgba(145,70,255,.9);animation:pulse 1.6s ease-in-out infinite}
+  box-shadow:0 0 8px rgba(var(--violet-rgb),.9);animation:pulse 1.6s ease-in-out infinite}
 /* — Monogramme 7G : signature discrète, présente sur les 3 zones — */
 .mark7g{display:inline-flex;align-items:center;justify-content:center;
   width:28px;height:28px;border-radius:3px;flex:none;overflow:hidden;
   background:#000;
-  box-shadow:0 0 0 1px rgba(145,70,255,.45),0 2px 10px rgba(0,0,0,.6)}
+  box-shadow:0 0 0 1px rgba(var(--violet-rgb),.45),0 2px 10px rgba(0,0,0,.6)}
 .mark7g img{width:100%;height:100%;object-fit:cover;display:block}
 .chat__head .mark7g{margin-left:auto;width:36px;height:36px;border-radius:6px}
 /* badges Twitch : image officielle, chip texte en repli si hors-ligne */
@@ -216,13 +216,13 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 .cbadge{width:20px;height:20px;border-radius:3px}
 .cchip{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:16px;padding:0 5px;
   border-radius:3px;font-size:8px;font-weight:800;letter-spacing:.08em;
-  background:rgba(145,70,255,.18);color:var(--violet);border:1px solid rgba(145,70,255,.5)}
+  background:rgba(var(--violet-rgb),.18);color:var(--violet);border:1px solid rgba(var(--violet-rgb),.5)}
 .cchip--mod{background:rgba(255,255,255,.10);color:#fff;border-color:rgba(255,255,255,.45)}
 .cchip--me{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.55)}
 /* emotes / GIFs inline */
 .cemote{height:26px;width:auto;vertical-align:-6px;margin:0 2px;border-radius:3px}
 /* message MIS EN AVANT (highlight Twitch) : encart violet */
-.cmsg.is-hl{background:rgba(145,70,255,.13);border:1px solid rgba(145,70,255,.45);
+.cmsg.is-hl{background:rgba(var(--violet-rgb),.13);border:1px solid rgba(var(--violet-rgb),.45);
   border-radius:6px;padding:5px 8px;margin-left:-8px}
 /* message ÉPINGLÉ : en haut du chat, style blanc, un cran plus gros */
 .chat__pin{display:none;margin:10px 14px 2px;padding:8px 11px;border-radius:6px;
@@ -302,12 +302,12 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 /* ═══ ÉTAT RÉSULTAT (5 s de sentence) ═══ */
 .opt.is-loser .lbl,.opt.is-loser .bar,.opt.is-loser .pct{opacity:.35}
 .opt.is-winner{filter:brightness(1.15)}
-.opt.is-winner .lbl{color:#fff;text-shadow:0 0 8px rgba(145,70,255,.6)}
-.opt.is-winner .pct{color:var(--blanc);text-shadow:0 0 18px rgba(145,70,255,.8);transform:scale(1.15)}
-.opt.is-winner .bar{border-color:rgba(145,70,255,.5)}
+.opt.is-winner .lbl{color:#fff;text-shadow:0 0 8px rgba(var(--violet-rgb),.6)}
+.opt.is-winner .pct{color:var(--blanc);text-shadow:0 0 18px rgba(var(--violet-rgb),.8);transform:scale(1.15)}
+.opt.is-winner .bar{border-color:rgba(var(--violet-rgb),.5)}
 .opt.is-winner .fill--a{animation:glowA 1.5s ease-in-out infinite}
 .opt.is-winner .fill--b{animation:glowB 1.5s ease-in-out infinite}
-@keyframes glowA{0%,100%{box-shadow:0 0 12px rgba(145,70,255,.35)}50%{box-shadow:0 0 28px rgba(145,70,255,.85)}}
+@keyframes glowA{0%,100%{box-shadow:0 0 12px rgba(var(--violet-rgb),.35)}50%{box-shadow:0 0 28px rgba(var(--violet-rgb),.85)}}
 @keyframes glowB{0%,100%{box-shadow:0 0 10px rgba(255,255,255,.22)}50%{box-shadow:0 0 26px rgba(255,255,255,.7)}}
 
 /* ═══ VÉLOCITÉ CHAT V5 — % gros + fin prévue + chrono auto +15min ═══
@@ -405,10 +405,11 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 }
 .velocity__pct.is-pop{transform:scale(1.15)}
 .velocity__goal{
-  font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;letter-spacing:.02em;line-height:1.3;
+  /* padding reduit lui aussi : « 100% → +30 MIN » est le cas le plus large. */
+  font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;letter-spacing:.01em;line-height:1.3;
   color:rgba(255,255,255,.96);text-align:center;
   background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
-  border-radius:6px;padding:7px 10px;width:100%;
+  border-radius:6px;padding:7px 5px;width:100%;
 }
 .velocity__chrono{
   font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;letter-spacing:.04em;line-height:1;
@@ -436,11 +437,13 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 @keyframes boostPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.22)}}
 .velocity__fin{
   width:100%;text-align:center;
-  font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;letter-spacing:0;line-height:1.25;
+  /* padding horizontal reduit a 5px : c'est lui qui faisait deborder le texte.
+     On garde une taille lisible plutot que de rapetisser le libelle. */
+  font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;letter-spacing:0;line-height:1.25;
   color:#FFFFFF;white-space:nowrap;
   text-shadow:0 1px 10px rgba(0,0,0,.98),0 0 20px rgba(0,0,0,.75);
   background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.12);
-  border-radius:6px;padding:8px 10px;
+  border-radius:6px;padding:8px 5px;
 }
 #velocityWrap.is-hot .velocity__fill{
   filter:brightness(1.22) saturate(1.24);
