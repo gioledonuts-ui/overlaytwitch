@@ -47,6 +47,11 @@ const POLL_OAUTH = cleanToken(env('POLL_OAUTH', ''));      // user token · scop
 
 /* — Chat Twitch (tmi.js optionnel) — */
 const CHAT_OAUTH = env('CHAT_OAUTH', '');   // le "oauth:" EST attendu ici (tmi.js)
+/* V47 — OBS : adresse et mot de passe du serveur WebSocket d'OBS
+   (OBS : Outils > Paramètres du serveur WebSocket). Le mot de passe peut être
+   vide si tu as décoché « Activer l'authentification ». */
+const OBS_WS_URL = env('OBS_WS_URL', 'ws://127.0.0.1:4455');
+const OBS_WS_PASSWORD = env('OBS_WS_PASSWORD', '');
 const CHAT_NICK = cleanToken(env('CHAT_NICK', ''));
 /* Canal à écouter = ta chaîne Twitch (où le bot doit lire les messages).
    Par défaut = CHAT_NICK (si tu utilises ton propre compte comme bot).
@@ -124,8 +129,67 @@ const DEFAULT_CONFIG = {
      Tout ce qui n'a pas d'entree ici garde les reglages generaux ci-dessus.
      On garde le titre d'origine pour l'afficher dans le panneau, et "key" (le
      titre normalise) pour la comparaison. */
-  missionCustom: []
+  missionCustom: [],
+
+  /* ═══ V47 — DISPOSITIONS PAR SCENE OBS ═══
+     Une entree par scene OBS que tu veux agencer differemment :
+       { scene: 'Partage ecran', blocs: { chat:{x,y,w,h}, velocity:{...}, ... } }
+     Les blocs absents gardent leur position par defaut. Une scene sans entree
+     garde l'agencement normal. Coordonnees en pixels sur une base 1920x1080. */
+  sceneLayouts: []
 };
+
+/* Les 4 blocs deplaçables de l'overlay, avec leurs bornes raisonnables.
+   C'est la seule liste a completer si on ajoute un bloc plus tard. */
+const BLOCS = {
+  chat:     { nom: 'Chat',     wMin: 240, wMax: 900,  hMin: 200, hMax: 1040 },
+  velocity: { nom: 'Velocite', wMin: 90,  wMax: 400,  hMin: 200, hMax: 1040 },
+  mission:  { nom: 'Mission',  wMin: 400, wMax: 1800, hMin: 70,  hMax: 400  },
+  poll:     { nom: 'Sondage',  wMin: 400, wMax: 1600, hMin: 120, hMax: 900  }
+};
+
+/* Nettoie les dispositions : on borne tout pour qu'un bloc ne puisse jamais
+   sortir de l'ecran ni devenir invisible. */
+function normalizeSceneLayouts(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [], vues = new Set();
+  for (const it of v) {
+    if (!it || typeof it !== 'object') continue;
+    const scene = String(it.scene == null ? '' : it.scene).trim().slice(0, 120);
+    if (!scene || vues.has(scene)) continue;
+    vues.add(scene);
+    const blocs = {};
+    const src = it.blocs && typeof it.blocs === 'object' ? it.blocs : {};
+    for (const [cle, def] of Object.entries(BLOCS)) {
+      const b = src[cle];
+      if (!b || typeof b !== 'object') continue;
+      if (b.hidden === true) { blocs[cle] = { hidden: true }; continue; }
+      const w = clampNum(b.w, def.wMin, def.wMax, def.wMin);
+      const h = clampNum(b.h, def.hMin, def.hMax, def.hMin);
+      blocs[cle] = {
+        x: Math.round(clampNum(b.x, 0, 1920 - 40, 0)),
+        y: Math.round(clampNum(b.y, 0, 1080 - 40, 0)),
+        w: Math.round(w),
+        h: Math.round(h)
+      };
+    }
+    out.push({ scene, blocs });
+    if (out.length >= 40) break;
+  }
+  return out;
+}
+
+/* Envoie a l'overlay la scene active et la disposition qui lui correspond. */
+function broadcastScene() {
+  const scene = obsState.scene || '';
+  const entree = (appConfig.sceneLayouts || []).find(l => l.scene === scene) || null;
+  const payload = 'data: ' + JSON.stringify({
+    sceneChange: 1,
+    scene,
+    layout: entree ? entree.blocs : null   // null = disposition par defaut
+  }) + '\n\n';
+  for (const res of sse) res.write(payload);
+}
 function clampNum(n, min, max, d) {
   const v = +n;
   if (!isFinite(v)) return d;
@@ -1360,6 +1424,123 @@ function connectChannelPoints() {
   ouvrir();
 }
 
+/* ═══ V47 — OBS : savoir quelle scene est affichee ═══════════════════
+   On se connecte au serveur WebSocket d'OBS (Outils > Parametres du serveur
+   WebSocket) pour connaitre la scene active en temps reel. Ca permet de ranger
+   les blocs differemment selon la scene : ta camera est a droite en partage
+   d'ecran, donc le chat doit se pousser ailleurs.
+   Le protocole est celui d'obs-websocket 5.x :
+     op 0 Hello  -> op 1 Identify (avec authentification SHA256 si demandee)
+     op 2 Identified -> on est connecte
+     op 5 Event  -> CurrentProgramSceneChanged quand tu changes de scene
+   Rien n'est envoye a OBS qui puisse modifier ton reglage : on ne fait que LIRE. */
+const crypto = require('crypto');
+let obsWs = null, obsRetry = 0, obsMigration = false;
+const obsState = {
+  enabled: !!OBS_WS_URL,
+  connected: false,
+  identified: false,
+  scene: null,          // scene actuellement a l'antenne
+  scenes: [],           // toutes les scenes existantes
+  lastError: null,
+  version: null
+};
+
+/* Reponse au defi d'authentification, exactement comme decrit par OBS :
+   base64(sha256( base64(sha256(motdepasse + salt)) + challenge )) */
+function obsAuthString(password, salt, challenge) {
+  const secret = crypto.createHash('sha256').update(password + salt).digest('base64');
+  return crypto.createHash('sha256').update(secret + challenge).digest('base64');
+}
+
+function obsSend(obj) {
+  try { obsWs.send(JSON.stringify(obj)); } catch (e) {}
+}
+
+function obsRequest(type, data) {
+  obsSend({ op: 6, d: { requestType: type, requestId: type + '-' + Date.now(), requestData: data || {} } });
+}
+
+function connectOBS() {
+  if (!OBS_WS_URL) { obsState.enabled = false; return; }
+  obsState.enabled = true;
+  let WS;
+  try { WS = (typeof WebSocket !== 'undefined') ? WebSocket : require('ws'); }
+  catch (e) { try { WS = require('ws'); } catch (e2) { return; } }
+
+  let ouverte = false;
+  try { obsWs = new WS(OBS_WS_URL); }
+  catch (e) { obsState.lastError = e.message; return; }
+
+  obsWs.onopen = () => { ouverte = true; obsState.connected = true; obsState.lastError = null; };
+
+  obsWs.onmessage = (ev) => {
+    let msg; try { msg = JSON.parse(typeof ev.data === 'string' ? ev.data : String(ev.data)); } catch (e) { return; }
+    const d = msg.d || {};
+
+    if (msg.op === 0) {
+      obsState.version = d.obsWebSocketVersion || null;
+      const ident = { rpcVersion: 1 };
+      if (d.authentication) {
+        if (!OBS_WS_PASSWORD) {
+          obsState.lastError = 'mot-de-passe-manquant';
+          console.warn('[obs] OBS demande un mot de passe. Copie-le depuis OBS (Outils > Parametres du serveur WebSocket > Afficher les informations de connexion) dans l\'onglet REGLAGES.');
+          try { obsWs.close(); } catch (e) {}
+          return;
+        }
+        ident.authentication = obsAuthString(OBS_WS_PASSWORD, d.authentication.salt, d.authentication.challenge);
+      }
+      obsSend({ op: 1, d: ident });
+      return;
+    }
+
+    if (msg.op === 2) {
+      obsState.identified = true; obsRetry = 0; obsState.lastError = null;
+      console.log('[obs] connecte a OBS ' + (obsState.version ? '(websocket ' + obsState.version + ')' : ''));
+      obsRequest('GetSceneList');
+      return;
+    }
+
+    if (msg.op === 7 && d.requestType === 'GetSceneList' && d.responseData) {
+      const r = d.responseData;
+      obsState.scenes = (r.scenes || []).map(x => x.sceneName).filter(Boolean).reverse();
+      const nouvelle = r.currentProgramSceneName || null;
+      if (nouvelle && nouvelle !== obsState.scene) { obsState.scene = nouvelle; broadcastScene(); }
+      else if (nouvelle) obsState.scene = nouvelle;
+      return;
+    }
+
+    if (msg.op === 5) {
+      if (d.eventType === 'CurrentProgramSceneChanged') {
+        const nom = d.eventData && d.eventData.sceneName;
+        if (nom && nom !== obsState.scene) {
+          obsState.scene = nom;
+          console.log('[obs] scene : ' + nom);
+          broadcastScene();
+        }
+      } else if (d.eventType === 'SceneListChanged' || d.eventType === 'SceneNameChanged'
+              || d.eventType === 'SceneCreated' || d.eventType === 'SceneRemoved') {
+        obsRequest('GetSceneList');   // la liste a bouge, on la relit
+      }
+    }
+  };
+
+  obsWs.onerror = (e) => {
+    const m = (e && (e.message || (e.error && e.error.message))) || 'erreur reseau';
+    obsState.lastError = String(m).slice(0, 200);
+  };
+
+  obsWs.onclose = () => {
+    obsState.connected = false; obsState.identified = false;
+    if (obsMigration) { obsMigration = false; return; }
+    const wait = Math.min(30000, 3000 * Math.pow(2, Math.min(obsRetry++, 3)));
+    setTimeout(() => connectOBS(), wait);
+  };
+}
+
+/* — Connexion a OBS (scene active) — */
+connectOBS();
+
 /* — Lancement des connexions "données" (sub goal + points de chaine) — */
 if (CLIENT_ID && POLL_OAUTH) {
   (async () => {
@@ -1764,6 +1945,10 @@ const server = http.createServer((req, res) => {
           if (p.missionRewards !== undefined) appConfig.missionRewards = normalizeRewardList(p.missionRewards);
           if (p.missionIgnored !== undefined) appConfig.missionIgnored = normalizeRewardList(p.missionIgnored);
           if (p.missionCustom !== undefined) appConfig.missionCustom = normalizeMissionCustom(p.missionCustom);
+          if (p.sceneLayouts !== undefined) {
+            appConfig.sceneLayouts = normalizeSceneLayouts(p.sceneLayouts);
+            broadcastScene();   // application immediate dans l'overlay
+          }
           if (p.missionShowUser !== undefined) appConfig.missionShowUser = !!p.missionShowUser;
           if (p.missionShowInput !== undefined) appConfig.missionShowInput = !!p.missionShowInput;
           if (p.velocityExcludedUsers !== undefined) appConfig.velocityExcludedUsers = normalizeExcludedUsers(p.velocityExcludedUsers);
@@ -1805,6 +1990,38 @@ const server = http.createServer((req, res) => {
           for (const res of sse) res.write(payload);
           send(200, 'application/json', JSON.stringify({ ok: true, config: appConfig, goal: goalState }));
         } catch (e) { send(400, 'application/json', JSON.stringify({ ok: false })); }
+      });
+      return;
+    }
+
+    /* — OBS : etat de la connexion + liste des scenes — */
+    if (u.pathname === '/api/obs' && req.method === 'GET') {
+      send(200, 'application/json', JSON.stringify({
+        url: OBS_WS_URL,
+        passwordSet: !!OBS_WS_PASSWORD,
+        connected: obsState.connected,
+        identified: obsState.identified,
+        scene: obsState.scene,
+        scenes: obsState.scenes,
+        version: obsState.version,
+        lastError: obsState.lastError,
+        blocs: Object.fromEntries(Object.entries(BLOCS).map(([k, v]) => [k, v.nom])),
+        layouts: appConfig.sceneLayouts || []
+      }));
+      return;
+    }
+
+    /* — OBS : previsualiser une scene dans l'overlay pendant qu'on la regle — */
+    if (u.pathname === '/api/obs/preview' && req.method === 'POST') {
+      readBody().then(d => {
+        let p2 = {}; try { p2 = JSON.parse(d || '{}'); } catch (e) {}
+        const scene = String(p2.scene || '').trim();
+        const entree = (appConfig.sceneLayouts || []).find(l => l.scene === scene) || null;
+        const payload = 'data: ' + JSON.stringify({
+          sceneChange: 1, scene, layout: entree ? entree.blocs : null, preview: 1
+        }) + '\n\n';
+        for (const res of sse) res.write(payload);
+        send(200, 'application/json', JSON.stringify({ ok: true, scene, applied: !!entree }));
       });
       return;
     }
@@ -1902,7 +2119,7 @@ const server = http.createServer((req, res) => {
       readBody().then(d => {
         try {
           const p = JSON.parse(d || '{}');
-          const ALLOWED_KEYS = ['CHAT_NICK', 'CHAT_OAUTH', 'CHAT_CHANNEL', 'CLIENT_ID', 'POLL_OAUTH', 'ADMIN_TOKEN', 'ALLOWED_USERS'];
+          const ALLOWED_KEYS = ['CHAT_NICK', 'CHAT_OAUTH', 'CHAT_CHANNEL', 'CLIENT_ID', 'POLL_OAUTH', 'ADMIN_TOKEN', 'ALLOWED_USERS', 'OBS_WS_URL', 'OBS_WS_PASSWORD'];
           let secrets = {};
           try { secrets = JSON.parse(fs.readFileSync(path.join(__dirname, 'secrets.json'), 'utf8')) || {}; } catch (e) {}
           let changed = 0;

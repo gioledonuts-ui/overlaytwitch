@@ -220,6 +220,38 @@ Une fois rempli + `demarrer-pont.bat` relancé, la fenêtre affiche :
 
 ---
 
+## 🎬 Agencer l'overlay scene par scene (onglet SCÈNES)
+
+Ta caméra est à droite en partage d'écran, mais le chat aussi ? Cet onglet règle
+ça : **chaque scène OBS peut avoir son propre agencement**, et l'overlay bascule
+tout seul quand tu changes de scène.
+
+**À faire une seule fois :**
+
+1. Dans OBS : **Outils → Paramètres du serveur WebSocket**
+2. Coche **Activer le serveur WebSocket**
+3. Clique sur **Afficher les informations de connexion**, copie le **mot de passe**
+4. Dans le panneau, onglet **SCÈNES**, colle-le puis **relance le pont**
+
+Une pastille verte « Connecté à OBS » confirme que c'est bon.
+
+**Ensuite, pour chaque scène :**
+
+- Choisis la scène dans la liste déroulante (celle qui est à l'antenne est signalée)
+- **Glisse** les blocs où tu veux ; la poignée en bas à droite les redimensionne
+- Un bloc en **pointillés** garde sa position par défaut ; dès que tu le bouges il
+  devient propre à cette scène (trait plein violet)
+- Le bouton **Masquer** cache complètement un bloc sur cette scène
+- **Tout remettre par défaut** annule les réglages de la scène affichée
+
+Tout est enregistré automatiquement. Les scènes que tu n'as pas réglées gardent
+l'agencement normal.
+
+> ℹ️ Le pont ne fait que **lire** la scène active : il ne modifie jamais rien dans OBS.
+> Si tu n'actives pas le serveur WebSocket, tout le reste fonctionne comme avant.
+
+---
+
 ### 🔧 Les missions (points de chaîne) ne s'affichent pas
 
 Onglet **MISSIONS** → bouton **VÉRIFIER LA CONNEXION**. Il te dit à quelle étape ça bloque.

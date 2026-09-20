@@ -1109,6 +1109,7 @@ function apply(m) {
   if (m.badgeMap) { badgeMap = m.badgeMap; return; }   // vrais badges Twitch (images)
   if (m.pin) { m.pin === 0 ? clearPin() : setPin(m); return; }   // message épinglé
   if (m.mission) { queueMission(m); return; }   // V46 : echange de points de chaine
+  if (m.sceneChange) { applySceneLayout(m.layout); return; }   // V47 : agencement par scene OBS
   if (m.velocityReset) { if (window.velocityReset) window.velocityReset(); return; }
   if (m.velocityValidate) { if (window.velocityValidate) window.velocityValidate(); return; }
   /* sub goal et/ou config (titre + accent + velocity) — le pont les envoie parfois
@@ -1281,6 +1282,50 @@ function buildMsgRow(m, withPinIcon) {
   d.appendChild(cn); d.appendChild(cb);
   return d;
 }
+/* ═══ V47 — AGENCEMENT PAR SCENE OBS ═══════════════════════════════
+   Quand tu changes de scene dans OBS, le pont nous envoie la disposition
+   prevue pour cette scene. Chaque bloc est place en absolu ; un bloc absent
+   de la disposition reprend sa position par defaut du CSS. */
+const BLOCS_SEL = {
+  chat:     '#chat',
+  velocity: '#velocityWrap',
+  mission:  '#mission',
+  poll:     '#card'
+};
+
+function applySceneLayout(layout) {
+  for (const [cle, sel] of Object.entries(BLOCS_SEL)) {
+    const el = document.querySelector(sel);
+    if (!el) continue;
+    const b = layout && layout[cle];
+
+    if (!b) {
+      /* pas de reglage pour ce bloc : on enleve tout ce qu'on avait pose
+         pour que le CSS d'origine reprenne la main */
+      el.style.removeProperty('left');   el.style.removeProperty('top');
+      el.style.removeProperty('right');  el.style.removeProperty('bottom');
+      el.style.removeProperty('width');  el.style.removeProperty('height');
+      el.style.removeProperty('display');
+      if (cle === 'mission') el.style.removeProperty('margin');
+      continue;
+    }
+
+    if (b.hidden) { el.style.display = 'none'; continue; }
+    el.style.removeProperty('display');
+
+    /* On passe en ancrage haut/gauche : c'est le seul moyen d'etre coherent
+       quels que soient les reglages d'origine (certains blocs sont ancres a
+       droite ou en bas dans le CSS). */
+    el.style.left = b.x + 'px';
+    el.style.top = b.y + 'px';
+    el.style.right = 'auto';
+    el.style.bottom = 'auto';
+    el.style.width = b.w + 'px';
+    el.style.height = b.h + 'px';
+    if (cle === 'mission') el.style.margin = '0';   // annule le centrage automatique
+  }
+}
+
 /* ═══ V46 — MISSIONS : bandeau du bas ═════════════════════════════
    Un viewer echange des points → le titre de la recompense s'affiche en bas
    pendant quelques secondes. File d'attente : deux echanges simultanes passent

@@ -514,6 +514,69 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
   color:#6eebaa;background:rgba(110,235,170,.12);
   border:1px solid rgba(110,235,170,.32);border-radius:20px;padding:2px 8px;
 }
+
+/* ═══ V47 : éditeur d'agencement par scène ═══ */
+.obsStatus{
+  display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:10px;
+  background:#0e0e16;border:1px solid rgba(255,255,255,.10);font-size:13px;
+}
+.obsStatus .dot{flex:none;width:9px;height:9px;border-radius:50%;background:#8b8fa3}
+.obsStatus.is-ok .dot{background:#6eebaa;box-shadow:0 0 9px rgba(110,235,170,.75)}
+.obsStatus.is-ko .dot{background:#ff6b6b;box-shadow:0 0 9px rgba(255,107,107,.7)}
+.obsStatus .txt{color:#d7d9e3}
+.obsStatus.is-ok .txt{color:#fff}
+.obsSetup{margin-top:12px;padding:13px;border-radius:10px;background:rgba(124,92,255,.07);
+  border:1px solid rgba(124,92,255,.26)}
+.obsSetup__t{margin:0 0 8px;font-size:13px;color:#e8e8f0}
+.obsSetup__l{margin:0 0 11px;padding-left:20px;font-size:12.5px;color:#c8cad4;line-height:1.85}
+.obsSetup__l b{color:#fff}
+
+.sceneLive{font-size:10px;font-weight:700;letter-spacing:.08em;color:#6eebaa;
+  background:rgba(110,235,170,.13);border:1px solid rgba(110,235,170,.34);
+  border-radius:20px;padding:3px 10px}
+
+/* la scène : un 16/9 fidèle à 1920x1080 */
+.stageWrap{position:relative;width:100%;border-radius:12px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.13);background:#07070c}
+.stage{position:relative;width:100%;padding-top:56.25%;background:
+  radial-gradient(circle at 50% 38%,rgba(124,92,255,.10),transparent 62%),#0a0a11;
+  user-select:none;touch-action:none}
+.stage__grid{position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);
+  background-size:8.333% 8.333%}
+.stage__cam{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#4a4c58;font-size:13px;letter-spacing:.04em;pointer-events:none}
+
+.blk{position:absolute;border-radius:7px;cursor:grab;overflow:hidden;
+  border:1.5px solid rgba(255,255,255,.22);background:rgba(255,255,255,.07);
+  display:flex;align-items:center;justify-content:center;
+  transition:border-color .13s,background .13s,box-shadow .13s}
+.blk:hover{border-color:rgba(124,92,255,.7);background:rgba(124,92,255,.15)}
+.blk.is-drag{cursor:grabbing;border-color:#7c5cff;background:rgba(124,92,255,.26);
+  box-shadow:0 0 0 1px rgba(124,92,255,.5),0 8px 26px rgba(0,0,0,.5);z-index:9}
+.blk.is-custom{border-color:rgba(124,92,255,.62);background:rgba(124,92,255,.17);border-style:solid}
+.blk.is-default{border-style:dashed;opacity:.62}
+.blk.is-hidden{opacity:.26;border-style:dotted;background:rgba(255,107,107,.10);
+  border-color:rgba(255,107,107,.45)}
+.blk__n{font-size:11px;font-weight:700;letter-spacing:.07em;color:#fff;
+  text-transform:uppercase;pointer-events:none;text-align:center;padding:0 6px;
+  text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.blk__h{position:absolute;right:0;bottom:0;width:15px;height:15px;cursor:nwse-resize;
+  background:linear-gradient(135deg,transparent 46%,rgba(255,255,255,.55) 46%);
+  border-bottom-right-radius:7px}
+.blk.is-hidden .blk__h{display:none}
+
+.blocList{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.blocChip{display:flex;align-items:center;gap:8px;padding:7px 11px;border-radius:9px;
+  background:#0e0e16;border:1px solid rgba(255,255,255,.10);font-size:12px;color:#d7d9e3}
+.blocChip b{color:#fff;font-weight:600}
+.blocChip .st{font-size:10.5px;color:#8b8fa3}
+.blocChip.is-custom{border-color:rgba(124,92,255,.42)}
+.blocChip.is-custom .st{color:#c9a7ff}
+.blocChip button{background:none;border:1px solid rgba(255,255,255,.16);color:#c9a7ff;
+  border-radius:6px;padding:2px 7px;font-size:11px;cursor:pointer;font-family:inherit}
+.blocChip button:hover{background:rgba(124,92,255,.16)}
 </style>
 </head>
 <body>
@@ -533,6 +596,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
       <button class="navbtn" data-tab="ambiance"><span class="ico">03</span>AMBIANCE</button>
       <button class="navbtn" data-tab="velocite"><span class="ico">04</span>VÉLOCITÉ</button>
       <button class="navbtn" data-tab="missions"><span class="ico">05</span>MISSIONS</button>
+      <button class="navbtn" data-tab="scenes"><span class="ico">06</span>SCÈNES</button>
     </nav>
     <div class="sideFoot">
       <span id="dotPont" class="off"></span>
@@ -981,6 +1045,63 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
         </div>
       </section>
 
+      <section class="tab" id="tab-scenes">
+        <div class="card">
+          <h2>AGENCEMENT PAR SCÈNE OBS</h2>
+          <p class="sub">Place tes blocs où tu veux, <b>scène par scène</b>. Quand tu changes de scène dans OBS, l'overlay se réagence tout seul.</p>
+
+          <div id="obsStatus" class="obsStatus">
+            <span class="dot"></span><span class="txt">Connexion à OBS…</span>
+            <button class="btn ghost small" id="btnObsCheck" style="margin-left:auto">ACTUALISER</button>
+          </div>
+
+          <div id="obsSetup" class="obsSetup" hidden>
+            <p class="obsSetup__t">Pour que l'overlay suive tes scènes, active le serveur WebSocket d'OBS :</p>
+            <ol class="obsSetup__l">
+              <li>Dans OBS : <b>Outils → Paramètres du serveur WebSocket</b></li>
+              <li>Coche <b>Activer le serveur WebSocket</b></li>
+              <li>Clique sur <b>Afficher les informations de connexion</b> et copie le <b>mot de passe</b></li>
+              <li>Colle-le ci-dessous, puis <b>relance le pont</b></li>
+            </ol>
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              <input id="obsUrl" type="text" placeholder="ws://127.0.0.1:4455" style="flex:1;min-width:190px">
+              <input id="obsPass" type="password" placeholder="mot de passe OBS" style="flex:1;min-width:190px">
+              <button class="btn" id="btnObsSave">ENREGISTRER</button>
+            </div>
+            <div class="note" style="margin-top:7px">Si tu as décoché « Activer l'authentification » dans OBS, laisse le mot de passe vide.</div>
+          </div>
+
+          <div id="sceneEditor" hidden>
+            <div class="row" style="gap:10px;align-items:center;margin:14px 0 10px;flex-wrap:wrap">
+              <label style="margin:0">Scène :</label>
+              <select id="sceneSel" style="flex:1;min-width:200px"></select>
+              <span id="sceneLive" class="sceneLive" hidden>À L'ANTENNE</span>
+            </div>
+
+            <div class="stageWrap">
+              <div class="stage" id="stage">
+                <div class="stage__grid"></div>
+                <div class="stage__cam">ta caméra / ton jeu</div>
+              </div>
+            </div>
+
+            <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
+              <button class="btn ghost small" id="btnSceneReset">TOUT REMETTRE PAR DÉFAUT</button>
+              <button class="btn ghost small" id="btnScenePreview">VOIR DANS L'OVERLAY</button>
+              <span class="note" style="margin-left:auto">Glisse les blocs · poigne en bas à droite pour redimensionner</span>
+            </div>
+
+            <div class="blocList" id="blocList"></div>
+
+            <div class="note" style="margin-top:12px;line-height:1.6">
+              Un bloc <b>grisé</b> garde sa position par défaut sur cette scène. Dès que tu le déplaces, il devient
+              propre à cette scène. Le bouton <b>œil</b> masque complètement un bloc — pratique pour cacher le chat
+              sur ta scène de partage d'écran si ta caméra est au même endroit.
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="tab" id="tab-reglages">
         <div class="card">
           <h2>TITRE CHAT</h2>
@@ -1096,6 +1217,8 @@ document.querySelectorAll('.navbtn').forEach(btn=>{
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
     const target=$('tab-'+tab);
     if(target)target.classList.add('active');
+    // l'onglet SCENES interroge OBS a chaque ouverture (les scenes bougent)
+    if(tab==='scenes' && typeof loadObs==='function') loadObs();
   });
 });
 /* logo brand = reglages (remplace engrenage) */
@@ -1769,6 +1892,230 @@ if(missionTab){
 /* Diagnostic : on interroge le pont et on traduit son etat en langage clair.
    Chaque ligne est une etape de la chaine ; la premiere en rouge est la cause. */
 function escTxt(t){ const d=document.createElement('span'); d.textContent=String(t); return d.innerHTML; }
+
+/* ═══════════════════════════════════════════════════════════════
+   V47 — AGENCEMENT PAR SCÈNE OBS
+   La scène fait 1920x1080 ; l'éditeur travaille en pourcentage pour
+   rester juste quelle que soit la largeur de la fenêtre.
+   ═══════════════════════════════════════════════════════════════ */
+const SC_W = 1920, SC_H = 1080;
+let obsInfo = null;          // dernier état renvoyé par le pont
+let scLayouts = [];          // toutes les dispositions
+let scScene = null;          // scène en cours d'édition
+let scBlocs = {};            // libellés des blocs, fournis par le pont
+
+/* Position par défaut de chaque bloc, pour afficher un bloc non personnalisé
+   au bon endroit. Doit rester cohérent avec le CSS de l'overlay. */
+const SC_DEFAUT = {
+  poll:     { x:(SC_W-880)/2, y:96,           w:880,  h:260 },
+  chat:     { x:SC_W-48-460,  y:SC_H-160-640, w:460,  h:640 },
+  velocity: { x:28,           y:SC_H-160-700, w:180,  h:700 },
+  mission:  { x:260,          y:SC_H-64-130,  w:1100, h:130 }
+};
+
+function scLayoutFor(scene, creer){
+  let e = scLayouts.find(l=>l.scene===scene);
+  if(!e && creer){ e = { scene, blocs:{} }; scLayouts.push(e); }
+  return e;
+}
+function scBlocState(scene, cle){
+  const e = scLayoutFor(scene,false);
+  return (e && e.blocs && e.blocs[cle]) || null;
+}
+
+async function loadObs(){
+  const st=$('obsStatus'), setup=$('obsSetup'), ed=$('sceneEditor');
+  try{ const r=await fetch(API+'/api/obs'); obsInfo=await r.json(); }
+  catch(e){
+    st.className='obsStatus is-ko';
+    st.querySelector('.txt').textContent='Pont injoignable — lance demarrer-pont.bat';
+    return;
+  }
+  scBlocs = obsInfo.blocs||{};
+  scLayouts = Array.isArray(obsInfo.layouts)? JSON.parse(JSON.stringify(obsInfo.layouts)) : [];
+  if($('obsUrl') && !$('obsUrl').value) $('obsUrl').value = obsInfo.url||'';
+
+  if(obsInfo.identified){
+    st.className='obsStatus is-ok';
+    st.querySelector('.txt').innerHTML='Connecté à OBS'
+      + (obsInfo.version?' (websocket '+escTxt(obsInfo.version)+')':'')
+      + ' · <b>'+(obsInfo.scenes||[]).length+'</b> scène(s)';
+    setup.hidden=true; ed.hidden=false;
+    scBuildSceneSelect();
+  } else {
+    st.className='obsStatus is-ko';
+    const err=String(obsInfo.lastError||'');
+    let why='Pas connecté à OBS';
+    if(obsInfo.lastError==='mot-de-passe-manquant') why='OBS demande un mot de passe';
+    /* le WebSocket intégré de Node masque ECONNREFUSED derrière un message
+       générique : dans les deux cas, personne n'écoute au bout du fil. */
+    else if(/ECONNREFUSED|refused|non-101|network error/i.test(err))
+      why='OBS ne répond pas — vérifie qu\'OBS est <b>ouvert</b> et que le <b>serveur WebSocket est activé</b>';
+    else if(/auth/i.test(err)) why='Mot de passe OBS refusé';
+    else if(err) why='Pas connecté à OBS — '+escTxt(err.slice(0,90));
+    st.querySelector('.txt').innerHTML=why;
+    setup.hidden=false; ed.hidden=true;
+  }
+}
+
+function scBuildSceneSelect(){
+  const sel=$('sceneSel'); if(!sel) return;
+  const scenes=(obsInfo.scenes||[]).slice();
+  // on garde aussi les scènes réglées qui n'existent plus, pour ne rien perdre
+  scLayouts.forEach(l=>{ if(!scenes.includes(l.scene)) scenes.push(l.scene+' (absente d\'OBS)'); });
+  sel.innerHTML='';
+  scenes.forEach(nom=>{
+    const o=document.createElement('option');
+    const vrai=nom.replace(/ \(absente d'OBS\)$/,'');
+    o.value=vrai; o.textContent=nom + (scLayoutFor(vrai,false)?' ●':'');
+    sel.appendChild(o);
+  });
+  if(!scScene || !scenes.some(n=>n.replace(/ \(absente d'OBS\)$/,'')===scScene))
+    scScene = obsInfo.scene || (sel.options[0]&&sel.options[0].value) || null;
+  if(scScene) sel.value=scScene;
+  scPaintStage();
+}
+
+function scPaintStage(){
+  const stage=$('stage'); if(!stage||!scScene) return;
+  [...stage.querySelectorAll('.blk')].forEach(e=>e.remove());
+  $('sceneLive').hidden = !(obsInfo && obsInfo.scene===scScene);
+
+  Object.keys(SC_DEFAUT).forEach(cle=>{
+    if(!scBlocs[cle]) return;
+    const perso=scBlocState(scScene,cle);
+    const masque = !!(perso && perso.hidden);
+    const b = (perso && !perso.hidden) ? perso : SC_DEFAUT[cle];
+
+    const el=document.createElement('div');
+    el.className='blk '+(masque?'is-hidden':(perso?'is-custom':'is-default'));
+    el.dataset.cle=cle;
+    el.style.left=(b.x/SC_W*100)+'%';
+    el.style.top=(b.y/SC_H*100)+'%';
+    el.style.width=(b.w/SC_W*100)+'%';
+    el.style.height=(b.h/SC_H*100)+'%';
+    el.innerHTML='<span class="blk__n">'+escTxt(scBlocs[cle])+'</span>'
+               + (masque?'':'<span class="blk__h"></span>');
+    stage.appendChild(el);
+  });
+  scPaintList();
+}
+
+function scPaintList(){
+  const box=$('blocList'); if(!box) return;
+  box.innerHTML='';
+  Object.keys(SC_DEFAUT).forEach(cle=>{
+    if(!scBlocs[cle]) return;
+    const perso=scBlocState(scScene,cle);
+    const chip=document.createElement('div');
+    chip.className='blocChip'+(perso?' is-custom':'');
+    const etat = perso ? (perso.hidden?'masqué':'personnalisé') : 'par défaut';
+    chip.innerHTML='<b>'+escTxt(scBlocs[cle])+'</b><span class="st">'+etat+'</span>';
+    const bOeil=document.createElement('button');
+    bOeil.textContent = (perso&&perso.hidden)?'Afficher':'Masquer';
+    bOeil.onclick=()=>{
+      const e=scLayoutFor(scScene,true);
+      if(perso&&perso.hidden) delete e.blocs[cle];
+      else e.blocs[cle]={hidden:true};
+      scPaintStage(); scSave();
+    };
+    chip.appendChild(bOeil);
+    if(perso){
+      const bR=document.createElement('button');
+      bR.textContent='Défaut';
+      bR.onclick=()=>{ const e=scLayoutFor(scScene,true); delete e.blocs[cle]; scPaintStage(); scSave(); };
+      chip.appendChild(bR);
+    }
+    box.appendChild(chip);
+  });
+}
+
+/* — glisser / redimensionner — */
+(function scDrag(){
+  const stage=$('stage'); if(!stage) return;
+  let cible=null, mode='', d0=null;
+
+  stage.addEventListener('pointerdown', e=>{
+    const blk=e.target.closest('.blk');
+    if(!blk || blk.classList.contains('is-hidden')) return;
+    e.preventDefault();
+    cible=blk; mode = e.target.classList.contains('blk__h') ? 'size':'move';
+    const r=stage.getBoundingClientRect();
+    d0={ px:e.clientX, py:e.clientY, rw:r.width, rh:r.height,
+         x:parseFloat(blk.style.left)/100*SC_W, y:parseFloat(blk.style.top)/100*SC_H,
+         w:parseFloat(blk.style.width)/100*SC_W, h:parseFloat(blk.style.height)/100*SC_H };
+    blk.classList.add('is-drag');
+    stage.setPointerCapture(e.pointerId);
+  });
+
+  stage.addEventListener('pointermove', e=>{
+    if(!cible) return;
+    const dx=(e.clientX-d0.px)/d0.rw*SC_W, dy=(e.clientY-d0.py)/d0.rh*SC_H;
+    let x=d0.x,y=d0.y,w=d0.w,h=d0.h;
+    if(mode==='move'){ x=d0.x+dx; y=d0.y+dy; }
+    else { w=d0.w+dx; h=d0.h+dy; }
+    // aimantation douce sur une grille de 10 px
+    const snap=v=>Math.round(v/10)*10;
+    w=Math.max(60,snap(w)); h=Math.max(40,snap(h));
+    x=Math.min(Math.max(0,snap(x)), SC_W-w);
+    y=Math.min(Math.max(0,snap(y)), SC_H-h);
+    cible.style.left=(x/SC_W*100)+'%'; cible.style.top=(y/SC_H*100)+'%';
+    cible.style.width=(w/SC_W*100)+'%'; cible.style.height=(h/SC_H*100)+'%';
+  });
+
+  const fin=e=>{
+    if(!cible) return;
+    cible.classList.remove('is-drag');
+    cible.classList.remove('is-default'); cible.classList.add('is-custom');
+    const cle=cible.dataset.cle;
+    const ent=scLayoutFor(scScene,true);
+    ent.blocs[cle]={
+      x:Math.round(parseFloat(cible.style.left)/100*SC_W),
+      y:Math.round(parseFloat(cible.style.top)/100*SC_H),
+      w:Math.round(parseFloat(cible.style.width)/100*SC_W),
+      h:Math.round(parseFloat(cible.style.height)/100*SC_H)
+    };
+    cible=null; scPaintList(); scSave();
+  };
+  stage.addEventListener('pointerup',fin);
+  stage.addEventListener('pointercancel',fin);
+})();
+
+let scSaveT=null;
+function scSave(){
+  clearTimeout(scSaveT);
+  scSaveT=setTimeout(async()=>{
+    // on jette les scènes qui n'ont plus aucun bloc réglé
+    const propre=scLayouts.filter(l=>l.blocs&&Object.keys(l.blocs).length);
+    const r=await post(API+'/api/config',{sceneLayouts:propre});
+    if(r&&r.config&&Array.isArray(r.config.sceneLayouts)) scLayouts=r.config.sceneLayouts;
+    const sel=$('sceneSel');
+    if(sel) [...sel.options].forEach(o=>{
+      const base=o.textContent.replace(/ ●$/,'');
+      o.textContent = base + (scLayoutFor(o.value,false)?' ●':'');
+    });
+    toast('Agencement enregistré');
+  },380);
+}
+
+if($('sceneSel')) $('sceneSel').addEventListener('change',e=>{ scScene=e.target.value; scPaintStage(); });
+if($('btnObsCheck')) $('btnObsCheck').addEventListener('click',loadObs);
+if($('btnSceneReset')) $('btnSceneReset').addEventListener('click',()=>{
+  const e=scLayoutFor(scScene,false);
+  if(e) e.blocs={};
+  scPaintStage(); scSave();
+});
+if($('btnScenePreview')) $('btnScenePreview').addEventListener('click',async()=>{
+  await post(API+'/api/obs/preview',{scene:scScene});
+  toast('Envoyé à l\'overlay');
+});
+if($('btnObsSave')) $('btnObsSave').addEventListener('click',async()=>{
+  const body={ OBS_WS_URL: $('obsUrl').value.trim() || 'ws://127.0.0.1:4455' };
+  if($('obsPass').value) body.OBS_WS_PASSWORD=$('obsPass').value;
+  await post(API+'/api/secrets', body);
+  toast('Enregistré — relance le pont');
+});
+
 const btnMissionDiag=$('btnMissionDiag');
 if(btnMissionDiag) btnMissionDiag.addEventListener('click', async()=>{
   const out=$('missionDiagOut');
