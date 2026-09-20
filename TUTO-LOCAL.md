@@ -215,7 +215,34 @@ Une fois rempli + `demarrer-pont.bat` relancé, la fenêtre affiche :
 | OBS n'affiche rien | Normal si aucun débat n'est lancé ! Lance `tester-debat.bat` |
 | Pas de son dans le casque | Refais l'**étape 6** |
 | Le chat reste vide | Vérifie l'étape optionnelle « chat » (token `oauth:`) |
+| Le journal de script d'OBS dit `Error opening file: (null)` et rien ne se lance | OBS n'arrive plus à trouver le script (dossier déplacé/renommé, ou ligne restée d'une ancienne installation). Va dans **Outils → Scripts**, sélectionne `demarrer-avec-obs.lua`, clique sur **–** pour l'enlever, puis sur **+** pour le rajouter **depuis le dossier actuel de l'overlay**. Voir juste en dessous. |
 | Port 8321 déjà pris | Ouvre l'invite de commandes et lance `PORT=8400 node server.js`, puis mets `http://localhost:8400/widget.html` dans OBS |
+
+---
+
+### 🔧 « Error opening file: (null) » au lancement d'OBS
+
+Ce message vient **d'OBS lui-même**, pas de l'overlay : il veut dire qu'OBS a gardé en
+mémoire un script dont il ne retrouve plus le fichier. Ça arrive quand le dossier de
+l'overlay a été **déplacé, renommé** (ou re-téléchargé ailleurs) après avoir ajouté le
+script. OBS ne sait pas suivre le déplacement, donc il n'exécute rien.
+
+La réparation prend 20 secondes :
+
+1. Dans OBS : **Outils → Scripts** (onglet *Scripts*).
+2. Sélectionne la ligne `demarrer-avec-obs.lua` et clique sur le bouton **–** (moins).
+3. Clique sur **+** (plus) et va rechercher `demarrer-avec-obs.lua` **dans le dossier
+   où se trouve ton overlay aujourd'hui** (celui qui contient `server.js`).
+4. Ferme la fenêtre. Dans l'onglet **Journal de script** tu dois maintenant lire :
+   `Dossier de l'overlay : ...` puis `Lancement de la mini-app 7G : ...`.
+
+> ⚠️ Règle à retenir : `demarrer-avec-obs.lua` doit **rester dans le dossier de
+> l'overlay**, à côté de `lancer-app.vbs`. Ne le copie pas ailleurs (ni sur le Bureau,
+> ni dans le dossier d'OBS) : c'est en cherchant ses voisins qu'il trouve quoi lancer.
+
+Depuis la v46, si le fichier voisin manque, le script te l'écrit **en clair** dans le
+journal (avec le chemin exact qu'il a regardé) au lieu d'échouer en silence. Et en
+attendant, `lancer-tout.bat` lance tout à la main, ça marche toujours.
 
 ---
 
