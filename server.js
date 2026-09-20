@@ -913,7 +913,8 @@ async function helixRewards() {
   if (!resolvedBroadcasterId) { await resolveBroadcaster(); }
   if (!resolvedBroadcasterId) return { ok: false, reason: 'no-broadcaster' };
   try {
-    const r = await fetch('https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id='
+    const base = process.env.HELIX_REWARDS_URL || 'https://api.twitch.tv/helix/channel_points/custom_rewards';
+    const r = await fetch(base + '?broadcaster_id='
       + encodeURIComponent(resolvedBroadcasterId), {
       headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + POLL_OAUTH }
     });
@@ -1105,11 +1106,15 @@ async function syncSubGoal() {
    • Les recompenses automatiques de Twitch (« Mettre en avant mon message »…)
      sont un autre evenement : on ne s'y abonne pas, donc pas de bandeau parasite. */
 let pointsWs = null, pointsRetry = 0, pointsOk = false;
+/* URLs surchargeables par variable d'environnement : utilise uniquement par les
+   tests automatiques pour simuler Twitch. En usage normal, ce sont les vraies. */
+const EVENTSUB_WS = process.env.EVENTSUB_WS_URL || 'wss://eventsub.wss.twitch.tv:443';
+const EVENTSUB_API = process.env.EVENTSUB_API_URL || 'https://api.twitch.tv/helix/eventsub/subscriptions';
 function connectChannelPoints() {
   if (!CLIENT_ID || !POLL_OAUTH || !resolvedBroadcasterId) return;
   async function subscribe(sessionId) {
     try {
-      const r = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
+      const r = await fetch(EVENTSUB_API, {
         method: 'POST',
         headers: { 'Client-Id': CLIENT_ID, 'Authorization': 'Bearer ' + POLL_OAUTH, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1135,10 +1140,25 @@ function connectChannelPoints() {
     } catch (e) { console.warn('[points] erreur abonnement :', e.message); }
   }
   function ouvrir(url) {
-    try { pointsWs = new WebSocket(url || 'wss://eventsub.wss.twitch.tv:443'); }
-    catch (e) { console.warn('[points] WebSocket indisponible :', e.message); return; }
-    pointsWs.onmessage = async (ev) => {
-      let msg; try { msg = JSON.parse(ev.data); } catch (e) { return; }
+    /* Node 18 et 20 n'ont PAS de WebSocket integre (il n'arrive qu'en Node 22).
+       On retombe alors sur le module "ws", deja installe avec tmi.js pour le chat.
+       Sans ce filet, la connexion echouait en silence chez tout le monde. */
+    let WS = (typeof WebSocket !== 'undefined') ? WebSocket : null;
+    if (!WS) {
+      try { WS = require('ws'); }
+      catch (e) {
+        console.warn('[points] ⚠️ pas de WebSocket disponible sur cette version de Node (' + process.version + ').');
+        console.warn('         Installe Node 22 ou lance "npm install ws" dans le dossier de l\'overlay.');
+        return;
+      }
+    }
+    try { pointsWs = new WS(url || EVENTSUB_WS); }
+    catch (e) { console.warn('[points] connexion impossible :', e.message); return; }
+    /* Le WebSocket integre utilise onmessage/onclose, le module "ws" utilise .on().
+       Les deux acceptent onmessage, mais on passe par une fonction commune pour
+       que le comportement soit rigoureusement identique dans les deux cas. */
+    const surMessage = async (data) => {
+      let msg; try { msg = JSON.parse(data); } catch (e) { return; }
       const t = msg.metadata && msg.metadata.message_type;
       if (t === 'session_welcome') {
         pointsRetry = 0;
@@ -1158,6 +1178,8 @@ function connectChannelPoints() {
         ouvrir(u);
       }
     };
+    pointsWs.onmessage = (ev) => surMessage(typeof ev.data === 'string' ? ev.data : String(ev.data));
+    pointsWs.onopen = () => console.log('[points] connecte a Twitch, attente de la session…');
     pointsWs.onclose = () => {
       if (!pointsWs) return;
       const wait = Math.min(60000, 5000 * Math.pow(2, Math.min(pointsRetry++, 3)));

@@ -479,9 +479,17 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
    elle s'arrete a 160 px du bas) → aucun recouvrement.
    Meme vocabulaire visuel que le reste : verre fume, filet violet, Bebas + Inter. */
 #mission{
-  position:absolute;left:50%;bottom:var(--mission-bottom,64px);
-  width:var(--mission-w,1100px);max-width:calc(100% - 96px);
-  transform:translate(-50%,28px) scale(var(--mission-scale,1));
+  /* Le bandeau se centre TOUT SEUL dans l'espace libre : on l'ancre entre la
+     colonne de velocite (a gauche) et le chat (a droite) et on laisse la marge
+     automatique le centrer. Comme ca il ne peut plus passer dessous, meme si on
+     change sa largeur. Quand le chat est masque, la zone de droite se libere. */
+  position:absolute;
+  left:var(--mission-l,208px);
+  right:var(--mission-r,508px);
+  bottom:var(--mission-bottom,64px);
+  width:auto;max-width:var(--mission-w,1100px);
+  margin:0 auto;
+  transform:translateY(28px) scale(var(--mission-scale,1));
   transform-origin:bottom center;
   display:flex;align-items:center;gap:22px;
   padding:20px 30px;
@@ -495,7 +503,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
   opacity:0;visibility:hidden;pointer-events:none;z-index:7;
   transition:opacity .5s var(--ease-out),transform .5s var(--ease-out);
 }
-#mission.is-on{opacity:1;visibility:visible;transform:translate(-50%,0) scale(var(--mission-scale,1))}
+#mission.is-on{opacity:1;visibility:visible;transform:translateY(0) scale(var(--mission-scale,1))}
 /* filet violet vertical a gauche : le meme accent que la carte de debat */
 .mission__bar{
   width:4px;align-self:stretch;flex:none;border-radius:3px;
