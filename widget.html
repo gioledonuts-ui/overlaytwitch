@@ -1164,6 +1164,8 @@ function apply(m) {
   if (m.chat) { pushChat(m); return; }      // message du vrai chat (via le pont)
   if (m.badgeMap) { badgeMap = m.badgeMap; return; }   // vrais badges Twitch (images)
   if (m.pin) { m.pin === 0 ? clearPin() : setPin(m); return; }   // message épinglé
+  if (m.modDelete) { removeChatMessages(m); return; }   // V49 : modération
+  if (m.modClear) { clearChatAll(); return; }           // V49 : chat vidé
   if (m.mission) { queueMission(m); return; }   // V46 : echange de points de chaine
   if (m.sceneChange) { applySceneLayout(m.layout); return; }   // V47 : agencement par scene OBS
   if (m.velocityReset) { if (window.velocityReset) window.velocityReset(); return; }
@@ -1310,6 +1312,10 @@ function buildMsgRow(m, withPinIcon) {
   const role = m.role === 'me' ? 'me' : (m.role === 'mod' ? 'mod' : 'user');
   const d = document.createElement('div');
   d.className = 'cmsg' + (m.highlight ? ' is-hl' : '');
+  /* V49 : on retient l'identifiant et le login pour pouvoir retirer la ligne
+     si un moderateur supprime le message (ou bannit son auteur). */
+  if (m.id) d.dataset.id = m.id;
+  if (m.login) d.dataset.login = String(m.login).toLowerCase();
   if (withPinIcon) {
     const f = document.createElement('span'); f.className = 'cflag'; f.textContent = '📌';
     d.appendChild(f);
@@ -1512,6 +1518,47 @@ function pushChat(m) {
   chatPanel.classList.add('is-on');
   try { if (window.__velocityPush) window.__velocityPush(m); } catch(e) {}
 }
+/* ═══ V49 — MODERATION ═══════════════════════════════════════════
+   Un moderateur supprime un message sur Twitch : il doit disparaitre de
+   l'overlay aussi, sinon un message genant resterait a l'ecran du live.
+   • avec un id  -> on retire ce message precis
+   • sans id (ban / mise en pause) -> on retire TOUS les messages du viewer,
+     ce que fait Twitch de son cote. */
+function removeChatMessages(m) {
+  const id = m.id ? String(m.id) : '';
+  const login = m.login ? String(m.login).toLowerCase() : '';
+  if (!id && !login) return;
+
+  const retirer = (el) => {
+    if (!el) return;
+    // petit fondu pour que ca ne « saute » pas a l'ecran
+    el.style.transition = 'opacity .18s ease-out';
+    el.style.opacity = '0';
+    setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 190);
+  };
+
+  let n = 0;
+  for (const el of Array.from(chatList.children)) {
+    const okId = id && el.dataset.id === id;
+    const okLogin = !id && login && el.dataset.login === login;
+    if (okId || okLogin) { retirer(el); n++; }
+  }
+
+  // le message epingle aussi, s'il correspond
+  const pinned = chatPin.firstElementChild;
+  if (pinned) {
+    const okId = id && pinned.dataset.id === id;
+    const okLogin = !id && login && pinned.dataset.login === login;
+    if (okId || okLogin) clearPin();
+  }
+  if (n) console.log('[overlay] ' + n + ' message(s) retire(s) par la moderation');
+}
+
+function clearChatAll() {
+  chatList.replaceChildren();
+  clearPin();
+}
+
 /* — Message ÉPINGLÉ (haut du chat, apparaît / disparaît) — */
 function setPin(m) {
   chatPin.replaceChildren(buildMsgRow(m, true));

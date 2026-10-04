@@ -882,6 +882,39 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
       console.log('[chat] message épinglé → ' + t.slice(0, 40));
     }
   });
+  /* ═══ V49 — MODERATION : retirer de l'overlay ce qui est supprime sur Twitch ═══
+     Trois cas distincts cote Twitch :
+       • CLEARMSG  -> un message precis supprime      (tmi : 'messagedeleted')
+       • CLEARCHAT -> un viewer banni ou mis en pause : TOUS ses messages
+                      disparaissent de l'historique  (tmi : 'ban' / 'timeout')
+       • CLEARCHAT sans cible -> le chat est vide entierement ('clearchat')
+     On relaie les trois a l'overlay, qui retire les lignes concernees. */
+  function envoyerSuppression(obj) {
+    const payload = 'data: ' + JSON.stringify(obj) + '\n\n';
+    for (const res of sse) res.write(payload);
+  }
+
+  chat.on('messagedeleted', (channel, username, deletedMessage, tags) => {
+    const id = (tags && (tags['target-msg-id'] || tags['targetMsgId'])) || '';
+    envoyerSuppression({ modDelete: 1, id, login: String(username || '').toLowerCase() });
+    console.log('[chat] message supprime' + (username ? ' de ' + username : '') + ' → retire de l\'overlay');
+  });
+
+  chat.on('ban', (channel, username) => {
+    envoyerSuppression({ modDelete: 1, login: String(username || '').toLowerCase() });
+    console.log('[chat] ' + username + ' banni → ses messages sont retires de l\'overlay');
+  });
+
+  chat.on('timeout', (channel, username) => {
+    envoyerSuppression({ modDelete: 1, login: String(username || '').toLowerCase() });
+    console.log('[chat] ' + username + ' mis en pause → ses messages sont retires de l\'overlay');
+  });
+
+  chat.on('clearchat', () => {
+    envoyerSuppression({ modClear: 1 });
+    console.log('[chat] chat vide par un moderateur → overlay vide');
+  });
+
   chat.on('message', (channel, userstate, message, self) => {
     // Signature tmi.js : (channel, userstate, message, self)
     //   userstate = les "tags" du message (pseudo, badges, emotes, réponses…)
@@ -902,6 +935,10 @@ if (tmi && CHAT_OAUTH && CHAT_NICK) {
        badges officiels (sub/mod/vip/staff…), emotes + GIFs animés, highlight/pin */
     if (emotes) console.log('[chat] emotes détectées :', emotes, '→', text.slice(0, 50));
     broadcastChat({
+      /* V49 : l'identifiant Twitch du message et le login permettent de le
+         retirer de l'overlay quand un moderateur le supprime. */
+      id: (userstate && userstate.id) || '',
+      login: (userstate && userstate.username) || String(username).toLowerCase(),
       user: username,
       msg: text,
       role: badges.broadcaster ? 'me' : (badges.moderator ? 'mod' : 'user'),
