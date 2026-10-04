@@ -676,6 +676,10 @@ function chatFrame(m) {
     : undefined;
   const payload = 'data: ' + JSON.stringify({
     chat: 1,
+    /* V49.1 : id + login DOIVENT traverser cette trame, sinon l'overlay ne
+       peut plus retrouver la ligne a retirer quand un modo supprime. */
+    id: m.id ? String(m.id).slice(0, 64) : undefined,
+    login: m.login ? String(m.login).toLowerCase().slice(0, 64) : undefined,
     user: String(m.user || '').slice(0, 64),
     msg: String(m.msg || '').slice(0, 300),
     role: m.role === 'me' ? 'me' : (m.role === 'mod' ? 'mod' : 'user'),
