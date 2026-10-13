@@ -1703,8 +1703,9 @@ function setGoal(g) {
     holdDurationSeconds: 120,
     graceSeconds: 15,        // V50 : sursis sous le seuil (0 = le chrono repart de zero, comme avant)
     boostMult: 1,
-    finHour: 21,
+    finHour: 21,         // heure réglée par le streamer (base)
     finMinute: 30,
+    finAdded: 0,         // V51 : minutes gagnées par le chat, mémorisées par le pont
     finEnabled: true,
     antiSpam: true,
     cooldownSeconds: 15,
@@ -1743,17 +1744,7 @@ function setGoal(g) {
     }
     if (boostEl) boostEl.textContent = fmtMult(cfg.boostMult);   // texte pré-remplié ; il ne s'AFFICHE qu'à 100 %
 
-    // fin prévue fonctionnelle
-    if (finEl) {
-      if (cfg.finEnabled) {
-        const hh = String(cfg.finHour).padStart(2,'0');
-        const mm = String(cfg.finMinute).padStart(2,'0');
-        finEl.textContent = 'FIN PRÉVUE : ' + hh + 'H' + mm;
-        finEl.style.display = '';
-      } else {
-        finEl.style.display = 'none';
-      }
-    }
+    paintFin();
 
     // chrono caché par défaut (sera affiché quand >= seuil)
     if (chronoEl && !wrap.classList.contains('is-goal')) {
@@ -1818,18 +1809,28 @@ function setGoal(g) {
     if (chronoEl) chronoEl.classList.remove('is-on','is-grace');
   }
 
+  /* V51 — FIN PRÉVUE affichée = heure réglée + minutes gagnées (modulo 24 h). */
+  function paintFin() {
+    if (!finEl) return;
+    if (!cfg.finEnabled) { finEl.style.display = 'none'; return; }
+    let total = (cfg.finHour*60 + cfg.finMinute + (cfg.finAdded || 0)) % 1440;
+    total = (total + 1440) % 1440;
+    const hh = String(Math.floor(total/60)).padStart(2,'0');
+    const mm = String(total % 60).padStart(2,'0');
+    finEl.textContent = 'FIN PRÉVUE : ' + hh + 'H' + mm;
+    finEl.style.display = '';
+  }
+
+  /* V51 : l'overlay n'envoie plus une heure absolue (deux envois rapprochés, ou un aperçu
+     du panneau, pouvaient écraser l'ajout : « ça retire du temps puis ça rajoute »). Il envoie
+     un INCRÉMENT ; le pont cumule et renvoie le total à tout le monde. Affichage optimiste
+     tout de suite, confirmé par l'écho du pont. En démo, rien ne part : la fausse vélocité
+     ne doit jamais toucher la vraie config. */
   function addMinutesToFin(mins) {
-    let total = cfg.finHour*60 + cfg.finMinute + mins;
-    total = ((total % 1440) + 1440) % 1440;
-    cfg.finHour = Math.floor(total/60);
-    cfg.finMinute = total % 60;
-    if (finEl && cfg.finEnabled) {
-      const hh = String(cfg.finHour).padStart(2,'0');
-      const mm = String(cfg.finMinute).padStart(2,'0');
-      finEl.textContent = 'FIN PRÉVUE : ' + hh + 'H' + mm;
-    }
-    // persist
-    fetch('api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({velocityFinHour:cfg.finHour, velocityFinMinute:cfg.finMinute})}).catch(()=>{});
+    cfg.finAdded = Math.max(0, Math.min(1440, (cfg.finAdded || 0) + mins));
+    paintFin();
+    if (DEMO) return;
+    fetch('api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({velocityFinAdd: mins})}).catch(()=>{});
   }
 
   function triggerGoal() {
@@ -1877,6 +1878,8 @@ function setGoal(g) {
     if (src.velocityFinHour !== undefined) cfg.finHour = Math.max(0, Math.min(23, Math.round(toNum(src.velocityFinHour, 21))));
     if (src.finMinute !== undefined) cfg.finMinute = Math.max(0, Math.min(59, Math.round(toNum(src.finMinute, 30))));
     if (src.velocityFinMinute !== undefined) cfg.finMinute = Math.max(0, Math.min(59, Math.round(toNum(src.velocityFinMinute, 30))));
+    if (src.finAdded !== undefined) cfg.finAdded = Math.max(0, Math.min(1440, Math.round(toNum(src.finAdded, 0))));
+    if (src.velocityFinAdded !== undefined) cfg.finAdded = Math.max(0, Math.min(1440, Math.round(toNum(src.velocityFinAdded, 0))));
     if (src.finEnabled !== undefined) cfg.finEnabled = !!src.finEnabled;
     if (src.velocityFinEnabled !== undefined) cfg.finEnabled = !!src.velocityFinEnabled;
     // compat anciennes

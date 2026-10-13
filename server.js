@@ -102,8 +102,10 @@ const DEFAULT_CONFIG = {
   velocityEnabled: true,
   velocityGoalThreshold: 90,
   velocityGoalDurationMinutes: 15,
-  velocityFinHour: 21,
+  velocityFinHour: 21,        // heure REGLEE par le streamer (base) : jamais modifiee par les objectifs
   velocityFinMinute: 30,
+  velocityFinAdded: 0,        // V51 : minutes GAGNEES par le chat (objectifs atteints), memorisees a part
+  velocityFinAddedAt: 0,      // V51 : date du dernier ajout (pour repartir de l'heure reglee a chaque stream)
   velocityFinEnabled: true,
   // velocite anti-spam V35 : 1 viewer ne peut pas gonfler la barre tout seul
   velocityAntiSpam: true,
@@ -303,7 +305,32 @@ if (appConfig.velocityExemptStaff !== undefined || appConfig.velocityHoldDuratio
     console.log('[config] reglages d\'alertes effaces (' + morts.length + ' cles) - la fonctionnalite a ete retiree');
   }
 }
+/* V51 — FIN PRÉVUE = heure reglee + minutes gagnees. Les deux sont stockees separement :
+   le panneau ne touche qu'a l'heure reglee, les objectifs ne touchent qu'aux minutes gagnees,
+   donc ni l'un ni l'autre ne peut ecraser l'autre. Les minutes gagnees appartiennent au
+   stream en cours : au demarrage du pont, si le dernier ajout date de plus de 6 h, on repart
+   de l'heure reglee (un redemarrage en cours de live, lui, les conserve). */
+const FIN_ADD_STALE_MS = 6 * 3600 * 1000;
+appConfig.velocityFinAdded = Math.max(0, Math.min(1440, Math.round(+appConfig.velocityFinAdded || 0)));
+appConfig.velocityFinAddedAt = Math.max(0, Math.round(+appConfig.velocityFinAddedAt || 0));
+if (appConfig.velocityFinAdded > 0 && Date.now() - appConfig.velocityFinAddedAt > FIN_ADD_STALE_MS) {
+  console.log('[velocite] les +' + appConfig.velocityFinAdded + ' min gagnees datent de plus de 6 h : on repart de l\'heure reglee');
+  appConfig.velocityFinAdded = 0; appConfig.velocityFinAddedAt = 0; legacyNeedsSave = true;
+}
 if (legacyNeedsSave) saveConfig();
+
+/* V51 : un 0 saisi est une vraie valeur (minuit, 0 minute). L'ancien « +v || 21 » changeait
+   00h00 en 21h30 : c'est ce qui faisait bouger l'heure « toute seule » apres minuit. */
+function intOr(v, def) {
+  if (v === undefined || v === null || v === '') return def;
+  const n = Math.round(Number(v));
+  return isFinite(n) ? n : def;
+}
+function finAffichee(c) {
+  let tot = (c.velocityFinHour * 60 + c.velocityFinMinute + (c.velocityFinAdded || 0)) % 1440;
+  tot = (tot + 1440) % 1440;
+  return String(Math.floor(tot / 60)).padStart(2, '0') + 'H' + String(tot % 60).padStart(2, '0');
+}
 appConfig.velocityExcludedUsers = normalizeExcludedUsers(appConfig.velocityExcludedUsers);
 function saveConfig() {
   try { fs.writeFileSync(PERSIST_FILE, JSON.stringify(appConfig, null, 2)); } catch (e) {}
@@ -334,6 +361,7 @@ function velocityConfigFields(src) {
     goalDurationMinutes: s.velocityGoalDurationMinutes,
     finHour: s.velocityFinHour,
     finMinute: s.velocityFinMinute,
+    finAdded: s.velocityFinAdded,
     finEnabled: s.velocityFinEnabled,
     velocityBoostMult: velBoostQuantize(s.velocityBoostMult),
     boostMult: velBoostQuantize(s.velocityBoostMult),
@@ -1926,8 +1954,8 @@ const server = http.createServer((req, res) => {
               velocityEnabled: p.velocityEnabled !== undefined ? !!p.velocityEnabled : appConfig.velocityEnabled,
               velocityGoalThreshold: p.goalThreshold !== undefined ? Math.round(+p.goalThreshold) : appConfig.velocityGoalThreshold,
               velocityGoalDurationMinutes: p.goalDurationMinutes !== undefined ? Math.round(+p.goalDurationMinutes) : appConfig.velocityGoalDurationMinutes,
-              velocityFinHour: p.finHour !== undefined ? Math.round(+p.finHour) : appConfig.velocityFinHour,
-              velocityFinMinute: p.finMinute !== undefined ? Math.round(+p.finMinute) : appConfig.velocityFinMinute,
+              velocityFinHour: p.finHour !== undefined ? Math.max(0, Math.min(23, intOr(p.finHour, appConfig.velocityFinHour))) : appConfig.velocityFinHour,
+              velocityFinMinute: p.finMinute !== undefined ? Math.max(0, Math.min(59, intOr(p.finMinute, appConfig.velocityFinMinute))) : appConfig.velocityFinMinute,
               velocityFinEnabled: p.finEnabled !== undefined ? !!p.finEnabled : appConfig.velocityFinEnabled,
               velocityAntiSpam: p.velocityAntiSpam !== undefined ? !!p.velocityAntiSpam : (p.antiSpam !== undefined ? !!p.antiSpam : appConfig.velocityAntiSpam),
               velocityCooldownSeconds: p.velocityCooldownSeconds !== undefined ? Math.round(+p.velocityCooldownSeconds) : (p.cooldownSeconds !== undefined ? Math.round(+p.cooldownSeconds) : appConfig.velocityCooldownSeconds),
@@ -2004,17 +2032,23 @@ const server = http.createServer((req, res) => {
           // Avant, deux declenchements rapproches pouvaient ecrire une valeur plus vieille que
           // celle que l'overlay venait de calculer (l'echo SSE lui remis a jour) → FIN PRÉVUE
           // qui derive de 15 min entre l'ecran et la config. Le calcul est dorenavant ici seul.
+          /* V51 : l'increment (objectif atteint, ou bouton « +N min » du panneau) ne touche
+             qu'aux minutes GAGNEES. L'heure reglee reste ce que le streamer a saisi. */
           if (p.velocityFinAdd !== undefined) {
-            const add = Math.max(-1440, Math.min(1440, Math.round(+p.velocityFinAdd || 0)));
-            let tot = appConfig.velocityFinHour * 60 + appConfig.velocityFinMinute + add;
-            tot = ((tot % 1440) + 1440) % 1440;
-            appConfig.velocityFinHour = Math.floor(tot / 60);
-            appConfig.velocityFinMinute = tot % 60;
+            const add = Math.max(-1440, Math.min(1440, intOr(p.velocityFinAdd, 0)));
+            appConfig.velocityFinAdded = Math.max(0, Math.min(1440, appConfig.velocityFinAdded + add));
+            appConfig.velocityFinAddedAt = appConfig.velocityFinAdded > 0 ? Date.now() : 0;
+            console.log('[velocite] ' + (add >= 0 ? '+' : '') + add + ' min → ' + appConfig.velocityFinAdded + ' min gagnees, fin prevue affichee ' + finAffichee(appConfig));
           }
-          if (p.velocityFinHour !== undefined) appConfig.velocityFinHour = Math.max(0, Math.min(23, Math.round(+p.velocityFinHour || 21)));
-          if (p.finHour !== undefined) appConfig.velocityFinHour = Math.max(0, Math.min(23, Math.round(+p.finHour || 21)));
-          if (p.velocityFinMinute !== undefined) appConfig.velocityFinMinute = Math.max(0, Math.min(59, Math.round(+p.velocityFinMinute || 30)));
-          if (p.finMinute !== undefined) appConfig.velocityFinMinute = Math.max(0, Math.min(59, Math.round(+p.finMinute || 30)));
+          if (p.velocityFinAdded !== undefined) {   // remise a zero (ou valeur absolue) des minutes gagnees
+            appConfig.velocityFinAdded = Math.max(0, Math.min(1440, intOr(p.velocityFinAdded, 0)));
+            appConfig.velocityFinAddedAt = appConfig.velocityFinAdded > 0 ? Date.now() : 0;
+            console.log('[velocite] minutes gagnees fixees a ' + appConfig.velocityFinAdded + ', fin prevue affichee ' + finAffichee(appConfig));
+          }
+          if (p.velocityFinHour !== undefined) appConfig.velocityFinHour = Math.max(0, Math.min(23, intOr(p.velocityFinHour, appConfig.velocityFinHour)));
+          if (p.finHour !== undefined) appConfig.velocityFinHour = Math.max(0, Math.min(23, intOr(p.finHour, appConfig.velocityFinHour)));
+          if (p.velocityFinMinute !== undefined) appConfig.velocityFinMinute = Math.max(0, Math.min(59, intOr(p.velocityFinMinute, appConfig.velocityFinMinute)));
+          if (p.finMinute !== undefined) appConfig.velocityFinMinute = Math.max(0, Math.min(59, intOr(p.finMinute, appConfig.velocityFinMinute)));
           if (p.velocityFinEnabled !== undefined) appConfig.velocityFinEnabled = !!p.velocityFinEnabled;
           if (p.finEnabled !== undefined) appConfig.velocityFinEnabled = !!p.finEnabled;
           if (p.velocityBoostMult !== undefined || p.boostMult !== undefined)

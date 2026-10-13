@@ -877,6 +877,13 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
                 </div>
               </div>
             </div>
+            <!-- V51 : l'heure réglée et les minutes gagnées sont deux choses séparées, toujours visibles. -->
+            <div class="note" id="finCompo" style="margin-top:10px;line-height:1.6"></div>
+            <div class="row" style="margin-top:8px">
+              <button type="button" class="btn ghost small" id="btnFinAdd">+15 MIN (COMME UN OBJECTIF ATTEINT)</button>
+              <button type="button" class="btn ghost small" id="btnFinResetAdd">REMETTRE LES MINUTES GAGNÉES À 0</button>
+            </div>
+            <div class="note" style="margin-top:8px">Ce que tu règles ici, c'est <b>ton heure</b> : les objectifs ne la modifient jamais. Chaque objectif atteint ajoute la durée aux <b>minutes gagnées</b>, mémorisées par le pont (un redémarrage en cours de live les garde). Si tu changes ton heure, l'affichage suit en conservant ce que le chat a gagné. Au lancement du pont, des minutes gagnées depuis plus de 6 h sont remises à 0 : chaque stream repart de ton heure.</div>
           </div>
           <div class="row grow" style="margin-top:12px">
             <div class="field" style="margin-top:0">
@@ -1547,6 +1554,22 @@ function paintVelMult(){
   }
 }
 function fmtSec(mm,ss){ return (mm>0 ? mm+' min ' : '') + ss + ' s'; }
+/* V51 : « 0 » saisi = 0 (minuit, 0 minute). L'ancien « +value || défaut » renvoyait 21 pour 0. */
+function numField(id, def){
+  const el=$(id); if(!el) return def;
+  const v=String(el.value).trim(); if(v==='') return def;
+  const n=Math.round(Number(v)); return isFinite(n)?n:def;
+}
+let finAddedCur=0;   // minutes gagnées, telles que le pont les connaît (lecture seule ici)
+function finHM(total){ total=((total%1440)+1440)%1440; return String(Math.floor(total/60)).padStart(2,'0')+'H'+String(total%60).padStart(2,'0'); }
+function paintFinCompo(){
+  const el=$('finCompo'); if(!el) return;
+  const h=Math.max(0,Math.min(23,numField('velocityFinHour',velocityDef.finHour)));
+  const m=Math.max(0,Math.min(59,numField('velocityFinMinute',velocityDef.finMinute)));
+  const base=h*60+m;
+  el.innerHTML='Ton heure : <b>'+finHM(base)+'</b> &nbsp;·&nbsp; minutes gagnées par le chat : <b>+'+finAddedCur+' min</b> &nbsp;·&nbsp; affiché dans OBS : <b>FIN PRÉVUE : '+finHM(base+finAddedCur)+'</b>';
+  const b=$('btnFinAdd'); if(b) b.textContent='+'+Math.max(1,Math.min(120,numField('velocityGoalDuration',velocityDef.goalDurationMinutes)))+' MIN (COMME UN OBJECTIF ATTEINT)';
+}
 function getVelocityForm(){
   return {
     equilibriumMPM: Math.max(1, Math.round(+$('velocityEquilibrium').value || velocityDef.equilibriumMPM)),
@@ -1561,8 +1584,8 @@ function getVelocityForm(){
     velocityEnabled: !!$('velocityEnabled').checked,
     goalThreshold: Math.max(10, Math.min(99, Math.round(+$('velocityGoalThreshold').value || velocityDef.goalThreshold))),
     goalDurationMinutes: Math.max(1, Math.min(120, Math.round(+$('velocityGoalDuration').value || velocityDef.goalDurationMinutes))),
-    finHour: Math.max(0, Math.min(23, Math.round(+$('velocityFinHour').value || velocityDef.finHour))),
-    finMinute: Math.max(0, Math.min(59, Math.round(+$('velocityFinMinute').value || velocityDef.finMinute))),
+    finHour: Math.max(0, Math.min(23, numField('velocityFinHour', velocityDef.finHour))),
+    finMinute: Math.max(0, Math.min(59, numField('velocityFinMinute', velocityDef.finMinute))),
     finEnabled: !!$('velocityFinEnabled').checked,
     antiSpam: $('velocityAntiSpam') ? !!$('velocityAntiSpam').checked : true,
     cooldownSeconds: Math.max(0, Math.min(120, Math.round($('velocityCooldown') ? +$('velocityCooldown').value : velocityDef.cooldownSeconds) || 0)),
@@ -1602,6 +1625,8 @@ function setVelocityForm(c){
   if($('velocityGoalDuration'))$('velocityGoalDuration').value=gdur;
   if($('velocityFinHour'))$('velocityFinHour').value=finH;
   if($('velocityFinMinute'))$('velocityFinMinute').value=finM;
+  if(s.velocityFinAdded!=null) finAddedCur=Math.max(0,Math.round(+s.velocityFinAdded||0));
+  paintFinCompo();
   if($('velocityFinEnabled'))$('velocityFinEnabled').checked=!!finEn;
   const spam=s.velocityAntiSpam!=null?s.velocityAntiSpam:(s.antiSpam!=null?s.antiSpam:velocityDef.antiSpam);
   const cd=s.velocityCooldownSeconds!=null?s.velocityCooldownSeconds:(s.cooldownSeconds!=null?s.cooldownSeconds:velocityDef.cooldownSeconds);
@@ -1657,6 +1682,16 @@ if(velEnabledEl){
 }
 const vhEl=$('velocityHold');
 if(vhEl) vhEl.addEventListener('input',()=>paintVelMult());
+['velocityFinHour','velocityFinMinute','velocityGoalDuration'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('input',paintFinCompo); });
+const btnFinAdd=$('btnFinAdd');
+if(btnFinAdd) btnFinAdd.addEventListener('click',async()=>{
+  const add=Math.max(1,Math.min(120,numField('velocityGoalDuration',velocityDef.goalDurationMinutes)));
+  try{ const r=await post(API+'/api/config',{velocityFinAdd:add}); if(r&&r.config){ finAddedCur=r.config.velocityFinAdded||0; paintFinCompo(); } toast('+'+add+' min ajoutées'); }catch(e){ toast('Pont injoignable'); }
+});
+const btnFinResetAdd=$('btnFinResetAdd');
+if(btnFinResetAdd) btnFinResetAdd.addEventListener('click',async()=>{
+  try{ const r=await post(API+'/api/config',{velocityFinAdded:0}); finAddedCur=0; paintFinCompo(); toast('Minutes gagnées remises à 0'); }catch(e){ toast('Pont injoignable'); }
+});
 const velMultRow=$('velMultRow');
 if(velMultRow) velMultRow.addEventListener('click',async e=>{
   const b=e.target.closest && e.target.closest('.velMult__b'); if(!b) return;
@@ -2314,6 +2349,9 @@ if(btnFinDebat)btnFinDebat.addEventListener('click',async()=>{await post(API+'/a
             const bm=m.velocityBoostMult!==undefined?m.velocityBoostMult:m.boostMult;
             if(bm!==undefined){ velMultSel=Math.max(1,Math.min(2,Math.round((+bm||1)*4)/4)); paintVelMult(); }
           }
+          /* V51 : les minutes gagnees changent quand un objectif est atteint -> on met a jour la
+             ligne de composition (lecture seule). Aucun champ de saisie n'est touche. */
+          if(m.finAdded!==undefined){ finAddedCur=Math.max(0,Math.round(+m.finAdded||0)); paintFinCompo(); }
         }
       }catch(err){}
     };
