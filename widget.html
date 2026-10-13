@@ -422,6 +422,31 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
 }
 .velocity__chrono.is-on{display:block;animation:chronoPulse .9s ease-in-out infinite}
 @keyframes chronoPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+/* V50 — SURSIS. Sous le seuil, le chrono ne repart plus de zero : il se FIGE (bleu glace,
+   plus de pulsation) pendant N secondes. A droite, le compte a rebours du sursis ; en bas de
+   la pastille, un filet blanc qui se vide. Remonter au seuil dans ce delai relance le chrono
+   la ou il s'etait arrete. Largeurs mesurees (Hanken 800) : « 01:23 » 37,5 px + « PAUSE 90 S »
+   ~68 px pour 122 px disponibles. */
+.velocity__chrono{position:relative;overflow:hidden}
+.velocity__chrono b{font:inherit}
+.velocity__chrono i{display:none;font-style:normal;font-size:12px;font-weight:800;letter-spacing:.04em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.velocity__chrono.is-on.is-grace{
+  display:flex;justify-content:space-between;align-items:center;gap:6px;
+  animation:none;
+  color:#06111E;
+  background:linear-gradient(90deg,#9CC7F0,#7FB5EA);
+  border-color:rgba(170,210,255,.9);
+  box-shadow:0 0 16px rgba(127,181,234,.38);
+}
+.velocity__chrono.is-grace i{display:inline}
+.velocity__chrono.is-grace::after{
+  content:'';position:absolute;left:0;bottom:0;height:3px;
+  width:var(--grace,100%);background:rgba(255,255,255,.92);
+}
+#velocityWrap.is-grace{
+  border-color:rgba(140,190,240,.42);
+  box-shadow:0 28px 80px rgba(0,0,0,.68),0 0 34px rgba(127,181,234,.22),inset 0 1px 0 rgba(255,255,255,.10);
+}
 .velocity__boost{
   font-family:'Outfit',sans-serif;font-size:15px;font-weight:900;letter-spacing:.04em;line-height:1;
   color:#08101C;text-align:center;
@@ -723,7 +748,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothi
       <span class="velocity__pct" id="velocityPct">0%</span>
       <span class="velocity__mpm" id="velocityMpm">0 MPM</span>
       <span class="velocity__goal" id="velocityGoal">90% → +15 MIN</span>
-      <span class="velocity__chrono" id="velocityChrono">02:00</span>
+      <span class="velocity__chrono" id="velocityChrono"><b id="velocityChronoTime">02:00</b><i id="velocityChronoGrace">PAUSE 15 S</i></span>
       <span class="velocity__boost" id="velocityBoost">×1,25</span>
       <span class="velocity__fin" id="velocityFin">FIN PRÉVUE : 21H30</span>
     </div>
@@ -1659,6 +1684,8 @@ function setGoal(g) {
   const pctEl = document.getElementById('velocityPct');
   const goalEl = document.getElementById('velocityGoal');
   const chronoEl = document.getElementById('velocityChrono');
+  const chronoTimeEl = document.getElementById('velocityChronoTime');
+  const chronoGraceEl = document.getElementById('velocityChronoGrace');
   const boostEl = document.getElementById('velocityBoost');
   const finEl = document.getElementById('velocityFin');
   if (!wrap || !fill) return;
@@ -1674,6 +1701,7 @@ function setGoal(g) {
     goalThreshold: 90,
     goalDurationMinutes: 15,
     holdDurationSeconds: 120,
+    graceSeconds: 15,        // V50 : sursis sous le seuil (0 = le chrono repart de zero, comme avant)
     boostMult: 1,
     finHour: 21,
     finMinute: 30,
@@ -1691,6 +1719,8 @@ function setGoal(g) {
   let lastFrame = performance.now();
   let held = 0;            // secondes « tenues » au-dessus du seuil (déjà multipliées)
   let aboveStart = 0;      // compat : instant où le seuil a été franchi
+  let inGrace = false;     // V50 : sursis en cours (chrono figé sous le seuil)
+  let graceLeft = 0;       // V50 : secondes de sursis restantes
   let isOverdrive = false;
   let excludedCache = null;
 
@@ -1778,13 +1808,14 @@ function setGoal(g) {
   function resetVelocity(full) {
     if (full) { mpmScore = 0; userHits.clear(); }
     velocity = 0; displayed = 0; aboveStart = 0; held = 0; isOverdrive = false;
-    wrap.classList.remove('is-overdrive','is-hot','is-goal','is-boost');
+    inGrace = false; graceLeft = 0;
+    wrap.classList.remove('is-overdrive','is-hot','is-goal','is-boost','is-grace');
     if (boostEl) boostEl.classList.remove('is-on');
     if (fill) fill.style.height = '0%';
     if (glow) { glow.style.bottom='0%'; glow.style.opacity='0'; }
     if (pctEl) pctEl.textContent='0%';
     if (mpmEl) mpmEl.textContent='0 MPM';
-    if (chronoEl) chronoEl.classList.remove('is-on');
+    if (chronoEl) chronoEl.classList.remove('is-on','is-grace');
   }
 
   function addMinutesToFin(mins) {
@@ -1835,6 +1866,8 @@ function setGoal(g) {
     if (src.velocityGoalDuration !== undefined) cfg.goalDurationMinutes = Math.max(1, Math.min(120, Math.round(toNum(src.velocityGoalDuration, 15))));
     if (src.holdDurationSeconds !== undefined) cfg.holdDurationSeconds = Math.max(5, Math.min(600, Math.round(toNum(src.holdDurationSeconds, 120))));
     if (src.velocityHold !== undefined) cfg.holdDurationSeconds = Math.max(5, Math.min(600, Math.round(toNum(src.velocityHold, 120))));
+    if (src.graceSeconds !== undefined) cfg.graceSeconds = Math.max(0, Math.min(90, Math.round(toNum(src.graceSeconds, 15))));
+    if (src.velocityGrace !== undefined) cfg.graceSeconds = Math.max(0, Math.min(90, Math.round(toNum(src.velocityGrace, 15))));
     if (src.velocityBoostMult !== undefined || src.boostMult !== undefined) {
       const bm = Number(src.velocityBoostMult !== undefined ? src.velocityBoostMult : src.boostMult);
       cfg.boostMult = isFinite(bm) ? Math.max(1, Math.min(2, Math.round(bm * 4) / 4)) : 1;
@@ -1928,20 +1961,28 @@ function setGoal(g) {
        mesurant le temps ecoule : des qu'on repasse sous 100 %, le chrono retrouve sa vitesse
        normale SANS repartir de zero. Le badge xN n'apparait qu'a 100 % : pas d'indicateur en
        vitesse normale, comme demande. */
+    /* V50 : c'est le POURCENTAGE AFFICHE qui fait foi, pas la valeur interne a virgule.
+       Avant, « 90% » a l'ecran pouvait etre 89,6 en interne : chrono a l'arret alors que le
+       viewer lisait 90. Desormais 90 affiche = dans la zone, 89 affiche = dehors, toujours. */
     const th = cfg.goalThreshold;
-    const at100 = Math.round(displayed) >= 100;
+    const pctShown = Math.round(displayed);
+    const inZone = pctShown >= th;
+    const at100 = pctShown >= 100;
     const boosting = at100 && cfg.boostMult > 1;
-    if (displayed >= th) {
-      if (!aboveStart) aboveStart = now;
-      held += dt * (boosting ? cfg.boostMult : 1);
+    const paintTime = () => {
       const remain = Math.max(0, cfg.holdDurationSeconds - held);
-      if (chronoEl) {
-        const mm = String(Math.floor(remain/60)).padStart(2,'0');
-        const ss = String(Math.floor(remain%60)).padStart(2,'0');
-        chronoEl.textContent = mm + ':' + ss;
-        chronoEl.classList.add('is-on');
-      }
+      const mm = String(Math.floor(remain/60)).padStart(2,'0');
+      const ss = String(Math.floor(remain%60)).padStart(2,'0');
+      if (chronoTimeEl) chronoTimeEl.textContent = mm + ':' + ss;
+    };
+    if (inZone) {
+      if (!aboveStart) aboveStart = now;
+      inGrace = false; graceLeft = 0;
+      held += dt * (boosting ? cfg.boostMult : 1);
+      paintTime();
+      if (chronoEl) { chronoEl.classList.add('is-on'); chronoEl.classList.remove('is-grace'); }
       wrap.classList.add('is-goal','is-hot');
+      wrap.classList.remove('is-grace');
       if (boostEl) boostEl.classList.toggle('is-on', boosting);
       wrap.classList.toggle('is-boost', boosting);
       if (held >= cfg.holdDurationSeconds && !isOverdrive) {
@@ -1950,10 +1991,26 @@ function setGoal(g) {
         setTimeout(()=>{ isOverdrive=false; }, 1000);
       }
     } else {
-      aboveStart = 0; held = 0;
-      if (chronoEl) chronoEl.classList.remove('is-on');
-      if (boostEl) boostEl.classList.remove('is-on');
-      wrap.classList.remove('is-goal','is-boost');
+      /* V50 : sous le seuil. Si un chrono etait en cours, SURSIS : il se fige au lieu de
+         repartir de zero, le temps que le chat remonte. Sursis ecoule = tour perdu (comme avant). */
+      if (held > 0 && cfg.graceSeconds > 0 && !inGrace) { inGrace = true; graceLeft = cfg.graceSeconds; }
+      if (inGrace) graceLeft -= dt;
+      if (inGrace && graceLeft > 0) {
+        paintTime();
+        if (chronoEl) {
+          chronoEl.classList.add('is-on','is-grace');
+          chronoEl.style.setProperty('--grace', (graceLeft / Math.max(1, cfg.graceSeconds) * 100).toFixed(1) + '%');
+          if (chronoGraceEl) chronoGraceEl.textContent = 'PAUSE ' + Math.ceil(graceLeft) + ' S';
+        }
+        wrap.classList.add('is-grace');
+        wrap.classList.remove('is-goal','is-boost');
+        if (boostEl) boostEl.classList.remove('is-on');
+      } else {
+        inGrace = false; graceLeft = 0; aboveStart = 0; held = 0;
+        if (chronoEl) chronoEl.classList.remove('is-on','is-grace');
+        if (boostEl) boostEl.classList.remove('is-on');
+        wrap.classList.remove('is-goal','is-boost','is-grace');
+      }
       wrap.classList.toggle('is-hot', displayed >= Math.max(60, th - 12));
     }
 

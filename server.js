@@ -95,6 +95,7 @@ const DEFAULT_CONFIG = {
   velocityDecay: 0.14,
   velocityHold: 120,
   velocityBoostMult: 1,   // V43 : a 100 %, le chrono descend xN (1 = pas d'acceleration)
+  velocityGrace: 15,      // V50 : sursis (s) quand ca repasse sous le seuil, chrono fige au lieu de repartir (0 = off)
   velocityBarWidth: 30,
   velocityBarHeight: 700,
   velocityShowMetrics: true,
@@ -324,6 +325,7 @@ function velocityConfigFields(src) {
     climbSensitivity: s.velocityClimb,
     decayRate: s.velocityDecay,
     holdDurationSeconds: s.velocityHold,
+    graceSeconds: s.velocityGrace,
     barWidth: s.velocityBarWidth,
     barHeight: s.velocityBarHeight,
     showMetrics: s.velocityShowMetrics,
@@ -1917,6 +1919,7 @@ const server = http.createServer((req, res) => {
               velocityClimb: p.climbSensitivity !== undefined ? +p.climbSensitivity : appConfig.velocityClimb,
               velocityDecay: p.decayRate !== undefined ? +p.decayRate : appConfig.velocityDecay,
               velocityHold: p.holdDurationSeconds !== undefined ? Math.round(+p.holdDurationSeconds) : appConfig.velocityHold,
+              velocityGrace: p.graceSeconds !== undefined ? Math.max(0, Math.min(90, Math.round(+p.graceSeconds || 0))) : appConfig.velocityGrace,
               velocityBarWidth: p.barWidth !== undefined ? Math.round(+p.barWidth) : appConfig.velocityBarWidth,
               velocityBarHeight: p.barHeight !== undefined ? Math.round(+p.barHeight) : appConfig.velocityBarHeight,
               velocityShowMetrics: p.showMetrics !== undefined ? !!p.showMetrics : appConfig.velocityShowMetrics,
@@ -1983,6 +1986,8 @@ const server = http.createServer((req, res) => {
           if (p.decayRate !== undefined) appConfig.velocityDecay = Math.max(0.02, Math.min(5, +p.decayRate || 0.14));
           if (p.velocityHold !== undefined) appConfig.velocityHold = Math.max(5, Math.min(600, Math.round(+p.velocityHold || 120)));
           if (p.holdDurationSeconds !== undefined) appConfig.velocityHold = Math.max(5, Math.min(600, Math.round(+p.holdDurationSeconds || 120)));
+          if (p.velocityGrace !== undefined) appConfig.velocityGrace = Math.max(0, Math.min(90, Math.round(+p.velocityGrace || 0)));
+          if (p.graceSeconds !== undefined) appConfig.velocityGrace = Math.max(0, Math.min(90, Math.round(+p.graceSeconds || 0)));
           if (p.velocityBarWidth !== undefined) appConfig.velocityBarWidth = Math.max(12, Math.min(40, Math.round(+p.velocityBarWidth || 30)));
           if (p.barWidth !== undefined) appConfig.velocityBarWidth = Math.max(12, Math.min(40, Math.round(+p.barWidth || 30)));
           if (p.velocityBarHeight !== undefined) appConfig.velocityBarHeight = Math.max(280, Math.min(900, Math.round(+p.velocityBarHeight || 700)));
