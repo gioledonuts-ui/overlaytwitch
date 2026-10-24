@@ -180,6 +180,12 @@ Il faut donc générer UN token avec les 3 droits d'un coup.
 > 💡 Ton ID de chaîne est trouvé **automatiquement** par le programme (à partir du
 > token) : tu n'as rien d'autre à chercher.
 >
+> **Objectifs de subs** : dès qu'un seuil est atteint, il reste coché même si Twitch
+> indique moins de subs au mois suivant. Si toute la file est cochée, aucun nouvel
+> objectif n'apparaît tout seul : ajoute le prochain dans l'onglet **OBJECTIF** quand
+> tu le souhaites. Les boutons de chaque palier permettent de le valider ou de le
+> réactiver manuellement.
+>
 > ⚠️ **Important** : si tu avais déjà un `POLL_OAUTH` avec seulement le droit
 > « sondages », **régénère-le avec ce nouveau lien** (il contient les 3 droits),
 > sinon le sub goal et les follows ne fonctionneront pas.

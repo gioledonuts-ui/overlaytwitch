@@ -215,12 +215,15 @@ la caméra à travers), bordure 1 px, coins 12 px, pastille violet pulsée.
   la **disparition progressive se fait en HAUT** (fondu 64 px) là où les messages
   sortent — rendu propre, pas d'espace mort.
 - **Typographie** : pseudo en **Outfit 700 19px** (max-width 170, mis en avant, lisible) + texte en **Inter 500 18px** line-height 1.5 (lisibilité maximale). Titre du chat en Bebas 18px. Sub-goal label + compteur en Outfit 800 18px, barre 10px.
-- **SUB GOAL** (rallonge sous le chat, séparateur propre) : label, nombre actuel /
-  objectif et barre de progression, personnalisable **à tout moment** :
-  1. `POST /api/goal {"current":48,"target":60,"label":"SUB GOAL"}` (panel, script, Stream Deck…)
-  2. Env au démarrage du pont : `SUB_GOAL_LABEL` / `SUB_GOAL_CURRENT` / `SUB_GOAL_TARGET`
-  3. Plus tard : branchement API Twitch (liste des subs de la chaîne) → le compteur
-     suit automatiquement les sub/gagnés et perdus.
+- **SUB GOAL** (rallonge sous le chat) : file de paliers, compteur et historique ✓.
+  Chaque palier se valide quand son seuil est dépassé et reste coché, même si le
+  total Twitch baisse ensuite (ex. remise à zéro mensuelle). Le panneau permet aussi
+  de valider ou réactiver manuellement un palier. Aucun palier suivant n'est créé
+  automatiquement : tu ajoutes le prochain quand tu le décides.
+  - `POST /api/goal {"current":48,"target":60,"label":"SUB GOAL"}` règle le compteur.
+  - `POST /api/goal {"completeTarget":50}` / `POST /api/goal {"uncompleteTarget":50}`
+    valident / réactivent explicitement le palier correspondant.
+  - En mode auto, le compteur suit l'API Twitch des abonnements de la chaîne.
 - En-tête du panneau : **« CHAT DE 7GIONNY »**.
 - **Monogramme 7G** : signature discrète (petit carré violet, Bebas) présente sur les
   3 zones — carte de débat (haut-gauche), chat (haut-droit de l'en-tête)
