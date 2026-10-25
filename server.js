@@ -86,7 +86,8 @@ const DEFAULT_CONFIG = {
   // prochain objectif prepare a l'avance (compat V30, affiche en dessous, non checke)
   subGoalNextLabel: '',
   subGoalNextTarget: 0,
-  subGoalHistory: [], // [{label,target,completedAt,currentAtCompletion}]
+  subGoalHistory: [], // validations persistantes, auto ou manuelles
+  subGoalReopened: [], // cibles explicitement dévalidées tant que le compteur reste au-dessus
   chatTitle: 'CHAT DE 7GIONNY',
   accent: '#9146FF',
   // velocite V5 : seuil % + duree ajout + chrono verrou + fin prevue
@@ -278,9 +279,11 @@ function normalizeExcludedUsers(v) {
 
 let appConfig = Object.assign({}, DEFAULT_CONFIG);
 let legacyNeedsSave = false;
+let savedGoalQueuePresent = false;
 try {
   if (fs.existsSync(PERSIST_FILE)) {
     const saved = JSON.parse(fs.readFileSync(PERSIST_FILE, 'utf8')) || {};
+    savedGoalQueuePresent = Object.prototype.hasOwnProperty.call(saved, 'subGoalQueue');
     appConfig = Object.assign({}, DEFAULT_CONFIG, saved);
   }
 } catch (e) { console.warn('[config] config-perso.json illisible :', e.message); }
@@ -519,39 +522,41 @@ function normalizeQueue(q) {
   return dedup;
 }
 
-// si queue vide mais ancien next existe, on l'injecte dans queue pour compat
-if ((!appConfig.subGoalQueue || appConfig.subGoalQueue.length===0) && appConfig.subGoalNextTarget>0) {
+// Compatibilité des anciennes configs : un ancien « prochain objectif » est migré.
+// Le dernier objectif par défaut n'est créé qu'au premier démarrage / migration (pas
+// si une file vide a été explicitement enregistrée par le streamer).
+if ((!appConfig.subGoalQueue || appConfig.subGoalQueue.length===0) && !savedGoalQueuePresent && appConfig.subGoalNextTarget>0) {
   appConfig.subGoalQueue = [{ label: appConfig.subGoalNextLabel||appConfig.subGoalLabel, target: appConfig.subGoalNextTarget }];
 }
-// si queue vide mais current target existe, on l'injecte aussi (au moins 1 objectif)
-if (!appConfig.subGoalQueue || appConfig.subGoalQueue.length===0) {
+if ((!appConfig.subGoalQueue || appConfig.subGoalQueue.length===0) && !savedGoalQueuePresent && appConfig.subGoalTarget>0) {
   appConfig.subGoalQueue = [{ label: appConfig.subGoalLabel, target: appConfig.subGoalTarget }];
 }
 appConfig.subGoalQueue = normalizeQueue(appConfig.subGoalQueue);
+appConfig.subGoalHistory = normalizeGoalHistory(appConfig.subGoalHistory);
+appConfig.subGoalReopened = normalizeGoalTargets(appConfig.subGoalReopened);
 
 const goalState = {
+  active: true,
+  reopened: false,
   label: appConfig.subGoalLabel,
   current: appConfig.subGoalAuto ? 0 : appConfig.subGoalManual,
   target: appConfig.subGoalTarget,
   nextLabel: appConfig.subGoalNextLabel || '',
   nextTarget: appConfig.subGoalNextTarget || 0,
-  history: Array.isArray(appConfig.subGoalHistory) ? appConfig.subGoalHistory.slice(-10) : [],
+  history: appConfig.subGoalHistory.slice(),
+  reopenedTargets: appConfig.subGoalReopened.slice(),
   queue: appConfig.subGoalQueue.slice(), // tous les objectifs definis tries
-  upcoming: [] // ceux > current, a venir
+  upcoming: [] // objectifs non coches apres l'actuel
 };
+// En mode auto, 0 au démarrage est provisoire tant que Twitch n'a pas répondu.
+let subGoalCountKnown = !appConfig.subGoalAuto;
 
-// init V31 : calcule actuel/upcoming/history depuis queue + current
-// on ne peut pas appeler recompute avant sa declaration, on le fera apres definition
 function broadcastGoal() {
-  // compat : next = premier upcoming
-  if (goalState.upcoming && goalState.upcoming.length>0) {
+  // Compatibilité API : next = premier objectif non coché à venir.
+  if (goalState.active && goalState.upcoming && goalState.upcoming.length>0) {
     goalState.nextLabel = goalState.upcoming[0].label;
     goalState.nextTarget = goalState.upcoming[0].target;
   } else {
-    /* Plus aucun objectif a venir : on EFFACE les anciens champs.
-       Avant, on ecrivait « goalState.nextTarget || 0 », ce qui conservait la
-       valeur precedente : l'overlay reaffichait alors le dernier objectif en
-       double, a 0 et marque « A VENIR ». C'est le sub goal fantome. */
     goalState.nextLabel = '';
     goalState.nextTarget = 0;
   }
@@ -559,103 +564,106 @@ function broadcastGoal() {
   for (const res of sse) res.write(payload);
 }
 
-function saveGoalHistory() {
-  appConfig.subGoalHistory = goalState.history.slice(-10);
+function normalizeGoalTargets(list) {
+  if (!Array.isArray(list)) return [];
+  return Array.from(new Set(list.map(v => Math.round(Number(v))).filter(v => Number.isFinite(v) && v > 0)));
+}
+function normalizeGoalHistory(list) {
+  if (!Array.isArray(list)) return [];
+  const byTarget = new Map();
+  for (const h of list) {
+    if (!h || typeof h !== 'object') continue;
+    const target = Math.round(Number(h.target));
+    if (!Number.isFinite(target) || target < 1 || byTarget.has(target)) continue;
+    const rawCurrent = Number(h.currentAtCompletion);
+    byTarget.set(target, {
+      label: String(h.label || 'SUB GOAL').slice(0,24),
+      target,
+      currentAtCompletion: Number.isFinite(rawCurrent) ? Math.max(0, Math.round(rawCurrent)) : target,
+      completedAt: typeof h.completedAt === 'string' && h.completedAt ? h.completedAt : new Date().toISOString(),
+      ...(h.manual ? { manual: true } : {})
+    });
+  }
+  return Array.from(byTarget.values()).sort((a,b)=>a.target-b.target);
+}
+function addGoalCompletion(q, current, manual = false) {
+  if (goalState.history.some(h => h.target === q.target)) return;
+  goalState.history.push({
+    label: q.label || 'SUB GOAL',
+    target: q.target,
+    currentAtCompletion: Math.max(q.target, Math.round(Number(current) || 0)),
+    completedAt: new Date().toISOString(),
+    ...(manual ? { manual: true } : {})
+  });
+}
+function clearGoalHistoryManually() {
+  const previouslyCompleted = goalState.history.map(h => h.target);
+  goalState.history = [];
+  appConfig.subGoalHistory = [];
+  const reached = (appConfig.subGoalQueue || []).filter(q => q.target <= goalState.current).map(q => q.target);
+  // Si le total auto n'a pas encore été lu, préserver provisoirement les ✓ retirés
+  // jusqu'à la première réponse Twitch, qui dira si le palier est encore dépassé.
+  const pending = subGoalCountKnown ? [] : previouslyCompleted;
+  appConfig.subGoalReopened = normalizeGoalTargets((appConfig.subGoalReopened || []).concat(reached, pending));
   saveConfig();
 }
 
-// recompute V32 : logique "plus proche au-dessus"
-// - queue trie petit->grand
-// - actuel = plus petit target > currentCount, sinon dernier (même si dépassé)
-// - upcoming = ceux > actuel
-// - history : on n'auto-ajoute QUE lors d'une transition (ancien actuel <= cur et différent du nouveau)
-//   + au démarrage, si history vide, on peuple avec tous les queue <= cur sauf actuel (pour premier affichage)
-//   + clearHistory filtre aussi queue > cur pour éviter réapparition immédiate
-function recomputeGoalsFromCount(opts = {}) {
-  const cur = goalState.current;
+// Un objectif atteint reste coché même si le compteur Twitch redescend (nouveau mois).
+// Le seul retour en arrière possible est une action explicite du streamer.
+function recomputeGoalsFromCount() {
+  const cur = Math.max(0, Math.round(Number(goalState.current) || 0));
   const queue = normalizeQueue(appConfig.subGoalQueue);
   appConfig.subGoalQueue = queue;
-  goalState.queue = queue.slice();
 
-  if (queue.length === 0) {
-    goalState.upcoming = [];
-    saveConfig();
-    broadcastGoal();
-    return;
+  // Une dévalidation manuelle ne bloque l'auto-validation que tant que le compteur
+  // est encore au-dessus du seuil. Après être repassé dessous, la prochaine traversée
+  // du seuil validera à nouveau l'objectif normalement.
+  let reopened = normalizeGoalTargets(appConfig.subGoalReopened);
+  reopened = reopened.filter(t => queue.some(q => q.target === t) && (!subGoalCountKnown || cur >= t));
+  appConfig.subGoalReopened = reopened;
+  const reopenedSet = new Set(reopened);
+
+  goalState.history = normalizeGoalHistory(goalState.history);
+  // Tout objectif dont le seuil a été atteint est validé une fois et pour toutes.
+  for (const q of queue) {
+    if (q.target <= cur && !reopenedSet.has(q.target)) addGoalCompletion(q, cur, false);
   }
-
-  const sorted = queue.slice().sort((a,b)=>a.target-b.target);
-  const above = sorted.filter(q => q.target > cur);
-  let chosen;
-  let upcoming = [];
-  if (above.length > 0) {
-    chosen = above[0];
-    upcoming = above.slice(1);
-  } else {
-    chosen = sorted[sorted.length - 1];
-    upcoming = [];
-  }
-
-  // transition : ancien actuel terminé ?
-  const prevTarget = goalState.target;
-  const prevLabel = goalState.label;
-  const isNewCurrent = !prevTarget || chosen.target !== prevTarget;
-
-  if (isNewCurrent && prevTarget && prevTarget <= cur) {
-    // ancien objectif atteint → passe en history s'il n'y est pas déjà
-    if (!goalState.history.some(h=>h.target===prevTarget)) {
-      goalState.history.push({
-        label: prevLabel || 'SUB GOAL',
-        target: prevTarget,
-        currentAtCompletion: cur,
-        completedAt: new Date().toISOString()
-      });
-    }
-  }
-
-  // si history vide (premier démarrage) et qu'on a des objectifs déjà dépassés, on les met en history
-  // mais PAS après un clear explicite (opts.skipAutoHistory)
-  if (!opts.skipAutoHistory && goalState.history.length === 0) {
-    for (const q of sorted) {
-      if (q.target <= cur && q.target !== chosen.target) {
-        if (!goalState.history.some(h=>h.target===q.target)) {
-          goalState.history.push({
-            label: q.label,
-            target: q.target,
-            currentAtCompletion: cur,
-            completedAt: new Date().toISOString()
-          });
-        }
-      }
-    }
-  } else if (isNewCurrent) {
-    // si on a sauté plusieurs paliers d'un coup (ex: 2→10 avec 5 et 7 entre), on met les intermédiaires en history
-    for (const q of sorted) {
-      if (q.target <= cur && q.target !== chosen.target && q.target !== prevTarget) {
-        if (q.target > (prevTarget||0) && q.target < chosen.target) {
-          if (!goalState.history.some(h=>h.target===q.target)) {
-            goalState.history.push({
-              label: q.label,
-              target: q.target,
-              currentAtCompletion: cur,
-              completedAt: new Date().toISOString()
-            });
-          }
-        }
-      }
-    }
-  }
-
-  // tri history petit->grand, max 20
   goalState.history.sort((a,b)=>a.target-b.target);
-  if (goalState.history.length > 20) goalState.history = goalState.history.slice(-20);
   appConfig.subGoalHistory = goalState.history.slice();
 
-  goalState.label = chosen.label;
-  goalState.target = chosen.target;
+  const completedSet = new Set(goalState.history.map(h => h.target).filter(t => !reopenedSet.has(t)));
+  const remaining = queue.filter(q => !completedSet.has(q.target));
+  // Un objectif explicitement réouvert passe avant les paliers futurs ; sinon on prend
+  // le premier objectif non coché au-dessus du compteur. Aucun objectif n'est inventé.
+  const reopenedGoal = remaining.find(q => reopenedSet.has(q.target));
+  const nextAbove = remaining.find(q => q.target > cur);
+  const chosen = reopenedGoal || nextAbove || null;
+  const upcoming = chosen ? remaining.filter(q => q.target > chosen.target && q.target !== chosen.target) : [];
+
+  goalState.queue = queue.map(q => ({
+    label: q.label,
+    target: q.target,
+    completed: completedSet.has(q.target),
+    reopened: reopenedSet.has(q.target)
+  }));
+  goalState.reopenedTargets = reopened.slice();
+  goalState.current = cur;
+  goalState.active = !!chosen;
+  goalState.reopened = !!(chosen && reopenedSet.has(chosen.target));
+  goalState.history = goalState.history.slice();
   goalState.upcoming = upcoming;
-  appConfig.subGoalLabel = chosen.label;
-  appConfig.subGoalTarget = chosen.target;
+
+  if (chosen) {
+    goalState.label = chosen.label;
+    goalState.target = chosen.target;
+    appConfig.subGoalLabel = chosen.label;
+    appConfig.subGoalTarget = chosen.target;
+  } else {
+    // Aucun objectif en cours : garder la dernière config pour compatibilité,
+    // mais ne pas l'afficher et ne pas en recréer un automatiquement.
+    goalState.label = '';
+    goalState.target = 0;
+  }
   if (upcoming.length>0) {
     appConfig.subGoalNextLabel = upcoming[0].label;
     appConfig.subGoalNextTarget = upcoming[0].target;
@@ -672,11 +680,14 @@ function checkAndSwitchGoal() {
   // V32 : recompute avec logique plus proche
   const beforeLabel = goalState.label;
   const beforeTarget = goalState.target;
+  const beforeActive = goalState.active;
+  const beforeReopened = goalState.reopened;
   const beforeHistLen = goalState.history.length;
   recomputeGoalsFromCount();
-  const switched = (goalState.label !== beforeLabel || goalState.target !== beforeTarget || goalState.history.length !== beforeHistLen);
+  const switched = (goalState.active !== beforeActive || goalState.reopened !== beforeReopened || goalState.label !== beforeLabel || goalState.target !== beforeTarget || goalState.history.length !== beforeHistLen);
   if (switched) {
-    console.log(`[sub-goal] recompute → actuel ${goalState.label} ${goalState.current}/${goalState.target} (hist ${goalState.history.length}, upcoming ${goalState.upcoming.length})`);
+    const actuel = goalState.active ? `${goalState.label} ${goalState.current}/${goalState.target}` : 'aucun objectif actif';
+    console.log(`[sub-goal] recompute → ${actuel} (hist ${goalState.history.length}, upcoming ${goalState.upcoming.length})`);
   }
   return switched;
 }
@@ -1286,13 +1297,17 @@ async function syncSubGoal() {
     }
     const d = await r.json();
     console.log('[sub-goal] réponse reçue : total=' + d.total + ', points=' + d.points + ', data.length=' + ((d.data && d.data.length) || 0));
-    if (typeof d.total === 'number' && d.total !== goalState.current) {
+    if (typeof d.total === 'number') {
+      const changed = d.total !== goalState.current;
+      const wasKnown = subGoalCountKnown;
       goalState.current = d.total;
-      // check auto-switch avant broadcast (si depasse + next existe)
-      if (!checkAndSwitchGoal()) {
-        broadcastGoal();
+      subGoalCountKnown = true;
+      // Le premier retour Twitch est aussi important si le total vaut toujours 0 :
+      // il confirme ou libère les validations que le streamer a réactivées manuellement.
+      if (changed || !wasKnown) {
+        if (!checkAndSwitchGoal()) broadcastGoal();
       }
-      console.log('[sub-goal] synchronisé : ' + d.total + ' abonnés');
+      if (changed) console.log('[sub-goal] synchronisé : ' + d.total + ' abonnés');
     }
   } catch (e) {
     console.warn('[sub-goal] erreur :', e.message || e);
@@ -1835,9 +1850,9 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    /* — SUB GOAL (personnalisable à tout moment) —
-         GET  : état courant          POST : {current, target, label} → broadcast immédiat
-         Env de base : SUB_GOAL_LABEL / SUB_GOAL_CURRENT / SUB_GOAL_TARGET */
+    /* — SUB GOAL — compteur/file persistante.
+         POST {current,target,label} règle le compteur ; completeTarget / uncompleteTarget
+         valide ou réactive explicitement un palier. Les paliers atteints restent cochés. */
     if (u.pathname === '/api/goal' && req.method === 'GET') {
       return send(200, 'application/json', JSON.stringify(goalState));
     }
@@ -1845,6 +1860,29 @@ const server = http.createServer((req, res) => {
       readBody().then(d => {
         try {
           const p = JSON.parse(d || '{}');
+          if (p.completeTarget !== undefined || p.uncompleteTarget !== undefined) {
+            const rawTarget = p.completeTarget !== undefined ? p.completeTarget : p.uncompleteTarget;
+            const target = Math.round(Number(rawTarget));
+            const item = (appConfig.subGoalQueue || []).find(q => q.target === target);
+            if (!Number.isFinite(target) || target < 1 || !item) {
+              return send(404, 'application/json', JSON.stringify({ ok:false, err:'objectif introuvable' }));
+            }
+            if (p.completeTarget !== undefined) {
+              appConfig.subGoalReopened = normalizeGoalTargets(appConfig.subGoalReopened).filter(t => t !== target);
+              goalState.history = normalizeGoalHistory(goalState.history);
+              addGoalCompletion(item, goalState.current, true);
+            } else {
+              goalState.history = normalizeGoalHistory(goalState.history);
+              const wasCompleted = goalState.history.some(h => h.target === target);
+              goalState.history = goalState.history.filter(h => h.target !== target);
+              appConfig.subGoalReopened = normalizeGoalTargets(appConfig.subGoalReopened).filter(t => t !== target);
+              if (goalState.current >= target || (!subGoalCountKnown && wasCompleted)) appConfig.subGoalReopened.push(target);
+            }
+            appConfig.subGoalHistory = goalState.history.slice();
+            appConfig.subGoalReopened = normalizeGoalTargets(appConfig.subGoalReopened);
+            recomputeGoalsFromCount();
+            return send(200, 'application/json', JSON.stringify(goalState));
+          }
           // V32 gestion queue
           if (p.queue !== undefined && Array.isArray(p.queue)) {
             appConfig.subGoalQueue = normalizeQueue(p.queue);
@@ -1873,6 +1911,7 @@ const server = http.createServer((req, res) => {
             // aussi dans history si present
             goalState.history = goalState.history.map(h=> h.target===oldT ? Object.assign({}, h, { label:newL, target:newT }) : h);
             appConfig.subGoalHistory = goalState.history.slice();
+            appConfig.subGoalReopened = normalizeGoalTargets((appConfig.subGoalReopened||[]).map(t => t===oldT ? newT : t));
             appConfig.subGoalQueue = normalizeQueue(appConfig.subGoalQueue);
             saveConfig();
             recomputeGoalsFromCount();
@@ -1885,12 +1924,13 @@ const server = http.createServer((req, res) => {
               goalState.history = goalState.history.filter(h=>h.target!==rem);
               appConfig.subGoalHistory = goalState.history.slice();
             }
+            appConfig.subGoalReopened = normalizeGoalTargets((appConfig.subGoalReopened||[]).filter(t=>t!==rem));
             saveConfig();
-            recomputeGoalsFromCount({ skipAutoHistory: true });
+            recomputeGoalsFromCount();
             return send(200, 'application/json', JSON.stringify(goalState));
           }
           if (p.label !== undefined) { goalState.label = String(p.label).slice(0, 24); appConfig.subGoalLabel = goalState.label; }
-          if (p.current !== undefined) goalState.current = Math.max(0, Math.round(+p.current || 0));
+          if (p.current !== undefined) { goalState.current = Math.max(0, Math.round(+p.current || 0)); subGoalCountKnown = true; }
           if (p.target !== undefined) { 
             const t = Math.max(1, Math.round(+p.target || 1));
             goalState.target = t; appConfig.subGoalTarget = t;
@@ -1906,16 +1946,12 @@ const server = http.createServer((req, res) => {
               appConfig.subGoalQueue = normalizeQueue((appConfig.subGoalQueue||[]).concat([{label:goalState.nextLabel||goalState.label, target:nt}]));
             }
           }
-          if (p.clearHistory === true) { 
-            goalState.history = []; appConfig.subGoalHistory = []; 
-            // V32 : quand on efface historique, on garde seulement les objectifs > current pour éviter réapparition immédiate
-            const cur = goalState.current;
-            appConfig.subGoalQueue = (appConfig.subGoalQueue||[]).filter(q=>q.target > cur);
-            saveConfig();
-            recomputeGoalsFromCount({ skipAutoHistory: true });
+          if (p.clearHistory === true) {
+            clearGoalHistoryManually();
+            recomputeGoalsFromCount();
             return send(200, 'application/json', JSON.stringify(goalState));
           }
-          if (p.history !== undefined && Array.isArray(p.history)) { goalState.history = p.history.slice(-20); appConfig.subGoalHistory = goalState.history.slice(); }
+          if (p.history !== undefined && Array.isArray(p.history)) { goalState.history = normalizeGoalHistory(p.history); appConfig.subGoalHistory = goalState.history.slice(); }
           saveConfig();
           recomputeGoalsFromCount();
           send(200, 'application/json', JSON.stringify(goalState));
@@ -1936,6 +1972,7 @@ const server = http.createServer((req, res) => {
       readBody().then(async d => {
         try {
           const p = JSON.parse(d || '{}');
+          const wasSubGoalAuto = appConfig.subGoalAuto;
           /* Aperçu « Ambiance générale » : diffusé à l'overlay en direct,
              mais NI enregistré NI persisté (Enregistrer le fera, Annuler
              renverra l'ancienne valeur de la même manière). */
@@ -1991,19 +2028,11 @@ const server = http.createServer((req, res) => {
           if (p.subGoalManual !== undefined) appConfig.subGoalManual = Math.max(0, Math.round(+p.subGoalManual || 0));
           if (p.subGoalNextLabel !== undefined) { appConfig.subGoalNextLabel = String(p.subGoalNextLabel).slice(0, 24); goalState.nextLabel = appConfig.subGoalNextLabel; }
           if (p.subGoalNextTarget !== undefined) { appConfig.subGoalNextTarget = Math.max(0, Math.round(+p.subGoalNextTarget || 0)); goalState.nextTarget = appConfig.subGoalNextTarget; }
-          if (p.subGoalHistory !== undefined && Array.isArray(p.subGoalHistory)) { appConfig.subGoalHistory = p.subGoalHistory.slice(-20); goalState.history = appConfig.subGoalHistory.slice(); }
-          if (p.clearHistory === true) { 
-            appConfig.subGoalHistory = []; goalState.history = []; 
-            // garde seulement objectifs > current pour éviter réapparition
-            const cur = appConfig.subGoalAuto ? goalState.current : appConfig.subGoalManual;
-            appConfig.subGoalQueue = (appConfig.subGoalQueue||[]).filter(q=>q.target > cur);
+          if (p.subGoalHistory !== undefined && Array.isArray(p.subGoalHistory)) {
+            appConfig.subGoalHistory = normalizeGoalHistory(p.subGoalHistory);
+            goalState.history = appConfig.subGoalHistory.slice();
           }
-          // sync queue depuis label/target/next si queue vide
-          if ((!appConfig.subGoalQueue || appConfig.subGoalQueue.length===0) && appConfig.subGoalTarget>0) {
-            appConfig.subGoalQueue = [{ label: appConfig.subGoalLabel, target: appConfig.subGoalTarget }];
-            if (appConfig.subGoalNextTarget>0) appConfig.subGoalQueue.push({ label: appConfig.subGoalNextLabel||appConfig.subGoalLabel, target: appConfig.subGoalNextTarget });
-            appConfig.subGoalQueue = normalizeQueue(appConfig.subGoalQueue);
-          }
+          if (p.clearHistory === true) clearGoalHistoryManually();
           if (p.chatTitle !== undefined) appConfig.chatTitle = String(p.chatTitle).slice(0, 40);
           if (p.accent !== undefined) appConfig.accent = String(p.accent).slice(0, 16);
           if (p.velocityEquilibrium !== undefined) appConfig.velocityEquilibrium = Math.max(1, Math.round(+p.velocityEquilibrium || 20));
@@ -2083,22 +2112,24 @@ const server = http.createServer((req, res) => {
           goalState.target = appConfig.subGoalTarget;
           goalState.nextLabel = appConfig.subGoalNextLabel || '';
           goalState.nextTarget = appConfig.subGoalNextTarget || 0;
-          goalState.history = Array.isArray(appConfig.subGoalHistory) ? appConfig.subGoalHistory.slice(-20) : [];
+          goalState.history = normalizeGoalHistory(appConfig.subGoalHistory);
           goalState.queue = normalizeQueue(appConfig.subGoalQueue || []);
           appConfig.subGoalQueue = goalState.queue.slice();
           goalState.upcoming = [];
           let needSync = false;
           if (!appConfig.subGoalAuto) {
             goalState.current = appConfig.subGoalManual;
-          } else {
-            // repasse en auto : on garde current mais on va forcer synchro Twitch immédiate
-            // si on vient de passer de manuel à auto, current était manuel, on le met à 0 pour forcer maj
-            if (p.subGoalAuto === true) needSync = true;
+            subGoalCountKnown = true;
+          } else if (!wasSubGoalAuto) {
+            // Passage manuel → auto : ne pas valider sur l'ancien nombre manuel.
+            // Le prochain total Twitch est la seule valeur fiable.
+            goalState.current = 0;
+            subGoalCountKnown = false;
+            needSync = true;
           }
 
-          // logique plus proche (skipAutoHistory si clear)
-          const skip = p.clearHistory === true;
-          recomputeGoalsFromCount({ skipAutoHistory: skip });
+          // Les validations sont persistantes ; une baisse du compteur ne les efface pas.
+          recomputeGoalsFromCount();
 
           // si besoin de synchro auto, on le fait AVANT de répondre pour que le panneau voie la vraie valeur
           if (needSync) {

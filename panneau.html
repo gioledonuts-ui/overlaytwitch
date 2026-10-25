@@ -695,7 +695,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
       <section class="tab" id="tab-objectif">
         <div class="card">
           <h2>SUB GOAL – COMPTEUR</h2>
-          <p class="sub">Le compteur suit le nombre réel de subs. L'objectif actuel est toujours le plus proche au-dessus du nombre actuel. Ex: 2 subs, objectifs 5 et 10 → actuel = 5.</p>
+          <p class="sub">Un palier atteint reste validé même si le compteur de subs redescend (par exemple au changement de mois). Les validations restent cochées ; aucun nouvel objectif n'est créé automatiquement, tu l'ajoutes quand tu veux.</p>
           <div class="row grow">
             <div class="field" style="margin-top:0">
               <label>Nom actuel (affiché)</label>
@@ -723,13 +723,13 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
           </div>
           <div class="row" style="margin-top:12px">
             <button class="btn primary" id="btnSauverGoal">ENREGISTRER COMPTEUR</button>
-            <button class="btn ghost small" id="btnClearHistory">EFFACER HISTORIQUE ✓</button>
+            <button class="btn ghost small" id="btnClearHistory">RÉINITIALISER LES ✓</button>
           </div>
         </div>
 
         <div class="card" style="background:#10101a;border-color:var(--line2)">
           <h2>🎯 FILE D'ATTENTE D'OBJECTIFS</h2>
-          <p class="sub">Tous les objectifs triés petit → grand. Le plus proche au-dessus du nombre actuel devient l'actuel. Ceux en dessous passent en historique ✓. Ajoute et supprime à volonté – le chat grandit vers le haut, espace messages toujours 460px.</p>
+          <p class="sub">Tous tes objectifs, triés petit → grand. Un objectif atteint ou validé manuellement reste coché, même si le nombre de subs baisse. Les objectifs déjà cochés ne redeviennent pas actifs tout seuls : c'est toi qui ajoutes le prochain palier.</p>
 
           <div id="goalQueueList" style="display:flex;flex-direction:column;gap:6px;margin-top:10px"></div>
 
@@ -744,7 +744,7 @@ input[type=color]{padding:2px;height:34px;cursor:pointer}
             </div>
             <button class="btn primary small" id="btnAddGoal" style="height:32px;margin-bottom:6px">AJOUTER</button>
           </div>
-          <div class="note" style="margin-top:8px">Ex: tu as 2 subs, tu ajoutes 5 et 10 → actuel = 5 (le plus proche au-dessus). Quand tu passes à 5, 5 passe en ✓ et actuel devient 10. Supprime un objectif pour le retirer de la file et de l'historique.</div>
+          <div class="note" style="margin-top:8px">Ex: le palier 50 est dépassé → il passe en ✓ et le prochain objectif déjà ajouté devient actuel. Si aucun autre palier n'est dans la file, l'overlay n'affiche pas d'objectif actif ; ajoute le suivant manuellement. Tu peux aussi valider ou réactiver un palier avec son bouton.</div>
 
           <div id="goalHistoryPreview" class="note" style="margin-top:12px"></div>
         </div>
@@ -1209,7 +1209,7 @@ function renderStatut(s){
     ['CHAT',s.chat?'actif':'inactif',s.chat],
     ['SONDAGES',s.poll?'actifs':'inactifs',s.poll],
     ['FOLLOWS',s.follows?'actifs':'inactifs',s.follows],
-    ['GOAL',s.config&&s.config.subGoalAuto?'auto '+s.goal.current+'/'+s.goal.target:'manuel',true]
+    ['GOAL',s.goal&&s.goal.active===false?'aucun palier actif':(s.config&&s.config.subGoalAuto?'auto '+s.goal.current+'/'+s.goal.target:'manuel'),true]
   ];
   el.innerHTML=items.map(([t,v,ok])=>'<div class="stat"><span class="t">'+t+'</span>'+dot(ok)+v+'</div>').join('');
   const d=$('dotPont'),txt=$('pontTxt');
@@ -1343,27 +1343,32 @@ function renderGoalPreview(s){
   if(!el) return;
   const g=s.goal||s.config||s;
   const cur=g.current!=null?g.current:(s.goal? s.goal.current:0);
-  const tgt=g.target||1;
+  const tgt=Math.max(0,Number(g.target)||0);
+  const active=g.active!==false&&tgt>0;
   const label=g.label||'SUB GOAL';
   const history=Array.isArray(g.history)?g.history.slice():[];
+  const reopenedTargets=new Set(Array.isArray(g.reopenedTargets)?g.reopenedTargets:[]);
   const queue=Array.isArray(g.queue)?g.queue.slice().sort((a,b)=>a.target-b.target): (g.subGoalQueue? g.subGoalQueue.slice().sort((a,b)=>a.target-b.target):[]);
   const upcoming=Array.isArray(g.upcoming)?g.upcoming.slice().sort((a,b)=>a.target-b.target):[];
   const nextLabel=g.nextLabel||'', nextTarget=g.nextTarget||0;
+  const doneFor=q=>q.reopened===true?false:(q.completed===true||history.some(h=>h.target===q.target))&&!reopenedTargets.has(q.target);
 
-  // queue list UI avec édition
+  // queue list UI avec édition et validation explicite
   if(queueEl){
     if(queue.length===0){
-      queueEl.innerHTML='<div class="note">Aucun objectif – ajoute 5 et 10 par ex. (2 subs → actuel = 5)</div>';
+      queueEl.innerHTML='<div class="note">Aucun objectif défini – ajoute le prochain quand tu le souhaites.</div>';
     }else{
       queueEl.innerHTML='';
       for(const q of queue){
-        const isDone = q.target <= cur;
-        const isCurrent = !isDone && q.target===tgt;
+        const isDone=doneFor(q);
+        const isReopened=!!q.reopened||reopenedTargets.has(q.target);
+        const isCurrent=active&&!isDone&&q.target===tgt;
         const row=document.createElement('div');
         row.style.cssText='display:flex;align-items:center;gap:6px;padding:6px 8px;background:rgba(255,255,255,.04);border:1px solid var(--line2);border-radius:4px;font-size:11px';
         const badge=document.createElement('span');
         badge.style.cssText='flex:none;padding:2px 6px;border-radius:4px;font-weight:800;font-size:9px;letter-spacing:.06em';
         if(isDone){ badge.textContent='✓ FAIT'; badge.style.background='rgba(145,70,255,.25)'; badge.style.color='#C79BFF'; }
+        else if(isReopened){ badge.textContent='DÉVALIDÉ'; badge.style.background='rgba(255,190,70,.15)'; badge.style.color='#FFD27A'; }
         else if(isCurrent){ badge.textContent='ACTUEL'; badge.style.background='rgba(255,255,255,.12)'; badge.style.color='#fff'; }
         else { badge.textContent='À VENIR'; badge.style.background='rgba(255,255,255,.06)'; badge.style.color='rgba(255,255,255,.6)'; }
 
@@ -1372,6 +1377,8 @@ function renderGoalPreview(s){
         name.title='Cliquer pour modifier';
 
         const editBtn=document.createElement('button'); editBtn.className='btn ghost small'; editBtn.textContent='EDIT'; editBtn.style.cssText='height:22px;padding:0 8px;font-size:9px';
+        const validateBtn=document.createElement('button'); validateBtn.className=isDone?'btn ghost small':'btn primary small'; validateBtn.textContent=isDone?'DÉVALIDER':'VALIDER'; validateBtn.style.cssText='height:22px;padding:0 8px;font-size:9px';
+        validateBtn.title=isDone?'Réouvrir manuellement cet objectif':'Le marquer comme atteint manuellement';
         const del=document.createElement('button'); del.className='btn ghost small'; del.textContent='SUPPR'; del.style.cssText='height:22px;padding:0 8px;font-size:9px;background:rgba(255,60,60,.12);border-color:rgba(255,60,60,.25)';
 
         // édition inline
@@ -1386,7 +1393,7 @@ function renderGoalPreview(s){
             const newTarget = Math.max(1, Math.round(+tgtIn.value||0));
             if(!newTarget){ toast('Cible invalide'); return; }
             const r=await post(API+'/api/goal',{edit:{oldTarget:q.target, newTarget, newLabel}});
-            if(r && r.target!=null){ toast('Objectif modifié '+q.target+' → '+newTarget); renderGoalPreview(r); }
+            if(r && Array.isArray(r.queue)){ toast('Objectif modifié '+q.target+' → '+newTarget); renderGoalPreview(r); }
             else { const rr=await fetch(API+'/api/config').then(x=>x.json()); renderGoalPreview(rr); toast('Modifié'); }
           });
           cancel.addEventListener('click', ()=> renderGoalPreview(s));
@@ -1395,36 +1402,51 @@ function renderGoalPreview(s){
 
         name.addEventListener('click', startEdit);
         editBtn.addEventListener('click', startEdit);
+        validateBtn.addEventListener('click', async()=>{
+          const body=isDone?{uncompleteTarget:q.target}:{completeTarget:q.target};
+          const r=await post(API+'/api/goal',body);
+          if(r&&Array.isArray(r.queue)){
+            toast(isDone?'Objectif réactivé':'Objectif validé manuellement');
+            renderGoalPreview(r);
+          }else toast('Impossible de modifier cet objectif');
+        });
         del.addEventListener('click', async()=>{
           if(!confirm('Supprimer objectif '+q.target+' ?')) return;
           const r=await post(API+'/api/goal',{removeTarget:q.target, removeHistoryToo:true});
-          if(r && r.target!=null){ toast('Objectif '+q.target+' supprimé'); renderGoalPreview(r); }
+          if(r && Array.isArray(r.queue)){ toast('Objectif '+q.target+' supprimé'); renderGoalPreview(r); }
           else { const rr=await fetch(API+'/api/config').then(x=>x.json()); renderGoalPreview(rr); toast('Objectif supprimé'); }
         });
-        row.append(badge,name,editBtn,del);
+        row.append(badge,name,editBtn,validateBtn,del);
         queueEl.appendChild(row);
       }
     }
   }
 
-  // live preview texte
-  let html='Actuel (plus proche au-dessus de '+cur+'): <b>'+esc(label)+'</b> '+cur+' / '+tgt+' ('+Math.min(100,Math.round(cur/tgt*100))+'%)';
-  if(upcoming.length>0){
-    html+='<br>À venir: '+upcoming.map(u=>'<b>'+esc(u.label||label)+'</b> 0 / '+u.target).join(' → ');
-  }else if(nextTarget>0){
-    html+='<br>À venir: <b>'+esc(nextLabel||label)+'</b> 0 / '+nextTarget;
+  // aperçu live : aucun palier n'est généré si toute la file est cochée
+  if(active){
+    let html='Actuel : <b>'+esc(label)+'</b> '+cur+' / '+tgt+' ('+Math.min(100,Math.round(cur/tgt*100))+'%)';
+    if(upcoming.length>0){
+      html+='<br>À venir : '+upcoming.map(u=>'<b>'+esc(u.label||label)+'</b> 0 / '+u.target).join(' → ');
+    }else if(nextTarget>0){
+      html+='<br>À venir : <b>'+esc(nextLabel||label)+'</b> '+cur+' / '+nextTarget;
+    }else{
+      html+='<br>À venir : <i>aucun objectif préparé</i>';
+    }
+    html+='<br><span style="opacity:.6">Quand le seuil est atteint, le ✓ reste même si le compteur baisse. Le prochain palier est ajouté par toi.</span>';
+    el.innerHTML=html;
   }else{
-    html+='<br>À venir: <i>aucun – reste sur dernier objectif</i>';
+    el.innerHTML=queue.length
+      ? 'Aucun objectif actif — tous les objectifs définis sont cochés. <b>Ajoute le prochain palier manuellement quand tu le souhaites.</b>'
+      : 'Aucun objectif défini. <b>Ajoute un palier quand tu le souhaites.</b>';
   }
-  html+='<br><span style="opacity:.6">Logique: 2 subs, objectifs 5 et 10 → actuel = 5 (le plus proche au-dessus). Quand 5 atteint, passe en ✓ et actuel = 10.</span>';
-  el.innerHTML=html;
 
   if(histEl){
     if(history.length){
-      histEl.innerHTML='Historique ✓ (au-dessus, petit→grand):<br>'+history.slice().sort((a,b)=>a.target-b.target).map(h=>'✓ <b>'+esc(h.label||'')+'</b> '+ (h.currentAtCompletion||h.target)+' / '+h.target).join('<br>');
-    }else histEl.innerHTML='Historique vide – aucun objectif terminé';
+      histEl.innerHTML='Historique ✓ (au-dessus, petit→grand):<br>'+history.slice().sort((a,b)=>a.target-b.target).map(h=>'✓ <b>'+esc(h.label||'')+'</b> '+(h.manual?'validé manuellement':(h.currentAtCompletion??h.target)+' / '+h.target)).join('<br>');
+    }else histEl.innerHTML='Aucun objectif terminé';
   }
 }
+
 const btnSauverGoal=$('btnSauverGoal');
 if(btnSauverGoal)btnSauverGoal.addEventListener('click',async()=>{
   const body={
@@ -1442,9 +1464,9 @@ if(btnSauverGoal)btnSauverGoal.addEventListener('click',async()=>{
 });
 const btnClearHistory=$('btnClearHistory');
 if(btnClearHistory) btnClearHistory.addEventListener('click',async()=>{
-  if(!confirm('Effacer historique des objectifs checkés ?')) return;
+  if(!confirm('Réinitialiser les validations ? Cela décochera manuellement les objectifs cochés. Une baisse naturelle des subs ne les décoche jamais.')) return;
   const r=await post(API+'/api/config',{clearHistory:true});
-  if(r.ok){ toast('Historique efface'); renderGoalPreview(r.goal||{history:[]}); }
+  if(r.ok){ toast('Validations réinitialisées'); renderGoalPreview(r.goal||{history:[]}); }
 });
 const btnAddGoal=$('btnAddGoal');
 if(btnAddGoal) btnAddGoal.addEventListener('click',async()=>{
